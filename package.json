@@ -4,7 +4,8 @@
   "description": "Video OTT Admin Panel and Streaming Platform",
   "scripts": {
     "dev": "concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
-    "install-all": "npm install && npm install --prefix server && npm install --prefix client"
+    "install-all": "npm install && npm install --prefix server && npm install --prefix client",
+    "build": "npm run build --prefix client"
   },
   "dependencies": {
     "@phonepe-pg/pg-sdk-node": "^2.0.6",
