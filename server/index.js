@@ -1402,7 +1402,12 @@ const connectDB = async () => {
     
     // Run seeds only after a stable connection
     await runAllSeeds();
-    console.log('MongoDB connection stable and ready.');
+    
+    // Start server only after DB is ready
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+      console.log('MongoDB connection stable and ready.');
+    });
   } catch (err) {
     console.error('CRITICAL: MongoDB connection failed:', err.message);
     // On critical failure, wait and retry instead of exiting immediately
@@ -1410,11 +1415,6 @@ const connectDB = async () => {
     setTimeout(connectDB, 5000);
   }
 };
-
-// Start Express server immediately so Hostinger's deployment proxy doesn't 504 timeout
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
 
 mongoose.connection.on('error', err => {
   console.error('Mongoose live connection error:', err);
@@ -3628,16 +3628,12 @@ app.post('/api/contents/:type/:id/view', async (req, res) => {
   }
 });
 
-// Serve static files from the React frontend build
-const clientDistPath = path.join(__dirname, '../client/dist');
-app.use(express.static(clientDistPath));
+// Serve static files from the React frontend app
+app.use(express.static(path.join(__dirname, '../client/dist')));
 
-// For all non-API and non-static routes, serve the React app's index.html
-app.get('*', (req, res, next) => {
-  if (req.path.startsWith('/api') || req.path.startsWith('/uploads') || req.path.startsWith('/upload')) {
-    return next();
-  }
-  res.sendFile(path.join(clientDistPath, 'index.html'));
+// Anything that doesn't match an API route, send back the index.html file
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../client/dist/index.html'));
 });
 
 // Global Error Handler for Multer and other errors

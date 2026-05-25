@@ -1,2 +1,2 @@
-// Entry point for Hostinger Node.js deployment to start the Express server
+// Root entry point for Hostinger Node.js deployment auto-detection
 require('./server/index.js');
