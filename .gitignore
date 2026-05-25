@@ -5,7 +5,7 @@ server/node_modules/
 
 # Production builds
 dist/
-client/dist/
+# client/dist/
 
 # Local env files
 .env
@@ -30,13 +30,3 @@ scratch/
 server/debug_key.pem
 server/debug_log.txt
 server/test_decode.js
-
-# Temp/Debug files & Local scripts
-/*.js
-!/index.js
-!/server.js
-!/app.js
-server/make_admin.js
-server/phonepe_callback_dump.json
-server/phonepe_callback_error.txt
-server/phonepe_status_dump.json
