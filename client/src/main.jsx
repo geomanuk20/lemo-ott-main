@@ -4,6 +4,19 @@ import App from './App.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import './index.css';
 
+// Global fetch interceptor to dynamically rewrite hardcoded localhost API endpoints to the active Hostinger deployment URL
+const originalFetch = window.fetch;
+window.fetch = function (url, options) {
+  if (typeof url === 'string') {
+    if (url.startsWith('http://localhost:5001/api') || url.startsWith('http://localhost:5001/uploads') || url.startsWith('http://localhost:5001/upload')) {
+      const apiBase = import.meta.env.VITE_API_URL || window.location.origin;
+      url = url.replace('http://localhost:5001', apiBase);
+    }
+  }
+  return originalFetch(url, options);
+};
+
+
 // Global window.alert override for Lemo OTT Custom Glassmorphic Toast Notifications
 window.alert = (message) => {
   let container = document.getElementById('lemo-global-toast-container');

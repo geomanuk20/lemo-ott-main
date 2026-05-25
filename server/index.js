@@ -3628,6 +3628,18 @@ app.post('/api/contents/:type/:id/view', async (req, res) => {
   }
 });
 
+// Serve static files from the React frontend build
+const clientDistPath = path.join(__dirname, '../client/dist');
+app.use(express.static(clientDistPath));
+
+// For all non-API and non-static routes, serve the React app's index.html
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api') || req.path.startsWith('/uploads') || req.path.startsWith('/upload')) {
+    return next();
+  }
+  res.sendFile(path.join(clientDistPath, 'index.html'));
+});
+
 // Global Error Handler for Multer and other errors
 app.use((err, req, res, next) => {
   if (err instanceof multer.MulterError) {
@@ -3638,13 +3650,4 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: err.message || 'Internal Server Error' });
 });
 
-// Serve static files from the React frontend
-app.use(express.static(path.join(__dirname, '../client/dist')));
-
-// Catch-all route to serve the React frontend index.html
-app.get('*', (req, res) => {
-  if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) {
-    return res.status(404).send('Not Found');
-  }
-  res.sendFile(path.join(__dirname, '../client/dist/index.html'));
-});
+// Server is started inside connectDB()
