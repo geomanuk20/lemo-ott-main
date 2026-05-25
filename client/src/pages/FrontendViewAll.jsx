@@ -12,6 +12,30 @@ const isActive = (status) => {
   return str === 'active' || str === 'true' || str === '1';
 };
 
+const isItemActive = (item, menuSettings) => {
+  if (!menuSettings || !item) return true;
+  
+  let contentType = item.contentType;
+  if (!contentType) {
+    if (item.logo || item.channelName || item.name) {
+      contentType = 'Live TV';
+    } else if (item.sportsCategory) {
+      contentType = 'Sports';
+    } else {
+      contentType = 'Movie';
+    }
+  }
+
+  if (contentType === 'Movie' && menuSettings.movies?.toUpperCase() === 'OFF') return false;
+  if (contentType === 'Short Film' && menuSettings.shortFilms?.toUpperCase() === 'OFF') return false;
+  if (contentType === 'TV Show' && menuSettings.shows?.toUpperCase() === 'OFF') return false;
+  if (contentType === 'Short Web Series' && menuSettings.webSeries?.toUpperCase() === 'OFF') return false;
+  if (contentType === 'Sports' && menuSettings.sports?.toUpperCase() === 'OFF') return false;
+  if (contentType === 'Live TV' && menuSettings.liveTv?.toUpperCase() === 'OFF') return false;
+
+  return true;
+};
+
 const FrontendViewAll = () => {
  const { type, title } = useParams();
  const navigate = useNavigate();
@@ -19,6 +43,39 @@ const FrontendViewAll = () => {
  const [loading, setLoading] = useState(false);
 
  useEffect(() => {
+  try {
+    const cached = localStorage.getItem('fe_menu_settings');
+    if (cached) {
+      const settings = JSON.parse(cached);
+      if (type === 'movies' && settings.movies?.toUpperCase() === 'OFF') {
+        navigate('/', { replace: true });
+        return;
+      }
+      if (type === 'short-film' && settings.shortFilms?.toUpperCase() === 'OFF') {
+        navigate('/', { replace: true });
+        return;
+      }
+      if (type === 'shows' && settings.shows?.toUpperCase() === 'OFF') {
+        navigate('/', { replace: true });
+        return;
+      }
+      if (type === 'short-web-series' && settings.webSeries?.toUpperCase() === 'OFF') {
+        navigate('/', { replace: true });
+        return;
+      }
+      if (type === 'sports' && settings.sports?.toUpperCase() === 'OFF') {
+        navigate('/', { replace: true });
+        return;
+      }
+      if (type === 'live' && settings.liveTv?.toUpperCase() === 'OFF') {
+        navigate('/', { replace: true });
+        return;
+      }
+    }
+  } catch (err) {
+    console.error('Error redirecting in view-all:', err);
+  }
+
   const fetchData = async () => {
    setLoading(true);
    try {
@@ -33,6 +90,17 @@ const FrontendViewAll = () => {
     const data = await res.json();
     
     let filteredData = Array.isArray(data) ? data.filter(item => isActive(item.status)) : [];
+
+    // Filter items based on menu settings
+    try {
+      const cached = localStorage.getItem('fe_menu_settings');
+      if (cached) {
+        const settings = JSON.parse(cached);
+        filteredData = filteredData.filter(item => isItemActive(item, settings));
+      }
+    } catch (err) {
+      console.error('Error filtering view-all list:', err);
+    }
 
     if (type === 'short-film') {
       filteredData = filteredData.filter(item => item.contentType === 'Short Film');
@@ -56,7 +124,7 @@ const FrontendViewAll = () => {
 
   fetchData();
   window.scrollTo(0, 0);
- }, [type, title]);
+ }, [type, title, navigate]);
 
 
  return (

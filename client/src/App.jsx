@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Outlet, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Outlet, Navigate, useLocation } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -25,6 +25,7 @@ import ShortWebSeries from './pages/ShortWebSeries';
 import AddShortWebSeries from './pages/AddShortWebSeries';
 import EditShortWebSeries from './pages/EditShortWebSeries';
 import { syncFavicon } from './utils/branding';
+import { logoutUser } from './utils/logout';
 import Seasons from './pages/Seasons';
 import AddSeason from './pages/AddSeason';
 import EditSeason from './pages/EditSeason';
@@ -66,6 +67,7 @@ import AddCoupon from './pages/AddCoupon';
 import EditCoupon from './pages/EditCoupon';
 import Transactions from './pages/Transactions';
 import PaymentGateway from './pages/PaymentGateway';
+import EditPaymentGateway from './pages/EditPaymentGateway';
 import PagesList from './pages/PagesList';
 import AddPage from './pages/AddPage';
 import EditPage from './pages/EditPage';
@@ -94,6 +96,7 @@ import ResetPassword from './pages/ResetPassword';
 import Watchlist from './pages/Watchlist';
 import FrontendPage from './pages/FrontendPage';
 import FrontendSubscription from './pages/FrontendSubscription';
+import FrontendCheckout from './pages/FrontendCheckout';
 import FrontendDetails from './pages/FrontendDetails';
 import FrontendViewAll from './pages/FrontendViewAll';
 import FrontendShortFilms from './pages/FrontendShortFilms';
@@ -121,6 +124,44 @@ const ProtectedRoute = ({ children }) => {
   }
 
   return children;
+};
+
+// Helper component to check session validation on every route transition
+const TokenValidator = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    const validateSession = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      try {
+        const res = await fetch('http://localhost:5001/api/auth/validate', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (res.status === 401) {
+          // Session is invalid/terminated, trigger logout
+          logoutUser();
+        } else if (res.ok) {
+          const data = await res.json();
+          if (data && data.user) {
+            const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+            localStorage.setItem('user', JSON.stringify({ ...currentUser, ...data.user, id: data.user.id }));
+          }
+        }
+      } catch (err) {
+        console.error('Session validation error:', err);
+      }
+    };
+
+    validateSession();
+  }, [location.pathname]);
+
+  return null;
 };
 
 // Layout for Admin Panel
@@ -160,6 +201,7 @@ function App() {
 
   return (
     <Router>
+      <TokenValidator />
       <Routes>
         {/* Frontend Route */}
         <Route path="/" element={<Home />} />
@@ -175,6 +217,7 @@ function App() {
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/watchlist" element={<Watchlist />} />
         <Route path="/subscription" element={<FrontendSubscription />} />
+        <Route path="/checkout" element={<FrontendCheckout />} />
         <Route path="/details/:type/:id" element={<FrontendDetails />} />
         <Route path="/view-all/:type/:title" element={<FrontendViewAll />} />
 
@@ -267,6 +310,7 @@ function App() {
           <Route path="coupons/edit/:id" element={<EditCoupon />} />
           <Route path="transactions" element={<Transactions />} />
           <Route path="payment-gateway" element={<PaymentGateway />} />
+          <Route path="payment-gateway/edit/:id" element={<EditPaymentGateway />} />
           <Route path="pages/list" element={<PagesList />} />
           <Route path="pages/add" element={<AddPage />} />
           <Route path="pages/edit/:id" element={<EditPage />} />

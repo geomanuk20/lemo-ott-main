@@ -5,6 +5,15 @@ import Loader from '../components/Loader';
 import FrontendLayout from '../components/FrontendLayout';
 import { formatBrandingUrl } from '../utils/branding';
 
+// Stable browser device fingerprint — generated once, persisted in localStorage
+const getOrCreateDeviceId = () => {
+ const stored = localStorage.getItem('deviceId');
+ if (stored) return stored;
+ const newId = 'dev_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 10);
+ localStorage.setItem('deviceId', newId);
+ return newId;
+};
+
 const FrontendLogin = () => {
  const location = useLocation();
  const [view, setView] = useState('login'); // 'login', 'register', 'forgot'
@@ -85,7 +94,7 @@ const FrontendLogin = () => {
    const response = await fetch('http://localhost:5001/api/auth/google', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token: accessToken })
+    body: JSON.stringify({ token: accessToken, deviceId: getOrCreateDeviceId() })
    });
    const data = await response.json();
    if (response.ok) {
@@ -170,7 +179,7 @@ const FrontendLogin = () => {
    const response = await fetch('http://localhost:5001/api/auth/facebook', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token: accessToken })
+    body: JSON.stringify({ token: accessToken, deviceId: getOrCreateDeviceId() })
    });
    const data = await response.json();
    if (response.ok) {
@@ -264,10 +273,10 @@ const FrontendLogin = () => {
 
   if (view === 'login') {
    endpoint = '/api/login';
-   payload = { email: formData.email.trim(), password: formData.password };
+   payload = { email: formData.email.trim(), password: formData.password, deviceId: getOrCreateDeviceId() };
   } else if (view === 'register') {
    endpoint = '/api/register';
-   payload = { name: formData.name, email: formData.email.trim(), password: formData.password };
+   payload = { name: formData.name, email: formData.email.trim(), password: formData.password, deviceId: getOrCreateDeviceId() };
   } else {
    endpoint = '/api/forgot-password';
    payload = { email: formData.email.trim() };
@@ -289,7 +298,10 @@ const FrontendLogin = () => {
      localStorage.setItem('token', data.token);
      localStorage.setItem('user', JSON.stringify(data.user));
      window.dispatchEvent(new Event('profileUpdate'));
-     navigate('/');
+     
+     const from = location.state?.from || '/';
+     const stateToPass = location.state?.selectedPlan ? { selectedPlan: location.state.selectedPlan } : {};
+     navigate(from, { state: stateToPass });
     }
    } else {
     setError(data.message || 'Action failed');

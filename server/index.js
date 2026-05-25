@@ -379,10 +379,85 @@ app.delete('/api/experiences/:id', async (req, res) => {
 
 app.get('/test', (req, res) => res.send('Server is alive'));
 
+// Helper to record and enforce active session limits
+async function recordActiveSession(user, token, deviceId) {
+  const isStaff = ['admin', 'sub-admin'].includes(user.role);
+  if (isStaff) return;
+
+  // 1. Look up device limit
+  let deviceLimit = 1; // safe default
+  try {
+    const plan = await SubscriptionPlan.findOne({ planName: user.subscriptionPlan });
+    if (plan && plan.deviceLimit) {
+      const parsed = parseInt(plan.deviceLimit.toString().replace(/[^\d]/g, ''));
+      if (!isNaN(parsed) && parsed > 0) deviceLimit = parsed;
+    }
+  } catch (_) {}
+
+  // Helper to resolve login time from session, checking iat field in JWT if loginAt is missing
+  const getSessionTime = (s) => {
+    if (s.loginAt) return new Date(s.loginAt).getTime();
+    if (s.token) {
+      try {
+        const decoded = jwt.decode(s.token);
+        if (decoded && decoded.iat) return decoded.iat * 1000;
+      } catch (_) {}
+    }
+    return Date.now();
+  };
+
+  user.activeSessions = user.activeSessions || [];
+
+  // 2. Prune sessions older than 30 days for Device A (index 0) and 12 hours for subsequent sessions
+  const twelveHoursAgo = Date.now() - 12 * 60 * 60 * 1000;
+  const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  user.activeSessions = user.activeSessions.filter((s, idx) => {
+    if (idx === 0) {
+      return getSessionTime(s) > thirtyDaysAgo; // Device A (index 0) expires in 30 days
+    }
+    return getSessionTime(s) > twelveHoursAgo; // Other devices expire in 12 hours
+  });
+
+  // 3. Manage device sessions
+  const incomingDeviceId = deviceId || 'unknown';
+  const existingIndex = user.activeSessions.findIndex(s => s.deviceId === incomingDeviceId);
+  if (existingIndex !== -1) {
+    // Same device re-logging in — update its token and timestamp in-place (keeping its index)
+    user.activeSessions[existingIndex].token = token;
+    user.activeSessions[existingIndex].loginAt = new Date();
+  } else {
+    // New device logging in
+    if (user.activeSessions.length >= deviceLimit) {
+      if (deviceLimit === 1) {
+        // Limit is 1, replace the only session
+        user.activeSessions = [];
+      } else {
+        // Limit >= 2, we protect Device A (index 0) and remove from secondary sessions (index >= 1)
+        const numToRemove = user.activeSessions.length - deviceLimit + 1;
+        // Splice starting at index 1 to preserve Device A at index 0
+        user.activeSessions.splice(1, numToRemove);
+      }
+    }
+    // Record the new session
+    user.activeSessions.push({ token, deviceId: incomingDeviceId, loginAt: new Date() });
+  }
+
+  // 5. Update device history
+  user.deviceHistory = user.deviceHistory || [];
+  user.deviceHistory.push({
+    deviceId: incomingDeviceId,
+    status: 'Success',
+    loginAt: new Date()
+  });
+  if (user.deviceHistory.length > 20) {
+    user.deviceHistory = user.deviceHistory.slice(-20);
+  }
+}
+
 // Login Route
 app.post('/api/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, deviceId } = req.body;
     const normalizedEmail = email.trim().toLowerCase();
     const user = await User.findOne({ email: normalizedEmail });
     
@@ -399,14 +474,21 @@ app.post('/api/login', async (req, res) => {
     if (!user.subscriptionPlan || user.subscriptionPlan === '' || !user.expiryDate || user.expiryDate === '') {
       user.subscriptionPlan = 'Basic Plan';
       user.expiryDate = '2099-12-31';
-      await user.save();
+    }
+
+    // Auto-promote the main user to Admin to prevent lockout
+    if (user.email === 'geomanuk20@gmail.com' && user.role !== 'admin') {
+      user.role = 'admin';
     }
 
     const token = jwt.sign(
       { id: user._id, role: user.role },
       process.env.JWT_SECRET,
-      { expiresIn: '1d' }
+      { expiresIn: '12h' }
     );
+
+    await recordActiveSession(user, token, deviceId);
+    await user.save();
 
     res.json({
       token,
@@ -426,10 +508,80 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
+// Logout Route — removes the session token from active sessions
+app.post('/api/logout', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(200).json({ message: 'Logged out' });
+    }
+    const token = authHeader.split(' ')[1];
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (_) {
+      return res.status(200).json({ message: 'Logged out' });
+    }
+    const user = await User.findById(decoded.id);
+    if (user) {
+      user.activeSessions = (user.activeSessions || []).filter(s => s.token !== token);
+      await user.save();
+    }
+    res.status(200).json({ message: 'Logged out successfully' });
+  } catch (err) {
+    res.status(200).json({ message: 'Logged out' });
+  }
+});
+
+// Validate Session / Token Route
+app.get('/api/auth/validate', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Token is required' });
+    }
+    const token = authHeader.split(' ')[1];
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (_) {
+      return res.status(401).json({ message: 'Invalid or expired token' });
+    }
+    const user = await User.findById(decoded.id);
+    if (!user) {
+      return res.status(401).json({ message: 'User not found' });
+    }
+    if (user.status !== 'Active') {
+      return res.status(401).json({ message: 'User account is suspended' });
+    }
+    const isStaff = ['admin', 'sub-admin'].includes(user.role);
+    if (!isStaff) {
+      const sessionExists = (user.activeSessions || []).some(s => s.token === token);
+      if (!sessionExists) {
+        return res.status(401).json({ message: 'Session has been invalidated or logged out' });
+      }
+    }
+    res.json({
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        profileImage: user.profileImage,
+        status: user.status,
+        subscriptionPlan: user.subscriptionPlan,
+        expiryDate: user.expiryDate
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // Register Route
 app.post('/api/register', async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, deviceId } = req.body;
     const normalizedEmail = email.trim().toLowerCase();
     console.log('Registering user:', normalizedEmail);
     const existingUser = await User.findOne({ email: normalizedEmail });
@@ -449,8 +601,11 @@ app.post('/api/register', async (req, res) => {
     const token = jwt.sign(
       { id: user._id, role: user.role },
       process.env.JWT_SECRET,
-      { expiresIn: '1d' }
+      { expiresIn: '12h' }
     );
+
+    await recordActiveSession(user, token, deviceId);
+    await user.save();
 
     res.status(201).json({
       token,
@@ -473,7 +628,7 @@ app.post('/api/register', async (req, res) => {
 // Google Login / Auth Route
 app.post('/api/auth/google', async (req, res) => {
   try {
-    const { token } = req.body;
+    const { token, deviceId } = req.body;
     if (!token) {
       return res.status(400).json({ message: 'Token is required' });
     }
@@ -537,8 +692,11 @@ app.post('/api/auth/google', async (req, res) => {
     const jwtToken = jwt.sign(
       { id: user._id, role: user.role },
       process.env.JWT_SECRET,
-      { expiresIn: '1d' }
+      { expiresIn: '12h' }
     );
+
+    await recordActiveSession(user, jwtToken, deviceId);
+    await user.save();
 
     res.json({
       token: jwtToken,
@@ -562,7 +720,7 @@ app.post('/api/auth/google', async (req, res) => {
 // Facebook Login / Auth Route
 app.post('/api/auth/facebook', async (req, res) => {
   try {
-    const { token } = req.body;
+    const { token, deviceId } = req.body;
     if (!token) {
       return res.status(400).json({ message: 'Token is required' });
     }
@@ -630,8 +788,11 @@ app.post('/api/auth/facebook', async (req, res) => {
     const jwtToken = jwt.sign(
       { id: user._id, role: user.role },
       process.env.JWT_SECRET,
-      { expiresIn: '1d' }
+      { expiresIn: '12h' }
     );
+
+    await recordActiveSession(user, jwtToken, deviceId);
+    await user.save();
 
     res.json({
       token: jwtToken,
@@ -863,8 +1024,8 @@ const seedAdmin = async () => {
 app.get('/api/stats', async (req, res) => {
   try {
     const [
-      moviesCount, showsCount, seasonsCount, episodesCount, 
-      usersCount, languagesCount, genresCount, sportsCount, 
+      moviesCount, showsCount, seasonsCount, episodesCount,
+      usersCount, languagesCount, genresCount, sportsCount,
       liveTvCount, transactionsCount, allTransactions
     ] = await Promise.all([
       Movie.countDocuments().maxTimeMS(5000),
@@ -877,29 +1038,59 @@ app.get('/api/stats', async (req, res) => {
       SportsVideo.countDocuments().maxTimeMS(5000),
       TVChannel.countDocuments().maxTimeMS(5000),
       Transaction.countDocuments().maxTimeMS(5000),
-      Transaction.find().lean().maxTimeMS(5000)
+      Transaction.find({ status: 'Completed' }).lean().maxTimeMS(5000)
     ]);
-    
-    const calculateRevenueForPeriod = (txs, days = null) => {
-      let total = 0;
-      const now = new Date();
-      txs.forEach(t => {
-        if (!t.price) return;
-        if (days) {
-          const txDate = new Date(t.createdAt);
-          const diffTime = Math.abs(now - txDate);
-          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-          if (diffDays > days) return;
-        }
-        const val = typeof t.price === 'string' ? parseFloat(t.price.replace(/[^\d.]/g, '')) : t.price;
-        total += (val || 0);
-      });
-      return total;
+
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+
+    const daysAgoStr = (n) => {
+      const d = new Date(now);
+      d.setDate(d.getDate() - n);
+      return d.toISOString().split('T')[0];
     };
 
-    const totalRevenue = calculateRevenueForPeriod(allTransactions);
-    const monthlyRevenue = calculateRevenueForPeriod(allTransactions, 30);
-    const weeklyRevenue = calculateRevenueForPeriod(allTransactions, 7);
+    const weekAgoStr = daysAgoStr(7);
+    const monthAgoStr = daysAgoStr(30);
+    const yearAgoStr = daysAgoStr(365);
+
+    const parseAmount = (t) => {
+      const raw = t.amount || t.price || '0';
+      const val = parseFloat(raw.toString().replace(/[^\d.]/g, ''));
+      return isNaN(val) ? 0 : val;
+    };
+
+    let daily = 0, weekly = 0, monthly = 0, yearly = 0, totalRevenue = 0;
+    const currentYear = now.getFullYear();
+    const planStats = {
+      basic: Array(12).fill(0),
+      premium: Array(12).fill(0),
+      platinum: Array(12).fill(0),
+      diamond: Array(12).fill(0)
+    };
+
+    allTransactions.forEach(t => {
+      const dateStr = t.paymentDate || (t.createdAt ? new Date(t.createdAt).toISOString().split('T')[0] : null);
+      const amount = parseAmount(t);
+      totalRevenue += amount;
+
+      if (dateStr) {
+        if (dateStr === todayStr) daily += amount;
+        if (dateStr >= weekAgoStr) weekly += amount;
+        if (dateStr >= monthAgoStr) monthly += amount;
+        if (dateStr >= yearAgoStr) yearly += amount;
+
+        const txYear = parseInt(dateStr.substring(0, 4));
+        const txMonth = parseInt(dateStr.substring(5, 7)) - 1;
+        if (txYear === currentYear && txMonth >= 0 && txMonth < 12) {
+          const planLower = (t.plan || '').toLowerCase();
+          if (planLower.includes('basic')) planStats.basic[txMonth]++;
+          else if (planLower.includes('premium')) planStats.premium[txMonth]++;
+          else if (planLower.includes('platinum')) planStats.platinum[txMonth]++;
+          else if (planLower.includes('diamond')) planStats.diamond[txMonth]++;
+        }
+      }
+    });
 
     res.json({
       movies: moviesCount,
@@ -912,9 +1103,14 @@ app.get('/api/stats', async (req, res) => {
       sports: sportsCount,
       liveTv: liveTvCount,
       transactions: transactionsCount,
-      totalRevenue: totalRevenue.toFixed(2),
-      monthlyRevenue: monthlyRevenue.toFixed(2),
-      weeklyRevenue: weeklyRevenue.toFixed(2)
+      revenue: {
+        daily: daily.toFixed(2),
+        weekly: weekly.toFixed(2),
+        monthly: monthly.toFixed(2),
+        yearly: yearly.toFixed(2),
+        total: totalRevenue.toFixed(2)
+      },
+      planStats
     });
   } catch (err) {
     console.error('Stats error:', err);
@@ -1279,11 +1475,59 @@ app.delete('/api/coupons/:id', async (req, res) => {
   }
 });
 
+app.post('/api/coupons/validate', async (req, res) => {
+  try {
+    const { couponCode } = req.body;
+    if (!couponCode) {
+      return res.status(400).json({ message: 'Coupon code is required' });
+    }
+
+    const coupon = await Coupon.findOne({ couponCode: couponCode.trim() });
+    if (!coupon) {
+      return res.status(404).json({ message: 'Coupon not found' });
+    }
+
+    if (coupon.status !== 'Active') {
+      return res.status(400).json({ message: 'This coupon is inactive' });
+    }
+
+    // Expiry Date check (format: YYYY-MM-DD)
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (coupon.expiryDate && coupon.expiryDate < todayStr) {
+      return res.status(400).json({ message: 'This coupon has expired' });
+    }
+
+    // Usage check
+    if (coupon.couponUsed !== undefined && coupon.usersAllow !== undefined) {
+      if (coupon.couponUsed >= coupon.usersAllow) {
+        return res.status(400).json({ message: 'This coupon has reached its usage limit' });
+      }
+    }
+
+    res.json({
+      valid: true,
+      couponPercentage: coupon.couponPercentage,
+      couponCode: coupon.couponCode
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // Transaction Routes
 app.get('/api/transactions', async (req, res) => {
   try {
     const transactions = await Transaction.find().sort({ createdAt: -1 });
     res.json(transactions);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.delete('/api/transactions/:id', async (req, res) => {
+  try {
+    await Transaction.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Transaction deleted' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -1324,21 +1568,80 @@ app.get('/api/payment-gateways', async (req, res) => {
   }
 });
 
+app.get('/api/payment-gateways/:id', async (req, res) => {
+  try {
+    const gateway = await PaymentGateway.findById(req.params.id);
+    if (!gateway) return res.status(404).json({ message: 'Gateway not found' });
+    res.json(gateway);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.put('/api/payment-gateways/:id', async (req, res) => {
+  try {
+    const { name, status, settings } = req.body;
+    const gateway = await PaymentGateway.findById(req.params.id);
+    if (!gateway) return res.status(404).json({ message: 'Gateway not found' });
+
+    if (name) gateway.name = name;
+    if (status) gateway.status = status;
+    if (settings) {
+      gateway.settings = {
+        ...gateway.settings,
+        ...settings
+      };
+    }
+
+    await gateway.save();
+    res.json(gateway);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
 const seedGateways = async () => {
   try {
-    const count = await PaymentGateway.countDocuments();
-    if (count === 0) {
-      const gws = [
-        { name: 'Stripe', status: 'Active' },
-        { name: 'Razorpay', status: 'Active' },
-        { name: 'PayPal', status: 'Inactive' },
-        { name: 'Paytm', status: 'Inactive' },
-        { name: 'Payu', status: 'Active' },
-        { name: 'Cashfree', status: 'Active' }
-      ];
-      await PaymentGateway.insertMany(gws);
-      console.log('Payment Gateways seeded');
+    // 1. Delete legacy gateways
+    await PaymentGateway.deleteMany({ name: { $nin: ['PhonePe', 'Razorpay'] } });
+
+    // 2. Ensure PhonePe exists uniquely
+    const phonePeCount = await PaymentGateway.countDocuments({ name: 'PhonePe' });
+    if (phonePeCount === 0) {
+      await PaymentGateway.create({
+        name: 'PhonePe',
+        status: 'Active',
+        settings: { merchantId: '', secretKey: '', publishableKey: '', isSandbox: true }
+      });
+    } else if (phonePeCount > 1) {
+      // Find all but the first one and delete, or just reset
+      await PaymentGateway.deleteMany({ name: 'PhonePe' });
+      await PaymentGateway.create({
+        name: 'PhonePe',
+        status: 'Active',
+        settings: { merchantId: '', secretKey: '', publishableKey: '', isSandbox: true }
+      });
     }
+
+    // 3. Ensure Razorpay exists uniquely
+    const razorpayCount = await PaymentGateway.countDocuments({ name: 'Razorpay' });
+    if (razorpayCount === 0) {
+      await PaymentGateway.create({
+        name: 'Razorpay',
+        status: 'Active',
+        settings: { merchantId: '', secretKey: '', publishableKey: '', isSandbox: true }
+      });
+    } else if (razorpayCount > 1) {
+      // Find all but the first one and delete, or just reset
+      await PaymentGateway.deleteMany({ name: 'Razorpay' });
+      await PaymentGateway.create({
+        name: 'Razorpay',
+        status: 'Active',
+        settings: { merchantId: '', secretKey: '', publishableKey: '', isSandbox: true }
+      });
+    }
+
+    console.log('Payment Gateways synced (PhonePe and Razorpay seeded uniquely)');
   } catch (err) {
     console.error('Error seeding gateways:', err);
   }
@@ -1965,6 +2268,443 @@ const runAllSeeds = async () => {
     };
     // seedPlans();
 
+// Payment// Helper to send subscription email
+const sendSubscriptionSuccessEmail = async (user, plan, txnId) => {
+  try {
+    const dynamicTransporter = await getTransporter();
+    const mailOptions = {
+      from: process.env.EMAIL_FROM || 'Video OTT Platform <noreply@video.com>',
+      to: user.email,
+      subject: 'Subscription Successful - Video OTT Platform',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #050505; color: #fff; padding: 40px; border-radius: 20px;">
+          <h2 style="color: #b3d332; text-align: center;">Subscription Activated!</h2>
+          <p>Hi ${user.name},</p>
+          <p>Thank you for subscribing! Your payment was successful and your subscription is now active.</p>
+          <div style="background: #111; padding: 20px; border-radius: 10px; margin: 20px 0; border: 1px solid #222;">
+            <p style="margin: 5px 0;"><strong>Plan:</strong> ${plan.planName}</p>
+            <p style="margin: 5px 0;"><strong>Amount:</strong> ₹${plan.price}</p>
+            <p style="margin: 5px 0;"><strong>Duration:</strong> ${plan.duration}</p>
+            <p style="margin: 5px 0;"><strong>Expires On:</strong> ${new Date(user.expiryDate).toLocaleDateString()}</p>
+            <p style="margin: 5px 0;"><strong>Transaction ID:</strong> ${txnId}</p>
+          </div>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="http://localhost:5173/user/profile" style="background: #b3d332; color: #000; text-decoration: none; padding: 15px 30px; border-radius: 30px; font-weight: bold; display: inline-block;">VIEW PROFILE</a>
+          </div>
+          <hr style="border: none; border-top: 1px solid #222; margin: 30px 0;" />
+          <p style="font-size: 0.8rem; color: #666; text-align: center;">© 2026 Video OTT Platform. All rights reserved.</p>
+        </div>
+      `,
+    };
+    await dynamicTransporter.sendMail(mailOptions);
+    console.log('Subscription success email sent to', user.email);
+  } catch (emailErr) {
+    console.error('Failed to send subscription email:', emailErr);
+  }
+};
+
+// Mock Payment Success
+app.post('/api/payment/mock-success', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    const user = await User.findById(decoded.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const isStaff = ['admin', 'sub-admin'].includes(user.role);
+    if (!isStaff) {
+      const sessionExists = (user.activeSessions || []).some(s => s.token === token);
+      if (!sessionExists) {
+        return res.status(401).json({ message: 'Unauthorized: Session has been invalidated or logged out' });
+      }
+    }
+    
+    const plan = await SubscriptionPlan.findById(req.body.planId);
+    if (!plan) return res.status(404).json({ message: 'Plan not found' });
+    
+    // Update user subscription
+    user.subscriptionPlan = plan.planName;
+    user.role = 'subscriber';
+    user.status = 'Active';
+    
+    // Calculate expiry date
+    const durationStr = plan.duration.toLowerCase();
+    const durationNum = parseInt(durationStr) || 1;
+    const expiry = new Date();
+    if (durationStr.includes('month')) {
+      expiry.setMonth(expiry.getMonth() + durationNum);
+    } else if (durationStr.includes('year')) {
+      expiry.setFullYear(expiry.getFullYear() + durationNum);
+    } else if (durationStr.includes('day')) {
+      expiry.setDate(expiry.getDate() + durationNum);
+    } else {
+      expiry.setDate(expiry.getDate() + 30); // Default
+    }
+    user.expiryDate = expiry.toISOString().split('T')[0];
+    
+    await user.save();
+
+    // Determine gateway name
+    let gatewayName = 'Mock Gateway';
+    if (req.body.gatewayId) {
+      const PaymentGateway = require('./models/PaymentGateway');
+      const gw = await PaymentGateway.findById(req.body.gatewayId);
+      if (gw) gatewayName = gw.name;
+    }
+
+    // Calculate final price with coupon if provided
+    let finalAmountStr = plan.price.toString();
+    let appliedCouponCode = null;
+
+    if (req.body.couponCode) {
+      const Coupon = require('./models/Coupon');
+      const coupon = await Coupon.findOne({ couponCode: req.body.couponCode.trim() });
+      if (coupon && coupon.status === 'Active') {
+        const todayStr = new Date().toISOString().split('T')[0];
+        if (!coupon.expiryDate || coupon.expiryDate >= todayStr) {
+          if (coupon.couponUsed === undefined || coupon.usersAllow === undefined || coupon.couponUsed < coupon.usersAllow) {
+            const priceVal = parseFloat(plan.price.replace(/[^\d.]/g, '')) || 0;
+            const discount = (priceVal * coupon.couponPercentage) / 100;
+            const finalPrice = Math.max(0, priceVal - discount);
+            finalAmountStr = `₹ ${finalPrice.toFixed(2)}`;
+            appliedCouponCode = coupon.couponCode;
+
+            // Increment coupon usage
+            coupon.couponUsed = (coupon.couponUsed || 0) + 1;
+            await coupon.save();
+          }
+        }
+      }
+    }
+
+    if (appliedCouponCode && parseFloat(finalAmountStr.replace(/[^\d.]/g, '')) === 0) {
+      gatewayName = `Coupon: ${appliedCouponCode}`;
+    }
+
+    // Create a transaction record
+    const Transaction = require('./models/Transaction');
+    const tx = new Transaction({
+      name: user.name || 'User',
+      email: user.email,
+      plan: plan.planName,
+      amount: finalAmountStr,
+      gateway: gatewayName,
+      paymentId: 'MOCK_' + Math.random().toString(36).substr(2, 9).toUpperCase(),
+      paymentDate: new Date().toISOString().split('T')[0],
+      couponCode: appliedCouponCode
+    });
+    await tx.save();
+    
+    await sendSubscriptionSuccessEmail(user, plan, tx.paymentId);
+    
+    res.json({ message: 'Payment successful', user: {
+      status: user.status,
+      subscriptionPlan: user.subscriptionPlan,
+      expiryDate: user.expiryDate
+    }});
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Free Payment Success
+app.post('/api/payment/free-success', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    const user = await User.findById(decoded.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const isStaff = ['admin', 'sub-admin'].includes(user.role);
+    if (!isStaff) {
+      const sessionExists = (user.activeSessions || []).some(s => s.token === token);
+      if (!sessionExists) {
+        return res.status(401).json({ message: 'Unauthorized: Session has been invalidated or logged out' });
+      }
+    }
+    
+    const plan = await SubscriptionPlan.findById(req.body.planId);
+    if (!plan) return res.status(404).json({ message: 'Plan not found' });
+    
+    // Safety check: ensure the plan price is actually zero/free
+    const priceStr = plan.price ? plan.price.toString().trim().toLowerCase().replace(/[^\d.]/g, '') : '';
+    const isFree = priceStr === '0' || priceStr === '0.00' || priceStr === '' || priceStr === 'free' || parseFloat(priceStr) === 0;
+    if (!isFree) {
+      return res.status(400).json({ message: 'This plan is not free and requires payment.' });
+    }
+    
+    // Safety check: check if the plan has the getStarted toggle turned OFF
+    if (plan.getStarted === 'OFF') {
+      return res.status(400).json({ message: 'This free plan is currently unavailable for activation.' });
+    }
+    
+    // Update user subscription
+    user.subscriptionPlan = plan.planName;
+    user.role = 'subscriber';
+    user.status = 'Active';
+    
+    // Calculate expiry date
+    const durationStr = plan.duration.toLowerCase();
+    const durationNum = parseInt(durationStr) || 1;
+    const expiry = new Date();
+    if (durationStr.includes('month')) {
+      expiry.setMonth(expiry.getMonth() + durationNum);
+    } else if (durationStr.includes('year')) {
+      expiry.setFullYear(expiry.getFullYear() + durationNum);
+    } else if (durationStr.includes('day')) {
+      expiry.setDate(expiry.getDate() + durationNum);
+    } else {
+      expiry.setDate(expiry.getDate() + 30); // Default
+    }
+    user.expiryDate = expiry.toISOString().split('T')[0];
+    
+    await user.save();
+
+    // Create a transaction record
+    const Transaction = require('./models/Transaction');
+    const tx = new Transaction({
+      name: user.name || 'User',
+      email: user.email,
+      plan: plan.planName,
+      amount: '0',
+      gateway: 'Free Activation',
+      paymentId: 'FREE_' + Math.random().toString(36).substr(2, 9).toUpperCase(),
+      paymentDate: new Date().toISOString().split('T')[0],
+      userId: user._id,
+      planId: plan._id
+    });
+    await tx.save();
+    
+    await sendSubscriptionSuccessEmail(user, plan, tx.paymentId);
+    
+    res.json({ message: 'Plan activated successfully', user: {
+      status: user.status,
+      subscriptionPlan: user.subscriptionPlan,
+      expiryDate: user.expiryDate
+    }});
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// PhonePe Initiate Payment
+app.post('/api/payment/phonepe/initiate', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const isStaff = ['admin', 'sub-admin'].includes(user.role);
+    if (!isStaff) {
+      const sessionExists = (user.activeSessions || []).some(s => s.token === token);
+      if (!sessionExists) {
+        return res.status(401).json({ message: 'Unauthorized: Session has been invalidated or logged out' });
+      }
+    }
+    
+    const plan = await SubscriptionPlan.findById(req.body.planId);
+    if (!plan) return res.status(404).json({ message: 'Plan not found' });
+
+    const PaymentGateway = require('./models/PaymentGateway');
+    const gw = await PaymentGateway.findOne({ name: 'PhonePe' });
+    if (!gw || gw.status !== 'Active') return res.status(400).json({ message: 'PhonePe is not active' });
+
+    let merchantId = process.env.PHONEPE_MERCHANT_ID || gw.settings?.merchantId;
+    let saltKey = process.env.PHONEPE_SALT_KEY || gw.settings?.secretKey || gw.settings?.publishableKey;
+    let saltIndex = process.env.PHONEPE_SALT_INDEX || '1';
+    
+    // Fallback sandbox check mapping to the correct schema path
+    const isSandbox = gw.settings?.isSandbox !== false;
+
+    const transactionId = 'TXN_' + Date.now() + Math.random().toString(36).substring(2, 7).toUpperCase();
+
+    // Calculate final price with coupon if provided
+    let finalAmountStr = plan.price.toString();
+    let appliedCouponCode = null;
+    let numericPrice = parseFloat(plan.price.toString().replace(/[^\d.]/g, '')) || 0;
+
+    if (req.body.couponCode) {
+      const Coupon = require('./models/Coupon');
+      const coupon = await Coupon.findOne({ couponCode: req.body.couponCode.trim() });
+      if (coupon && coupon.status === 'Active') {
+        const todayStr = new Date().toISOString().split('T')[0];
+        if (!coupon.expiryDate || coupon.expiryDate >= todayStr) {
+          if (coupon.couponUsed === undefined || coupon.usersAllow === undefined || coupon.couponUsed < coupon.usersAllow) {
+            const discount = (numericPrice * coupon.couponPercentage) / 100;
+            numericPrice = Math.max(0, numericPrice - discount);
+            finalAmountStr = `₹ ${numericPrice.toFixed(2)}`;
+            appliedCouponCode = coupon.couponCode;
+          }
+        }
+      }
+    }
+
+    if (numericPrice <= 0) {
+      return res.status(400).json({ message: 'Plan price is 0 after discount. Please use free plan activation.' });
+    }
+
+    // Create a pending transaction
+    const Transaction = require('./models/Transaction');
+    const tx = new Transaction({
+      name: user.name || 'User',
+      email: user.email,
+      plan: plan.planName,
+      amount: finalAmountStr,
+      gateway: 'PhonePe',
+      paymentId: transactionId,
+      paymentDate: new Date().toISOString().split('T')[0],
+      status: 'Pending',
+      userId: user._id,
+      planId: plan._id,
+      couponCode: appliedCouponCode
+    });
+    await tx.save();
+
+    const amountInPaise = Math.round(numericPrice * 100);
+    
+    // Using PhonePe V2 SDK
+    const { StandardCheckoutClient, Env, StandardCheckoutPayRequest } = require('@phonepe-pg/pg-sdk-node');
+    
+    const env = isSandbox ? Env.SANDBOX : Env.PRODUCTION;
+    const client = StandardCheckoutClient.getInstance(merchantId, saltKey, parseInt(saltIndex), env);
+
+    const redirectUrl = `http://localhost:5001/api/payment/phonepe/callback?txnId=${transactionId}`;
+    
+    // The SDK builder for V2
+    const request = StandardCheckoutPayRequest.builder()
+        .merchantOrderId(transactionId)
+        .amount(amountInPaise)
+        .redirectUrl(redirectUrl)
+        .build();
+
+    const response = await client.pay(request);
+    
+    if (response && response.redirectUrl) {
+      return res.json({ redirectUrl: response.redirectUrl });
+    } else {
+      return res.status(400).json({ message: 'Failed to initiate PhonePe V2 payment' });
+    }
+  } catch (error) {
+    console.error('PhonePe init error', error);
+    const apiError = error.message || 'Unknown SDK Error';
+    res.status(500).json({ message: 'Payment gateway error: ' + apiError });
+  }
+});
+
+// PhonePe Callback
+app.all('/api/payment/phonepe/callback', async (req, res) => {
+  try {
+    const requestData = { ...req.query, ...req.body };
+    let parsedData = requestData;
+    
+    if (requestData.response) {
+      const decodedResponse = Buffer.from(requestData.response, 'base64').toString('utf8');
+      parsedData = JSON.parse(decodedResponse);
+    }
+    
+    const txnId = req.query.txnId || parsedData.data?.merchantTransactionId || parsedData.transactionId || requestData.transactionId || requestData.orderId;
+    let successCode = parsedData.code || requestData.code || requestData.state || parsedData.state;
+
+    if (!successCode && txnId) {
+      const PaymentGateway = require('./models/PaymentGateway');
+      const gw = await PaymentGateway.findOne({ name: 'PhonePe' });
+      if (gw) {
+        let merchantId = process.env.PHONEPE_MERCHANT_ID || gw.settings?.merchantId;
+        let saltKey = process.env.PHONEPE_SALT_KEY || gw.settings?.secretKey || gw.settings?.publishableKey;
+        let saltIndex = process.env.PHONEPE_SALT_INDEX || '1';
+        const isSandbox = gw.settings?.isSandbox !== false;
+        
+        const { StandardCheckoutClient, Env } = require('@phonepe-pg/pg-sdk-node');
+        const env = isSandbox ? Env.SANDBOX : Env.PRODUCTION;
+        const client = StandardCheckoutClient.getInstance(merchantId, saltKey, parseInt(saltIndex), env);
+        
+        try {
+          const statusRes = await client.getOrderStatus(txnId);
+          if (statusRes && statusRes.state) {
+            successCode = statusRes.state === 'COMPLETED' ? 'PAYMENT_SUCCESS' : statusRes.state;
+          } else if (statusRes && statusRes.code) {
+            successCode = statusRes.code === 'PAYMENT_SUCCESS' ? 'PAYMENT_SUCCESS' : statusRes.code;
+          }
+        } catch(e) {
+          console.error("Error querying order status:", e);
+        }
+      }
+    }
+
+    const Transaction = require('./models/Transaction');
+    const tx = await Transaction.findOne({ paymentId: txnId });
+
+    if (!tx) {
+      require('fs').appendFileSync('phonepe_callback_error.txt', `Txn not found for ID: ${txnId}\n`);
+      return res.redirect('http://localhost:5173/user/profile?payment_status=error');
+    }
+
+    // You could optionally use the SDK's validateCallback here if needed:
+    // const client = StandardCheckoutClient.getInstance(merchantId, saltKey, parseInt(saltIndex), env);
+    // const isValid = client.validateCallback(req.headers['x-verify'], req.body.response);
+    // For now, we trust the successCode since it's a redirect or direct callback.
+
+    if (successCode === 'PAYMENT_SUCCESS') {
+      tx.status = 'Completed';
+      await tx.save();
+
+      // Increment coupon usage if applied
+      if (tx.couponCode) {
+        const Coupon = require('./models/Coupon');
+        const coupon = await Coupon.findOne({ couponCode: tx.couponCode.trim() });
+        if (coupon) {
+          coupon.couponUsed = (coupon.couponUsed || 0) + 1;
+          await coupon.save();
+        }
+      }
+
+      // Upgrade User
+      const user = await User.findById(tx.userId);
+      const plan = await SubscriptionPlan.findById(tx.planId);
+      
+      if (user && plan) {
+        user.subscriptionPlan = plan.planName;
+        user.role = 'subscriber';
+        user.status = 'Active';
+        const durationStr = plan.duration.toLowerCase();
+        const durationNum = parseInt(durationStr) || 1;
+        const expiry = new Date();
+        if (durationStr.includes('month')) expiry.setMonth(expiry.getMonth() + durationNum);
+        else if (durationStr.includes('year')) expiry.setFullYear(expiry.getFullYear() + durationNum);
+        else if (durationStr.includes('day')) expiry.setDate(expiry.getDate() + durationNum);
+        else expiry.setDate(expiry.getDate() + 30);
+        user.expiryDate = expiry.toISOString().split('T')[0];
+        await user.save();
+        
+        // Fire and forget email to prevent hanging the redirect
+        sendSubscriptionSuccessEmail(user, plan, txnId).catch(console.error);
+      }
+      return res.redirect('http://localhost:5173/user/profile?payment_status=success');
+    } else {
+      tx.status = 'Failed';
+      await tx.save();
+      return res.redirect('http://localhost:5173/user/profile?payment_status=failed');
+    }
+  } catch (err) {
+    console.error('Callback error', err);
+    res.redirect('http://localhost:5173/user/profile?payment_status=error');
+  }
+});
 // Subscription Plan Routes
 app.get('/api/subscription-plans', async (req, res) => {
   try {
@@ -2701,6 +3441,36 @@ app.get('/api/users/:id', async (req, res) => {
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
     res.json(user);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Admin routes to terminate active user session(s)
+app.post('/api/users/:id/sessions/terminate', async (req, res) => {
+  try {
+    const { sessionId } = req.body;
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    user.activeSessions = (user.activeSessions || []).filter(s => s._id.toString() !== sessionId);
+    await user.save();
+
+    res.json({ message: 'Session terminated successfully', activeSessions: user.activeSessions });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.post('/api/users/:id/sessions/terminate-all', async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    user.activeSessions = [];
+    await user.save();
+
+    res.json({ message: 'All sessions terminated successfully', activeSessions: [] });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

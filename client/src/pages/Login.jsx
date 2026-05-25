@@ -25,7 +25,8 @@ const Login = () => {
 
    if (response.ok) {
     // Discovery: Validate Admin Permissions
-    if (data.user.role !== 'admin' && data.user.role !== 'sub-admin') {
+    const userRole = (data.user.role || '').toLowerCase();
+    if (userRole !== 'admin' && userRole !== 'sub-admin') {
      setError('Access Denied: You do not have discovery permissions for the Admin Panel.');
      setLoading(false);
      return;

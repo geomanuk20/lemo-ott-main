@@ -7,7 +7,8 @@ const SubscriptionPlanSchema = new mongoose.Schema({
   deviceLimit: { type: String, required: true },
   ads: { type: String, default: 'OFF' },
   streamingQuality: { type: String, default: 'HD' },
-  status: { type: String, default: 'Active' }
+  status: { type: String, default: 'Active' },
+  getStarted: { type: String, default: 'ON' }
 }, { timestamps: true });
 
 module.exports = mongoose.model('SubscriptionPlan', SubscriptionPlanSchema);

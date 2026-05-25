@@ -13,6 +13,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@phonepe-pg/pg-sdk-node": "^2.0.6",
     "axios": "^1.16.0",
     "bcryptjs": "^3.0.3",
     "cloudinary": "^1.41.3",

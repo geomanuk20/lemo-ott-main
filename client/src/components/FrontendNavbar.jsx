@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { logoutUser } from '../utils/logout';
 import { Search, Bookmark, User, Menu, X, LayoutDashboard, UserCircle, List, LogOut, ChevronDown } from 'lucide-react';
 import { formatBrandingUrl } from '../utils/branding';
 
@@ -64,9 +65,7 @@ const FrontendNavbar = ({
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    window.location.href = '/';
+    logoutUser();
   };
 
   const formatImageUrl = (item) => {

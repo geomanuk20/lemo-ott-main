@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { User, ChevronDown, X, LayoutDashboard, UserCircle, List, LogOut } from 'lucide-react';
+import { logoutUser } from '../utils/logout';
 
 const FrontendSidebar = ({
   isMenuOpen,
@@ -29,9 +30,7 @@ const FrontendSidebar = ({
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    window.location.href = '/';
+    logoutUser();
   };
 
   return (
@@ -95,9 +94,6 @@ const FrontendSidebar = ({
               </button>
 
               <div className={`fe-sidebar-submenu-v ${isAccountOpen ? 'open' : ''}`}>
-                <Link to="/user/profile" onClick={() => setIsMenuOpen(false)}>
-                  <LayoutDashboard size={16} /> Dashboard
-                </Link>
                 <Link to="/user/profile" onClick={() => setIsMenuOpen(false)}>
                   <UserCircle size={16} /> Profile
                 </Link>

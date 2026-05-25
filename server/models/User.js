@@ -29,6 +29,16 @@ const UserSchema = new mongoose.Schema({
   watchlist: [{
     contentId: { type: mongoose.Schema.Types.ObjectId, required: true },
     contentType: { type: String, enum: ['movie', 'show', 'sports', 'live'], required: true }
+  }],
+  activeSessions: [{
+    token: { type: String, required: true },
+    deviceId: { type: String, required: true },
+    loginAt: { type: Date, default: Date.now }
+  }],
+  deviceHistory: [{
+    deviceId: { type: String, required: true },
+    status: { type: String, enum: ['Success', 'Blocked (Limit Reached)'], required: true },
+    loginAt: { type: Date, default: Date.now }
   }]
 }, { timestamps: true });
 

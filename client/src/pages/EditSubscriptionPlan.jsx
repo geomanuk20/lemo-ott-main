@@ -20,7 +20,8 @@ const EditSubscriptionPlan = () => {
   deviceLimit: '1',
   ads: 'ON',
   streamingQuality: 'HD',
-  status: 'Active'
+  status: 'Active',
+  getStarted: 'ON'
  });
 
  useEffect(() => {
@@ -40,7 +41,8 @@ const EditSubscriptionPlan = () => {
      deviceLimit: data.deviceLimit,
      ads: data.ads,
      streamingQuality: data.streamingQuality || 'HD',
-     status: data.status
+     status: data.status,
+     getStarted: data.getStarted || 'ON'
     });
    } catch (err) {
     console.error('Error fetching plan:', err);
@@ -61,6 +63,8 @@ const EditSubscriptionPlan = () => {
   setFormData({ ...formData, [e.target.name]: e.target.value });
  };
 
+ const isPriceFreeOrNan = !formData.price || parseFloat(formData.price) === 0 || isNaN(parseFloat(formData.price));
+
  const handleSubmit = async (e) => {
   e.preventDefault();
   setLoading(true);
@@ -72,7 +76,8 @@ const EditSubscriptionPlan = () => {
    deviceLimit: formData.deviceLimit,
    ads: formData.ads,
    streamingQuality: formData.streamingQuality,
-   status: formData.status
+   status: formData.status,
+   getStarted: isPriceFreeOrNan ? (formData.getStarted || 'ON') : 'ON'
   };
 
   try {
@@ -234,6 +239,18 @@ const EditSubscriptionPlan = () => {
        </select>
       </div>
      </div>
+
+     {isPriceFreeOrNan && (
+      <div className="form-row-v">
+       <label>Get Started Option</label>
+       <div className="input-wrapper-v">
+        <select name="getStarted" value={formData.getStarted} onChange={handleChange}>
+         <option value="ON">ON</option>
+         <option value="OFF">OFF</option>
+        </select>
+       </div>
+      </div>
+     )}
 
      <div className="form-actions-v">
       <button type="submit" className="save-btn-v" disabled={loading}>

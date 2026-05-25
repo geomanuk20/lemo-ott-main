@@ -38,6 +38,53 @@ const formatViews = (count, docId = '') => {
   }
   return num + ' Views';
 };
+const isItemActive = (item, type, menuSettings) => {
+  if (!menuSettings || !item) return true;
+
+  let contentType = item.contentType;
+  if (!contentType) {
+    const normType = type ? type.toLowerCase().trim() : '';
+    if (normType === 'movie' || normType === 'movies' || normType === 'new-release') {
+      contentType = 'Movie';
+    } else if (normType === 'short-film') {
+      contentType = 'Short Film';
+    } else if (normType === 'show' || normType === 'shows' || normType === 'series') {
+      contentType = 'TV Show';
+    } else if (normType === 'short-web-series') {
+      contentType = 'Short Web Series';
+    } else if (normType === 'sports' || normType === 'sport') {
+      contentType = 'Sports';
+    } else if (normType === 'live' || normType === 'channel' || normType === 'channels' || normType === 'tv-channel' || normType === 'tv-channels') {
+      contentType = 'Live TV';
+    } else if (normType === 'episode' || normType === 'episodes' || normType === 'season' || normType === 'seasons') {
+      if (item.showId && typeof item.showId === 'object') {
+        contentType = item.showId.contentType || 'TV Show';
+      } else {
+        contentType = 'TV Show';
+      }
+    }
+  }
+
+  // Fallback check if contentType is still undefined
+  if (!contentType) {
+    if (item.logo || item.channelName || item.name) {
+      contentType = 'Live TV';
+    } else if (item.sportsCategory) {
+      contentType = 'Sports';
+    } else {
+      contentType = 'Movie';
+    }
+  }
+
+  if (contentType === 'Movie' && menuSettings.movies?.toUpperCase() === 'OFF') return false;
+  if (contentType === 'Short Film' && menuSettings.shortFilms?.toUpperCase() === 'OFF') return false;
+  if (contentType === 'TV Show' && menuSettings.shows?.toUpperCase() === 'OFF') return false;
+  if (contentType === 'Short Web Series' && menuSettings.webSeries?.toUpperCase() === 'OFF') return false;
+  if (contentType === 'Sports' && menuSettings.sports?.toUpperCase() === 'OFF') return false;
+  if (contentType === 'Live TV' && menuSettings.liveTv?.toUpperCase() === 'OFF') return false;
+
+  return true;
+};
 
 const FrontendDetails = () => {
  const { type, id } = useParams();
@@ -199,6 +246,20 @@ const FrontendDetails = () => {
        }
       }
 
+      // Check active setting for redirect
+      try {
+        const cached = localStorage.getItem('fe_menu_settings');
+        if (cached && result) {
+          const settings = JSON.parse(cached);
+          if (!isItemActive(result, type, settings)) {
+            navigate('/', { replace: true });
+            return;
+          }
+        }
+      } catch (err) {
+        console.error('Error redirecting in details page:', err);
+      }
+
       setData(result);
  
      if (normalizedType === 'show' || normalizedType === 'shows' || normalizedType === 'series' || normalizedType === 'short-web-series') {
@@ -263,7 +324,7 @@ const FrontendDetails = () => {
       setEpisodes([]);
       setSelectedSeasonId('');
      }
-
+ 
     // Fetch related content
     let relatedEndpoint = '';
     if (normalizedType === 'movie' || normalizedType === 'movies' || normalizedType === 'short-film' || normalizedType === 'new-release') {
@@ -285,7 +346,20 @@ const FrontendDetails = () => {
     if (result && result.showId) {
      parentId = typeof result.showId === 'object' ? (result.showId._id || result.showId.id) : result.showId;
     }
-    setRelated(Array.isArray(relatedResult) ? relatedResult.filter(item => item._id !== id && item._id !== parentId).slice(0, 6) : []);
+    
+    // Filter related items to exclude disabled ones
+    let finalRelated = Array.isArray(relatedResult) ? relatedResult.filter(item => item._id !== id && item._id !== parentId) : [];
+    try {
+      const cached = localStorage.getItem('fe_menu_settings');
+      if (cached) {
+        const settings = JSON.parse(cached);
+        finalRelated = finalRelated.filter(item => isItemActive(item, normalizedType, settings));
+      }
+    } catch (err) {
+      console.error('Error filtering related content:', err);
+    }
+    
+    setRelated(finalRelated.slice(0, 6));
 
     // Check watchlist
     if (user.id) {

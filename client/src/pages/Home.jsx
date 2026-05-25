@@ -31,6 +31,76 @@ import FrontendLayout from '../components/FrontendLayout';
 import FrontendFooter from '../components/FrontendFooter';
 import { formatImageUrl } from '../utils/image';
 
+const isItemActive = (item, type, menuSettings) => {
+  if (!menuSettings || !item) return true;
+
+  // New Releases have their own section and are never hidden by menu settings
+  const normType = type ? type.toLowerCase().trim() : '';
+  if (normType === 'new-release' || normType === 'new-releases') return true;
+
+  let contentType = item.contentType;
+  if (!contentType) {
+    if (normType === 'movie' || normType === 'movies') {
+      contentType = 'Movie';
+    } else if (normType === 'short-film') {
+      contentType = 'Short Film';
+    } else if (normType === 'show' || normType === 'shows' || normType === 'series') {
+      contentType = 'TV Show';
+    } else if (normType === 'short-web-series') {
+      contentType = 'Short Web Series';
+    } else if (normType === 'sports' || normType === 'sport') {
+      contentType = 'Sports';
+    } else if (normType === 'live' || normType === 'channel' || normType === 'channels' || normType === 'tv-channel' || normType === 'tv-channels') {
+      contentType = 'Live TV';
+    } else if (normType === 'episode' || normType === 'episodes' || normType === 'season' || normType === 'seasons') {
+      if (item.showId && typeof item.showId === 'object') {
+        contentType = item.showId.contentType || 'TV Show';
+      } else {
+        contentType = 'TV Show';
+      }
+    }
+  }
+
+  // Fallback check if contentType is still undefined
+  if (!contentType) {
+    if (item.logo || item.channelName || item.name) {
+      contentType = 'Live TV';
+    } else if (item.sportsCategory) {
+      contentType = 'Sports';
+    } else {
+      contentType = 'Movie';
+    }
+  }
+
+  if (contentType === 'Movie' && menuSettings.movies?.toUpperCase() === 'OFF') return false;
+  if (contentType === 'Short Film' && menuSettings.shortFilms?.toUpperCase() === 'OFF') return false;
+  if (contentType === 'TV Show' && menuSettings.shows?.toUpperCase() === 'OFF') return false;
+  if (contentType === 'Short Web Series' && menuSettings.webSeries?.toUpperCase() === 'OFF') return false;
+  if (contentType === 'Sports' && menuSettings.sports?.toUpperCase() === 'OFF') return false;
+  if (contentType === 'Live TV' && menuSettings.liveTv?.toUpperCase() === 'OFF') return false;
+
+  return true;
+};
+
+const isSliderActive = (slide, menuSettings) => {
+  if (!menuSettings || !slide) return true;
+  const postType = slide.postType;
+  if (postType === 'Movies' && menuSettings.movies?.toUpperCase() === 'OFF') return false;
+  if (postType === 'TV Shows' && menuSettings.shows?.toUpperCase() === 'OFF') return false;
+  if (postType === 'Sports' && menuSettings.sports?.toUpperCase() === 'OFF') return false;
+  if (postType === 'Live TV' && menuSettings.liveTv?.toUpperCase() === 'OFF') return false;
+  
+  const contentType = slide.contentType;
+  if (contentType === 'Movie' && menuSettings.movies?.toUpperCase() === 'OFF') return false;
+  if (contentType === 'Short Film' && menuSettings.shortFilms?.toUpperCase() === 'OFF') return false;
+  if (contentType === 'TV Show' && menuSettings.shows?.toUpperCase() === 'OFF') return false;
+  if (contentType === 'Short Web Series' && menuSettings.webSeries?.toUpperCase() === 'OFF') return false;
+  if (contentType === 'Sports' && menuSettings.sports?.toUpperCase() === 'OFF') return false;
+  if (contentType === 'Live TV' && menuSettings.liveTv?.toUpperCase() === 'OFF') return false;
+
+  return true;
+};
+
 const Home = () => {
   const navigate = useNavigate();
   const [sliders, setSliders] = useState([]);
@@ -73,24 +143,51 @@ const Home = () => {
   }, [subMessage]);
 
   useEffect(() => {
+    // Read current menu settings for filtering
+    let mSettings = null;
+    try {
+      const cachedMenu = localStorage.getItem('fe_menu_settings');
+      if (cachedMenu) mSettings = JSON.parse(cachedMenu);
+    } catch (e) {}
+
     // Load from cache first for instant rendering
     const cachedData = localStorage.getItem('home_data_cache');
     if (cachedData) {
       try {
         const data = JSON.parse(cachedData);
         setSettings(data.settings);
-        setSliders(data.sliders || []);
-        setMovies(data.movies || []);
-        setNewReleases(data.newReleases || []);
-        setShows(data.shows || []);
-        setSports(data.sports || []);
-        setChannels(data.channels || []);
+
+        const filteredSliders = (data.sliders || []).filter(s => isSliderActive(s, mSettings));
+        const filteredMovies = (data.movies || []).filter(m => isItemActive(m, 'movie', mSettings));
+        const filteredNewReleases = (data.newReleases || []).filter(nr => isItemActive(nr, 'new-release', mSettings));
+        const filteredShows = (data.shows || []).filter(s => isItemActive(s, 'show', mSettings));
+        const filteredSports = (data.sports || []).filter(sp => isItemActive(sp, 'sports', mSettings));
+        const filteredChannels = (data.channels || []).filter(c => isItemActive(c, 'live', mSettings));
+
+        const filteredHomeSections = (data.homeSections || []).filter(sec => {
+          const type = sec.sectionType;
+          if (type === 'Movie' && mSettings?.movies?.toUpperCase() === 'OFF') return false;
+          if (type === 'Shows' && mSettings?.shows?.toUpperCase() === 'OFF') return false;
+          if (type === 'Sports' && mSettings?.sports?.toUpperCase() === 'OFF') return false;
+          if (type === 'Live TV' && mSettings?.liveTv?.toUpperCase() === 'OFF') return false;
+          if (type === 'Short Film' && mSettings?.shortFilms?.toUpperCase() === 'OFF') return false;
+          if (type === 'Short Web Series' && mSettings?.webSeries?.toUpperCase() === 'OFF') return false;
+          // 'New Release', 'Language', 'Genre' sections always show
+          return true;
+        });
+
+        setSliders(filteredSliders);
+        setMovies(filteredMovies);
+        setNewReleases(filteredNewReleases);
+        setShows(filteredShows);
+        setSports(filteredSports);
+        setChannels(filteredChannels);
         setAssets(data.assets || []);
         setExperiences(data.experiences || []);
         setSportsCategories(data.sportsCategories || []);
-        setHomeSections(data.homeSections || []);
+        setHomeSections(filteredHomeSections);
         
-        setSportsChannels((data.channels || []).filter(c => {
+        setSportsChannels(filteredChannels.filter(c => {
           const isSport = c.category?.name?.toLowerCase().includes('sports') || c.channelCategory?.toLowerCase().includes('sports');
           return isSport;
         }));
@@ -106,6 +203,20 @@ const Home = () => {
       const timeoutId = setTimeout(() => controller.abort(), 12000);
 
       try {
+        // Fetch menu settings first to keep them perfectly in sync
+        let freshMenuSettings = null;
+        try {
+          const menuRes = await fetch('http://localhost:5001/api/menu-settings');
+          if (menuRes.ok) {
+            freshMenuSettings = await menuRes.json();
+            localStorage.setItem('fe_menu_settings', JSON.stringify(freshMenuSettings));
+          }
+        } catch (err) {
+          console.error('Error fetching menu settings in home:', err);
+        }
+
+        const currentMenuSettings = freshMenuSettings || mSettings;
+
         const response = await fetch('http://localhost:5001/api/home-aggregated', { signal: controller.signal });
         clearTimeout(timeoutId);
         
@@ -113,17 +224,35 @@ const Home = () => {
         
         const data = await response.json();
         
+        const filteredSliders = (data.sliders || []).filter(s => isSliderActive(s, currentMenuSettings));
+        const filteredMovies = (data.movies || []).filter(m => isItemActive(m, 'movie', currentMenuSettings));
+        const filteredNewReleases = (data.newReleases || []).filter(nr => isItemActive(nr, 'new-release', currentMenuSettings));
+        const filteredShows = (data.shows || []).filter(s => isItemActive(s, 'show', currentMenuSettings));
+        const filteredSports = (data.sports || []).filter(sp => isItemActive(sp, 'sports', currentMenuSettings));
+        const filteredChannels = (data.channels || []).filter(c => isItemActive(c, 'live', currentMenuSettings));
+
+        const filteredHomeSections = (data.homeSections || []).filter(sec => {
+          const type = sec.sectionType;
+          if (type === 'Movie' && currentMenuSettings?.movies?.toUpperCase() === 'OFF') return false;
+          if (type === 'Shows' && currentMenuSettings?.shows?.toUpperCase() === 'OFF') return false;
+          if (type === 'Sports' && currentMenuSettings?.sports?.toUpperCase() === 'OFF') return false;
+          if (type === 'Live TV' && currentMenuSettings?.liveTv?.toUpperCase() === 'OFF') return false;
+          if (type === 'Short Film' && currentMenuSettings?.shortFilms?.toUpperCase() === 'OFF') return false;
+          if (type === 'Short Web Series' && currentMenuSettings?.webSeries?.toUpperCase() === 'OFF') return false;
+          return true;
+        });
+
         // Update state with fresh data
         setSettings(data.settings);
-        setSliders(data.sliders || []);
-        setMovies(data.movies || []);
-        setNewReleases(data.newReleases || []);
-        setShows(data.shows || []);
-        setSports(data.sports || []);
-        setChannels(data.channels || []);
-        setHomeSections(data.homeSections || []);
+        setSliders(filteredSliders);
+        setMovies(filteredMovies);
+        setNewReleases(filteredNewReleases);
+        setShows(filteredShows);
+        setSports(filteredSports);
+        setChannels(filteredChannels);
+        setHomeSections(filteredHomeSections);
         
-        setSportsChannels((data.channels || []).filter(c => {
+        setSportsChannels(filteredChannels.filter(c => {
           const isSport = c.category?.name?.toLowerCase().includes('sports') || c.channelCategory?.toLowerCase().includes('sports');
           return isSport;
         }));
@@ -1452,13 +1581,7 @@ const Home = () => {
       transition: 0.5s;
      }
      .fe-channel-card-v:hover .channel-logo-wrapper-v {
-      transform: translateY(-8px) scale(1.05);
       border-color: #b3d332;
-      box-shadow: 0 15px 30px rgba(0,0,0,0.6);
-      background: #1a1e26;
-     }
-     .fe-channel-card-v:hover img {
-      transform: scale(1.1);
      }
      .channel-info-under-v {
       margin-top: 10px;

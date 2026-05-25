@@ -15,7 +15,8 @@ const AddCoupon = () => {
   couponPercentage: '',
   usersAllow: '',
   expiryDate: '',
-  status: 'Active'
+  status: 'Active',
+  showOnFrontend: 'ON'
  });
 
  const showNotification = (message, type = 'success') => {
@@ -152,6 +153,19 @@ const AddCoupon = () => {
         <option value="Active">Active</option>
         <option value="Inactive">Inactive</option>
        </select>
+      </div>
+     </div>
+
+     <div className="form-row-v">
+      <label>Show on Frontend</label>
+      <div className="input-wrapper-v">
+       <select name="showOnFrontend" value={formData.showOnFrontend} onChange={handleChange}>
+        <option value="ON">ON (Show as available coupon on checkout)</option>
+        <option value="OFF">OFF (Hide from checkout page)</option>
+       </select>
+       <p style={{ color: '#666', fontSize: '0.82rem', marginTop: '8px' }}>
+        When ON, this coupon appears as a clickable tag on the frontend checkout page.
+       </p>
       </div>
      </div>
 

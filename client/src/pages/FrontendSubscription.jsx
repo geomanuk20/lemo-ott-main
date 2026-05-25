@@ -1,14 +1,72 @@
 import React, { useState, useEffect } from 'react';
-import { Check, Shield, Zap, Crown, Loader2, ArrowRight } from 'lucide-react';
+import { Check, Shield, Zap, Crown, Loader2, ArrowRight, CheckCircle2, XCircle } from 'lucide-react';
 import Loader from '../components/Loader';
 import FrontendLayout from '../components/FrontendLayout';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const FrontendSubscription = () => {
  const [plans, setPlans] = useState([]);
  const [loading, setLoading] = useState(false);
  const [settings, setSettings] = useState(null);
+ const [processing, setProcessing] = useState(false);
+ const [notification, setNotification] = useState(null);
  const navigate = useNavigate();
+ const location = useLocation();
+ const user = JSON.parse(localStorage.getItem('user') || '{}');
+ const currentUserPlan = user.subscriptionPlan;
+
+  const isPlanFree = (plan) => {
+    if (!plan || plan.price === undefined || plan.price === null) return false;
+    const p = plan.price.toString().trim().toLowerCase().replace(/[^\d.]/g, '');
+    return p === '0' || p === '0.00' || p === '' || p === 'free' || parseFloat(p) === 0;
+  };
+
+  const showNotification = (message, type = 'success') => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 3000);
+  };
+
+  const handleActivateFreePlan = async (plan) => {
+    setProcessing(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:5001/api/payment/free-success', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ planId: plan._id })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        showNotification('Plan activated successfully!', 'success');
+        
+        // Update user state in local storage
+        const userObj = JSON.parse(localStorage.getItem('user') || '{}');
+        userObj.status = data.user.status;
+        userObj.subscriptionPlan = data.user.subscriptionPlan;
+        userObj.expiryDate = data.user.expiryDate;
+        localStorage.setItem('user', JSON.stringify(userObj));
+        
+        // Trigger profile update event
+        window.dispatchEvent(new Event('profileUpdate'));
+        
+        setTimeout(() => {
+          navigate('/user/profile');
+        }, 2000);
+      } else {
+        const errorData = await response.json();
+        showNotification(errorData.message || 'Activation failed', 'error');
+        setProcessing(false);
+      }
+    } catch (err) {
+      console.error(err);
+      showNotification('Network error during activation', 'error');
+      setProcessing(false);
+    }
+  };
 
  useEffect(() => {
   const fetchData = async () => {
@@ -31,20 +89,55 @@ const FrontendSubscription = () => {
   fetchData();
  }, []);
 
- const handleSelectPlan = (plan) => {
-  const isLoggedIn = !!localStorage.getItem('token');
-  if (!isLoggedIn) {
-   navigate('/login', { state: { from: '/subscription', selectedPlan: plan } });
-  } else {
-   // Logic for payment/checkout would go here
-   console.log('Selected plan:', plan);
-   // For now, let's just alert
-   alert(`You selected the ${plan.planName} plan. Redirecting to payment...`);
-  }
- };
+  useEffect(() => {
+    const isLoggedIn = !!localStorage.getItem('token');
+    const selectedPlan = location.state?.selectedPlan;
+    if (isLoggedIn && selectedPlan && isPlanFree(selectedPlan)) {
+      // Clear location state immediately to prevent infinite triggers
+      window.history.replaceState({}, document.title);
+      handleActivateFreePlan(selectedPlan);
+    }
+  }, [location.state, navigate]);
+
+  const handleSelectPlan = (plan) => {
+   const isLoggedIn = !!localStorage.getItem('token');
+   if (isPlanFree(plan)) {
+    if (!isLoggedIn) {
+     navigate('/login', { state: { from: '/subscription', selectedPlan: plan } });
+    } else {
+     handleActivateFreePlan(plan);
+    }
+   } else {
+    if (!isLoggedIn) {
+     navigate('/login', { state: { from: '/checkout', selectedPlan: plan } });
+    } else {
+     navigate('/checkout', { state: { selectedPlan: plan } });
+    }
+   }
+  };
 
  return (
   <FrontendLayout isTransparent={true}>
+   {notification && (
+    <div className="custom-alert-box-v">
+     <div className="alert-content-v">
+      {notification.type === 'success' ? (
+       <CheckCircle2 size={42} color="#00c853" strokeWidth={2.5} />
+      ) : (
+       <XCircle size={42} color="#ff4d4d" strokeWidth={2.5} />
+      )}
+      <span className="alert-text-v">{notification.message}</span>
+     </div>
+    </div>
+   )}
+
+   {processing && (
+    <div className="fe-plans-loader-overlay-v">
+     <Loader2 size={50} className="spinner-v" />
+     <p style={{ marginTop: '15px', fontWeight: 600, color: '#fff' }}>Activating plan...</p>
+    </div>
+   )}
+
    <div className="fe-subscription-page-v">
     <div className="fe-subscription-header-v">
      <span className="fe-sub-tag-v">CHOOSE YOUR PLAN</span>
@@ -62,10 +155,12 @@ const FrontendSubscription = () => {
        {plans.map((plan, index) => {
         const isPremium = plan.planName.toLowerCase().includes('premium') || plan.planName.toLowerCase().includes('platinum') || plan.planName.toLowerCase().includes('pro');
         const isBasic = plan.planName.toLowerCase() === 'basic plan';
+        const isCurrentPlan = currentUserPlan === plan.planName;
         return (
          <div key={plan._id} className={`fe-plan-card-v ${isPremium ? 'premium-v' : ''} ${isBasic ? 'basic-v' : ''}`}>
-          {isPremium && <div className="fe-plan-ribbon-v">MOST POPULAR</div>}
-          {isBasic && <div className="fe-plan-ribbon-v default-v">DEFAULT</div>}
+          {isCurrentPlan && <div className="fe-plan-ribbon-v" style={{ background: '#00a8ff' }}>CURRENT PLAN</div>}
+          {!isCurrentPlan && isPremium && <div className="fe-plan-ribbon-v">MOST POPULAR</div>}
+          {!isCurrentPlan && isBasic && <div className="fe-plan-ribbon-v default-v">DEFAULT</div>}
           <div className="fe-plan-head-v">
            <div className="fe-plan-icon-v">
             {index === 0 ? <Zap size={24} /> : index === 1 ? <Shield size={24} /> : <Crown size={24} />}
@@ -97,10 +192,11 @@ const FrontendSubscription = () => {
           </div>
 
           <button 
-           className="fe-plan-btn-v"
-           onClick={() => handleSelectPlan(plan)}
+           className={`fe-plan-btn-v ${isCurrentPlan ? 'current-plan-btn-v' : ''} ${(!isCurrentPlan && isPlanFree(plan) && plan.getStarted === 'OFF') ? 'disabled-plan-btn-v' : ''}`}
+           onClick={() => !isCurrentPlan && !(isPlanFree(plan) && plan.getStarted === 'OFF') && handleSelectPlan(plan)}
+           disabled={isCurrentPlan || (!isCurrentPlan && isPlanFree(plan) && plan.getStarted === 'OFF')}
           >
-           GET STARTED <ArrowRight size={16} />
+           {isCurrentPlan ? 'CURRENT PLAN' : ((isPlanFree(plan) && plan.getStarted === 'OFF') ? 'UNAVAILABLE' : <>GET STARTED <ArrowRight size={16} /></>)}
           </button>
          </div>
         );
@@ -150,6 +246,8 @@ const FrontendSubscription = () => {
     .fe-plan-btn-v:hover { background: #b3d332; color: #fff; transform: scale(1.02); }
     .premium-v .fe-plan-btn-v { background: #b3d332; color: #fff; }
     .premium-v .fe-plan-btn-v:hover { background: #b3d332; box-shadow: 0 10px 20px rgba(22,196,127,0.2); }
+    .current-plan-btn-v, .premium-v .current-plan-btn-v { background: #333 !important; color: #888 !important; cursor: not-allowed !important; box-shadow: none !important; transform: none !important; }
+    .disabled-plan-btn-v, .premium-v .disabled-plan-btn-v { background: #1a1a1a !important; color: #555 !important; cursor: not-allowed !important; box-shadow: none !important; transform: none !important; border: 1px solid #333 !important; }
 
     .fe-subscription-footer-v { margin-top: 60px; color: #666; font-size: 0.95rem; }
     .fe-subscription-footer-v a { color: #b3d332; text-decoration: none; font-weight: 700; margin-left: 5px; }
@@ -163,6 +261,15 @@ const FrontendSubscription = () => {
      .fe-plans-grid-v { grid-template-columns: 1fr; }
      .fe-plan-card-v { padding: 30px; }
     }
+
+    /* Custom Alert Box & Animations */
+    .custom-alert-box-v { position: fixed; top: 40px; left: 50%; transform: translateX(-50%); background: #111; border-radius: 12px; padding: 30px 60px; z-index: 9999; box-shadow: 0 20px 50px rgba(0,0,0,0.6); border: 1px solid #333; animation: slideDown 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+    .alert-content-v { display: flex; flex-direction: column; align-items: center; gap: 15px; }
+    .alert-text-v { color: #fff; font-size: 1.1rem; font-weight: 800; text-align: center; }
+    @keyframes slideDown { from { transform: translate(-50%, -150%); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+
+    /* Loader Overlay */
+    .fe-plans-loader-overlay-v { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(5,5,5,0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; }
    ` }} />
   </FrontendLayout>
  );

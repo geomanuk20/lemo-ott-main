@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Phone, Shield, Edit2, CheckCircle2, XCircle, Loader2, Camera, Bookmark, LogOut, CreditCard, FileText, Calendar, Download } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { User, Mail, Phone, Shield, Edit2, CheckCircle2, XCircle, Loader2, Camera, Bookmark, LogOut, CreditCard, FileText, Calendar, Download, Eye } from 'lucide-react';
 import Loader from '../components/Loader';
 import FrontendLayout from '../components/FrontendLayout';
+import { logoutUser } from '../utils/logout';
 
 const FrontendProfile = () => {
  const [user, setUser] = useState(JSON.parse(localStorage.getItem('user') || '{}'));
@@ -23,6 +25,9 @@ const FrontendProfile = () => {
  const [activeTab, setActiveTab] = useState('account');
  const [transactions, setTransactions] = useState([]);
  const [fullUser, setFullUser] = useState(null);
+ const [currentPage, setCurrentPage] = useState(1);
+ const itemsPerPage = 5;
+ const [selectedTransaction, setSelectedTransaction] = useState(null);
 
  useEffect(() => {
   const fetchUserData = async () => {
@@ -30,6 +35,10 @@ const FrontendProfile = () => {
     const res = await fetch(`http://localhost:5001/api/users/${user.id}`);
     const data = await res.json();
     setFullUser(data);
+    
+    // Update localStorage so other pages (like Video Details) know the user is upgraded!
+    const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+    localStorage.setItem('user', JSON.stringify({ ...currentUser, ...data, id: data._id }));
     
     const transRes = await fetch(`http://localhost:5001/api/user/transactions/${user.email}`);
     const transData = await transRes.json();
@@ -106,9 +115,7 @@ const FrontendProfile = () => {
  };
 
  const handleLogout = () => {
-  localStorage.removeItem('token');
-  localStorage.removeItem('user');
-  window.location.href = '/';
+  logoutUser();
  };
 
  return (
@@ -216,7 +223,11 @@ const FrontendProfile = () => {
           <div className="form-actions-v">
            <button type="button" className="cancel-btn-v" onClick={() => setIsEditing(false)}>Cancel</button>
            <button type="submit" className="save-btn-v" disabled={loading}>
-            {loading ? <Loader size="small" inline={true} /> : 'Save Changes'}
+            {loading ? (
+             <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Loader2 className="spinner-v" size={18} /> Saving...
+             </span>
+            ) : 'Save Changes'}
            </button>
           </div>
          )}
@@ -268,32 +279,50 @@ const FrontendProfile = () => {
         </div>
         <div className="invoice-table-v">
          {transactions.length > 0 ? (
-          <table>
-           <thead>
-            <tr>
-             <th>Date</th>
-             <th>Invoice ID</th>
-             <th>Plan</th>
-             <th>Amount</th>
-             <th>Action</th>
-            </tr>
-           </thead>
-           <tbody>
-            {transactions.map(tx => (
-             <tr key={tx._id}>
-              <td>{tx.paymentDate}</td>
-              <td>{tx.paymentId.substring(0, 12)}...</td>
-              <td>{tx.plan}</td>
-              <td>{tx.amount}</td>
-              <td>
-               <button className="download-invoice-v" title="Download Invoice">
-                <Download size={14} />
-               </button>
-              </td>
-             </tr>
-            ))}
-           </tbody>
-          </table>
+           <>
+            <table>
+             <thead>
+              <tr>
+               <th>Time / Date</th>
+               <th>Plan</th>
+               <th>Amount</th>
+               <th>Action</th>
+              </tr>
+             </thead>
+             <tbody>
+              {transactions.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(tx => (
+               <tr key={tx._id}>
+                <td>{tx.paymentDate}</td>
+                <td>{tx.plan}</td>
+                <td>{tx.amount}</td>
+                <td>
+                 <button className="view-invoice-v" title="View Invoice" onClick={() => setSelectedTransaction(tx)}>
+                  <Eye size={14} />
+                 </button>
+                </td>
+               </tr>
+              ))}
+             </tbody>
+            </table>
+            
+            {transactions.length > itemsPerPage && (
+             <div className="fe-pagination-v">
+              <button 
+               disabled={currentPage === 1} 
+               onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              >
+               Prev
+              </button>
+              <span>Page {currentPage} of {Math.ceil(transactions.length / itemsPerPage)}</span>
+              <button 
+               disabled={currentPage === Math.ceil(transactions.length / itemsPerPage)} 
+               onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(transactions.length / itemsPerPage)))}
+              >
+               Next
+              </button>
+             </div>
+            )}
+           </>
          ) : (
           <div className="no-invoices-v">
            <FileText size={48} />
@@ -305,6 +334,51 @@ const FrontendProfile = () => {
       )}
      </div>
     </div>
+
+    {selectedTransaction && (
+     <div className="fe-invoice-modal-overlay-v" onClick={() => setSelectedTransaction(null)}>
+      <div className="fe-invoice-modal-v" onClick={e => e.stopPropagation()}>
+       <div className="modal-header-v">
+        <h3>Invoice Details</h3>
+        <button className="close-btn-v" onClick={() => setSelectedTransaction(null)}><XCircle size={24} /></button>
+       </div>
+       <div className="modal-body-v">
+        <div className="invoice-detail-row-v">
+         <span className="label-v">Transaction ID</span>
+         <span className="value-v">{selectedTransaction.paymentId}</span>
+        </div>
+        <div className="invoice-detail-row-v">
+         <span className="label-v">Date & Time</span>
+         <span className="value-v">{selectedTransaction.paymentDate}</span>
+        </div>
+        <div className="invoice-detail-row-v">
+         <span className="label-v">Email ID</span>
+         <span className="value-v">{fullUser?.email || user.email}</span>
+        </div>
+        <div className="invoice-detail-row-v">
+         <span className="label-v">Plan Name</span>
+         <span className="value-v">{selectedTransaction.plan}</span>
+        </div>
+        <div className="invoice-detail-row-v">
+         <span className="label-v">Expiry Date</span>
+         <span className="value-v">{fullUser?.expiryDate || 'N/A'}</span>
+        </div>
+        <div className="invoice-detail-row-v">
+         <span className="label-v">Amount Paid</span>
+         <span className="value-v highlight-v">₹{selectedTransaction.amount}</span>
+        </div>
+        <div className="invoice-detail-row-v">
+         <span className="label-v">Status</span>
+         <span className="value-v status-v">{selectedTransaction.status || 'Completed'}</span>
+        </div>
+       </div>
+       <div className="modal-footer-v">
+        <button className="done-btn-v" onClick={() => setSelectedTransaction(null)}>Close</button>
+       </div>
+      </div>
+     </div>
+    )}
+
    </div>
 
    <style dangerouslySetInnerHTML={{ __html: `
@@ -369,11 +443,33 @@ const FrontendProfile = () => {
     .invoice-table-v th { text-align: left; padding: 15px 20px; border-bottom: 1px solid #222; color: #444; font-size: 0.85rem; font-weight: 800; text-transform: uppercase; }
     .invoice-table-v td { padding: 20px; border-bottom: 1px solid #111; font-weight: 600; color: #aaa; }
     .invoice-table-v tr:hover td { background: #111; color: #fff; }
-    .download-invoice-v { background: rgba(255,255,255,0.05); border: 1px solid #222; color: #fff; width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; }
-    .download-invoice-v:hover { background: #fff; color: #000; border-color: #fff; }
+    .view-invoice-v { background: rgba(255,255,255,0.05); border: 1px solid #222; color: #fff; width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; }
+    .view-invoice-v:hover { background: #fff; color: #000; border-color: #fff; }
     
-    .no-invoices-v { text-align: center; padding: 60px; color: #333; }
     .no-invoices-v p { margin-top: 15px; font-weight: 700; font-size: 1.1rem; }
+
+    .fe-pagination-v { display: flex; justify-content: center; align-items: center; gap: 20px; margin-top: 25px; padding-top: 20px; border-top: 1px solid #222; }
+    .fe-pagination-v button { background: rgba(255,255,255,0.05); border: 1px solid #333; color: #fff; padding: 8px 16px; border-radius: 8px; font-weight: 700; cursor: pointer; transition: 0.3s; }
+    .fe-pagination-v button:hover:not(:disabled) { background: #b3d332; color: #000; border-color: #b3d332; }
+    .fe-pagination-v button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .fe-pagination-v span { font-size: 0.9rem; font-weight: 700; color: #888; }
+
+    .fe-invoice-modal-overlay-v { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 10000; display: flex; align-items: center; justify-content: center; animation: fadeIn 0.3s ease; }
+    .fe-invoice-modal-v { background: #111; border: 1px solid #333; border-radius: 16px; width: 90%; max-width: 500px; padding: 30px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+    .fe-invoice-modal-v .modal-header-v { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #222; padding-bottom: 20px; margin-bottom: 20px; }
+    .fe-invoice-modal-v .modal-header-v h3 { font-size: 1.5rem; font-weight: 800; color: #fff; margin: 0; }
+    .fe-invoice-modal-v .close-btn-v { background: none; border: none; color: #888; cursor: pointer; transition: 0.3s; }
+    .fe-invoice-modal-v .close-btn-v:hover { color: #ff4d4d; }
+    .fe-invoice-modal-v .modal-body-v { display: flex; flex-direction: column; gap: 15px; }
+    .invoice-detail-row-v { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px dashed #222; }
+    .invoice-detail-row-v .label-v { color: #888; font-weight: 700; font-size: 0.9rem; }
+    .invoice-detail-row-v .value-v { color: #fff; font-weight: 800; font-size: 1rem; }
+    .invoice-detail-row-v .highlight-v { color: #b3d332; font-size: 1.2rem; }
+    .invoice-detail-row-v .status-v { background: rgba(179,211,50,0.1); color: #b3d332; padding: 5px 12px; border-radius: 6px; font-size: 0.8rem; }
+    .fe-invoice-modal-v .modal-footer-v { margin-top: 30px; text-align: center; }
+    .fe-invoice-modal-v .done-btn-v { background: #fff; color: #000; border: none; padding: 12px 40px; border-radius: 10px; font-weight: 800; cursor: pointer; transition: 0.3s; width: 100%; }
+    .fe-invoice-modal-v .done-btn-v:hover { background: #b3d332; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
     .fe-watchlist-notification-v { 
      position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%); 
@@ -405,6 +501,10 @@ const FrontendProfile = () => {
      .fe-profile-form-v .form-grid-v { grid-template-columns: 1fr; }
      .form-group-v.full-v { grid-column: auto; }
      .content-header-v h2 { font-size: 1.5rem; }
+     
+     .invoice-table-v table { min-width: 100%; }
+     .invoice-table-v th { padding: 10px; font-size: 0.65rem; }
+     .invoice-table-v td { padding: 10px; font-size: 0.75rem; }
     }
    ` }} />
   </FrontendLayout>

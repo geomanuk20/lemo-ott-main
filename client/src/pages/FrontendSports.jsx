@@ -12,14 +12,28 @@ import {
  Crown
 } from 'lucide-react';
 import Loader from '../components/Loader';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import FrontendLayout from '../components/FrontendLayout';
 
 const FrontendSports = () => {
+ const navigate = useNavigate();
  const [sports, setSports] = useState([]);
  const [loading, setLoading] = useState(true);
 
  useEffect(() => {
+  try {
+   const cached = localStorage.getItem('fe_menu_settings');
+   if (cached) {
+    const settings = JSON.parse(cached);
+    if (settings.sports?.toUpperCase() === 'OFF') {
+     navigate('/', { replace: true });
+     return;
+    }
+   }
+  } catch (err) {
+   console.error('Error parsing menu settings in sports page:', err);
+  }
+
   const fetchSports = async () => {
    setLoading(true);
    try {
@@ -37,7 +51,7 @@ const FrontendSports = () => {
    }
   };
   fetchSports();
- }, []);
+ }, [navigate]);
 
  const formatImageUrl = (item) => {
   if (!item) return null;

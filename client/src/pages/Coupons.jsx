@@ -1,21 +1,77 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
  Plus, 
  Edit2, 
  X, 
- Loader2, 
  CheckCircle2, 
- XCircle
+ XCircle,
+ Timer
 } from 'lucide-react';
 import Loader from '../components/Loader';
 
 const API_URL = 'http://localhost:5001/api/coupons';
 
+// Helper: compute time remaining string from an expiryDate string ("YYYY-MM-DD")
+const getTimeRemaining = (expiryDateStr) => {
+ if (!expiryDateStr) return { text: 'No Expiry', expired: false };
+ // End of expiry day: 23:59:59 local time
+ const expiry = new Date(`${expiryDateStr}T23:59:59`);
+ const now = new Date();
+ const diffMs = expiry - now;
+ if (diffMs <= 0) return { text: 'Expired', expired: true };
+ const totalSec = Math.floor(diffMs / 1000);
+ const days = Math.floor(totalSec / 86400);
+ const hrs = Math.floor((totalSec % 86400) / 3600);
+ const mins = Math.floor((totalSec % 3600) / 60);
+ const secs = totalSec % 60;
+ if (days > 0) return { text: `${days}d ${hrs}h ${mins}m ${secs}s`, expired: false };
+ if (hrs > 0) return { text: `${hrs}h ${mins}m ${secs}s`, expired: false };
+ return { text: `${mins}m ${secs}s`, expired: false, urgent: hrs === 0 && days === 0 };
+};
+
+// Timer display component — ticks every second using refs to avoid parent re-render
+const CouponTimer = ({ expiryDate, usersAllow, couponUsed }) => {
+ const [display, setDisplay] = useState(() => {
+  if (couponUsed !== undefined && usersAllow !== undefined && couponUsed >= usersAllow) {
+   return { text: 'Limit Reached', expired: true };
+  }
+  return getTimeRemaining(expiryDate);
+ });
+
+ useEffect(() => {
+  if (couponUsed !== undefined && usersAllow !== undefined && couponUsed >= usersAllow) {
+   setDisplay({ text: 'Limit Reached', expired: true });
+   return;
+  }
+  const interval = setInterval(() => {
+   setDisplay(getTimeRemaining(expiryDate));
+  }, 1000);
+  return () => clearInterval(interval);
+ }, [expiryDate, couponUsed, usersAllow]);
+
+ const urgent = !display.expired && display.text.startsWith('0m') || (!display.text.includes('d') && !display.text.includes('h') && !display.expired);
+
+ return (
+  <span style={{
+   display: 'inline-flex',
+   alignItems: 'center',
+   gap: '5px',
+   fontWeight: 700,
+   fontSize: '0.82rem',
+   fontFamily: 'monospace',
+   color: display.expired ? '#ff4d4d' : (display.text.includes('Limit') ? '#ff9800' : (display.text.includes('d') ? '#b3d332' : (display.text.includes('h') ? '#ffd700' : '#ff9800'))),
+  }}>
+   {!display.expired && <Timer size={12} />}
+   {display.text}
+  </span>
+ );
+};
+
 const Coupons = () => {
  const navigate = useNavigate();
  const [coupons, setCoupons] = useState([]);
- const [loading, setLoading] = useState(false);
+ const [loading, setLoading] = useState(true);
  const [notification, setNotification] = useState(null);
  const [deleteModal, setDeleteModal] = useState({ show: false, id: null });
 
@@ -57,6 +113,24 @@ const Coupons = () => {
    showNotification('Error deleting coupon', 'error');
   } finally {
    setDeleteModal({ show: false, id: null });
+  }
+ };
+
+ // Quick-toggle showOnFrontend without navigating to edit page
+ const handleToggleFrontend = async (coupon) => {
+  const newVal = coupon.showOnFrontend === 'OFF' ? 'ON' : 'OFF';
+  try {
+   const response = await fetch(`${API_URL}/${coupon._id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...coupon, showOnFrontend: newVal })
+   });
+   if (response.ok) {
+    setCoupons(coupons.map(c => c._id === coupon._id ? { ...c, showOnFrontend: newVal } : c));
+    showNotification(`Coupon ${newVal === 'ON' ? 'shown on' : 'hidden from'} frontend`);
+   }
+  } catch (err) {
+   showNotification('Error updating coupon visibility', 'error');
   }
  };
 
@@ -103,24 +177,26 @@ const Coupons = () => {
       <thead>
        <tr>
         <th>Coupon Code</th>
-        <th>Coupon Percentage</th>
-        <th>Number of Users Allow</th>
-        <th>Coupon Used</th>
+        <th>Percentage</th>
+        <th>Users Allow</th>
+        <th>Used</th>
         <th>Expiry Date</th>
+        <th>Timer to Invalid</th>
         <th>Status</th>
+        <th>Show on Frontend</th>
         <th>Action</th>
        </tr>
       </thead>
       <tbody>
        {loading ? (
         <tr>
-         <td colSpan="7" className="loader-cell">
+         <td colSpan="9" className="loader-cell">
           <Loader size="small" inline={true} />
          </td>
         </tr>
        ) : coupons.length === 0 ? (
         <tr>
-         <td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
+         <td colSpan="9" style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
           No coupons found. Click "Add Coupon" to create one.
          </td>
         </tr>
@@ -133,9 +209,25 @@ const Coupons = () => {
           <td>{coupon.couponUsed}</td>
           <td>{coupon.expiryDate}</td>
           <td>
+           <CouponTimer
+            expiryDate={coupon.expiryDate}
+            usersAllow={coupon.usersAllow}
+            couponUsed={coupon.couponUsed}
+           />
+          </td>
+          <td>
            <span className={`badge-p status-active ${coupon.status === 'Active' ? '' : 'inactive'}`}>
             {coupon.status}
            </span>
+          </td>
+          <td>
+           <button
+            className={`frontend-toggle-btn ${coupon.showOnFrontend === 'OFF' ? 'toggle-off' : 'toggle-on'}`}
+            onClick={() => handleToggleFrontend(coupon)}
+            title="Click to toggle frontend visibility"
+           >
+            {coupon.showOnFrontend === 'OFF' ? 'OFF' : 'ON'}
+           </button>
           </td>
           <td>
            <div className="action-btns-p">
@@ -178,11 +270,11 @@ const Coupons = () => {
     .add-plan-btn { background: #b3d332; color: #fff; border: none; padding: 10px 18px; border-radius: 4px; display: flex; align-items: center; gap: 8px; font-weight: 700; cursor: pointer; margin-bottom: 25px; transition: background 0.3s; }
     .add-plan-btn:hover { background: #14b072; }
 
-    .table-container-p { background: #0a0a0a; border: 1px solid #222; border-radius: 4px; overflow: hidden; }
-    .premium-table-v { width: 100%; border-collapse: collapse; text-align: left; border: 1px solid #222; }
-    .premium-table-v th { background: #151515; padding: 15px 20px; font-size: 0.9rem; font-weight: 700; color: #eee; border-bottom: 1px solid #333; border-right: 1px solid #222; }
+    .table-container-p { background: #0a0a0a; border: 1px solid #222; border-radius: 4px; overflow: auto; }
+    .premium-table-v { width: 100%; border-collapse: collapse; text-align: left; border: 1px solid #222; min-width: 1100px; }
+    .premium-table-v th { background: #151515; padding: 15px 16px; font-size: 0.85rem; font-weight: 700; color: #eee; border-bottom: 1px solid #333; border-right: 1px solid #222; white-space: nowrap; }
     .premium-table-v th:last-child { border-right: none; }
-    .premium-table-v td { padding: 18px 20px; font-size: 0.9rem; color: #aaa; border-bottom: 1px solid #1a1a1a; border-right: 1px solid #222; vertical-align: middle; }
+    .premium-table-v td { padding: 14px 16px; font-size: 0.88rem; color: #aaa; border-bottom: 1px solid #1a1a1a; border-right: 1px solid #222; vertical-align: middle; white-space: nowrap; }
     .premium-table-v td:last-child { border-right: none; }
     .premium-table-v tr:hover { background: #111; }
     
@@ -191,6 +283,13 @@ const Coupons = () => {
     .badge-p { padding: 4px 10px; border-radius: 4px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; }
     .badge-p.status-active { background: #b3d332; color: #fff; }
     .badge-p.status-active.inactive { background: #ff4d4d; }
+
+    /* Frontend Toggle Button */
+    .frontend-toggle-btn { border: none; border-radius: 20px; padding: 4px 16px; font-size: 0.78rem; font-weight: 800; cursor: pointer; transition: all 0.2s; letter-spacing: 0.5px; }
+    .frontend-toggle-btn.toggle-on { background: rgba(179,211,50,0.15); color: #b3d332; border: 1px solid #b3d332; }
+    .frontend-toggle-btn.toggle-on:hover { background: rgba(179,211,50,0.25); transform: scale(1.04); }
+    .frontend-toggle-btn.toggle-off { background: rgba(255,77,77,0.1); color: #ff4d4d; border: 1px solid #ff4d4d; }
+    .frontend-toggle-btn.toggle-off:hover { background: rgba(255,77,77,0.2); transform: scale(1.04); }
 
     .action-btns-p { display: flex; gap: 8px; }
     .edit-btn-v { background: #b3d332; color: #fff; border: none; width: 30px; height: 30px; border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer; }

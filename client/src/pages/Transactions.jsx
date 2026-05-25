@@ -5,7 +5,9 @@ import {
  ChevronLeft, 
  ChevronRight, 
  Loader2,
- Calendar
+ Calendar,
+ Trash2,
+ AlertTriangle
 } from 'lucide-react';
 import Loader from '../components/Loader';
 
@@ -17,6 +19,10 @@ const Transactions = () => {
  const [searchTerm, setSearchTerm] = useState('');
  const [gatewayFilter, setGatewayFilter] = useState('');
  const [currentPage, setCurrentPage] = useState(1);
+ const [selectedIds, setSelectedIds] = useState([]);
+ const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+ const [deleteType, setDeleteType] = useState('');
+ const [deletingId, setDeletingId] = useState(null);
  const itemsPerPage = 10;
 
  useEffect(() => {
@@ -35,6 +41,44 @@ const Transactions = () => {
   }
  };
 
+ const confirmDeleteSingle = (id) => {
+  setDeleteType('single');
+  setDeletingId(id);
+  setIsDeleteModalOpen(true);
+ };
+
+ const confirmBulkDelete = () => {
+  if (selectedIds.length === 0) return;
+  setDeleteType('bulk');
+  setIsDeleteModalOpen(true);
+ };
+
+ const executeDelete = async () => {
+  if (deleteType === 'single') {
+   try {
+    const response = await fetch(`${API_URL}/${deletingId}`, { method: 'DELETE' });
+    if (response.ok) {
+     setTransactions(transactions.filter(tx => tx._id !== deletingId));
+     setSelectedIds(selectedIds.filter(id => id !== deletingId));
+    }
+   } catch (err) {
+    console.error('Error deleting transaction:', err);
+   }
+  } else if (deleteType === 'bulk') {
+   try {
+    await Promise.all(selectedIds.map(id => 
+     fetch(`${API_URL}/${id}`, { method: 'DELETE' })
+    ));
+    setTransactions(transactions.filter(tx => !selectedIds.includes(tx._id)));
+    setSelectedIds([]);
+   } catch (err) {
+    console.error('Error in bulk deletion:', err);
+   }
+  }
+  setIsDeleteModalOpen(false);
+  setDeletingId(null);
+ };
+
  const filteredTransactions = transactions.filter(tx => {
   const matchesSearch = tx.email.toLowerCase().includes(searchTerm.toLowerCase()) || 
              tx.paymentId.toLowerCase().includes(searchTerm.toLowerCase());
@@ -48,6 +92,22 @@ const Transactions = () => {
  const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
 
  const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
+  const handleSelectAll = (e) => {
+   if (e.target.checked) {
+    setSelectedIds(currentItems.map(tx => tx._id));
+   } else {
+    setSelectedIds([]);
+   }
+  };
+
+  const handleSelectOne = (id) => {
+   if (selectedIds.includes(id)) {
+    setSelectedIds(selectedIds.filter(itemId => itemId !== id));
+   } else {
+    setSelectedIds([...selectedIds, id]);
+   }
+  };
 
  return (
   <div className="transactions-page">
@@ -82,16 +142,32 @@ const Transactions = () => {
      </div>
     </div>
 
-    <button className="export-btn-v">
-     <Download size={18} />
-     <span>Export Transactions</span>
-    </button>
+    <div className="filter-right-v" style={{ display: 'flex', gap: '15px' }}>
+     {selectedIds.length > 0 && (
+      <button className="export-btn-v" onClick={confirmBulkDelete} style={{ background: '#ff4d4d' }}>
+       <Trash2 size={18} />
+       <span>Delete Selected ({selectedIds.length})</span>
+      </button>
+     )}
+     <button className="export-btn-v">
+      <Download size={18} />
+      <span>Export Transactions</span>
+     </button>
+    </div>
    </div>
 
    <div className="table-container-p">
     <table className="premium-table-v">
      <thead>
       <tr>
+       <th style={{ width: '50px' }}>
+        <input 
+         type="checkbox" 
+         onChange={handleSelectAll}
+         checked={currentItems.length > 0 && selectedIds.length === currentItems.length}
+         style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+        />
+       </th>
        <th>Name</th>
        <th>Email</th>
        <th>Plan</th>
@@ -99,24 +175,33 @@ const Transactions = () => {
        <th>Payment Gateway</th>
        <th>Payment ID</th>
        <th>Payment Date</th>
+       <th>Action</th>
       </tr>
      </thead>
      <tbody>
       {loading ? (
        <tr>
-        <td colSpan="7" className="loader-cell">
+        <td colSpan="9" className="loader-cell">
          <Loader size="small" inline={true} />
         </td>
        </tr>
       ) : currentItems.length === 0 ? (
        <tr>
-        <td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
+        <td colSpan="9" style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
          No transactions found.
         </td>
        </tr>
       ) : (
        currentItems.map((tx) => (
         <tr key={tx._id}>
+         <td>
+          <input 
+           type="checkbox" 
+           checked={selectedIds.includes(tx._id)}
+           onChange={() => handleSelectOne(tx._id)}
+           style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+          />
+         </td>
          <td className="name-cell-v">{tx.name}</td>
          <td>{tx.email}</td>
          <td className="bold-text">{tx.plan}</td>
@@ -124,6 +209,15 @@ const Transactions = () => {
          <td>{tx.gateway}</td>
          <td>{tx.paymentId}</td>
          <td>{tx.paymentDate}</td>
+         <td>
+          <button 
+           onClick={() => confirmDeleteSingle(tx._id)}
+           style={{ background: 'none', border: 'none', color: '#ff4d4d', cursor: 'pointer', padding: '5px' }}
+           title="Delete Transaction"
+          >
+           <Trash2 size={16} />
+          </button>
+         </td>
         </tr>
        ))
       )}
@@ -158,6 +252,26 @@ const Transactions = () => {
      <ChevronRight size={16} />
     </button>
    </div>
+
+   {isDeleteModalOpen && (
+    <div className="modal-overlay">
+     <div className="delete-modal-content">
+      <div className="delete-icon-wrapper">
+       <AlertTriangle size={65} color="#ff4d4d" strokeWidth={1.5} />
+      </div>
+      <h2>Are you sure?</h2>
+      <p>
+       {deleteType === 'bulk' 
+        ? `You want to delete ${selectedIds.length} transactions? This action cannot be undone.` 
+        : 'You want to delete this transaction? This action cannot be undone.'}
+      </p>
+      <div className="delete-modal-footer">
+       <button className="cancel-btn" onClick={() => setIsDeleteModalOpen(false)}>Cancel</button>
+       <button className="confirm-btn" onClick={executeDelete}>Delete</button>
+      </div>
+     </div>
+    </div>
+   )}
 
    <style dangerouslySetInnerHTML={{ __html: `
     .transactions-page { padding: 30px; background: #000; min-height: 100vh; color: #fff; }
@@ -194,6 +308,18 @@ const Transactions = () => {
     .loader-cell { text-align: center; padding: 100px !important; }
     .spinner { animation: spin 1s linear infinite; color: #00a8ff; }
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 4000; backdrop-filter: blur(5px); }
+    .delete-modal-content { background: #1a1a1a; width: 90%; max-width: 450px; padding: 30px; border-radius: 20px; text-align: center; border: 1px solid #333; animation: modalFade 0.2s ease-out; }
+    .delete-icon-wrapper { margin-bottom: 20px; }
+    .delete-modal-content h2 { color: #fff; margin-bottom: 10px; font-size: 1.8rem; font-weight: 700; }
+    .delete-modal-content p { color: #aaa; margin-bottom: 30px; font-size: 0.95rem; }
+    .delete-modal-footer { display: flex; gap: 15px; justify-content: center; }
+    .cancel-btn { background: #333; color: #fff; border: none; padding: 12px 30px; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 1rem; transition: background 0.3s; }
+    .cancel-btn:hover { background: #444; }
+    .confirm-btn { background: #ff4d4d; color: #fff; border: none; padding: 12px 30px; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 1rem; transition: background 0.3s; }
+    .confirm-btn:hover { background: #ff3333; }
+    @keyframes modalFade { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
    ` }} />
   </div>
  );

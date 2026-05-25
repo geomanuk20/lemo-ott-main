@@ -18,7 +18,8 @@ const AddSubscriptionPlan = () => {
   deviceLimit: '1',
   ads: 'ON',
   streamingQuality: 'HD',
-  status: 'Active'
+  status: 'Active',
+  getStarted: 'ON'
  });
 
  const showNotification = (message, type = 'success') => {
@@ -29,6 +30,8 @@ const AddSubscriptionPlan = () => {
  const handleChange = (e) => {
   setFormData({ ...formData, [e.target.name]: e.target.value });
  };
+
+ const isPriceFreeOrNan = !formData.price || parseFloat(formData.price) === 0 || isNaN(parseFloat(formData.price));
 
  const handleSubmit = async (e) => {
   e.preventDefault();
@@ -41,7 +44,8 @@ const AddSubscriptionPlan = () => {
    deviceLimit: formData.deviceLimit,
    ads: formData.ads,
    streamingQuality: formData.streamingQuality,
-   status: formData.status
+   status: formData.status,
+   getStarted: isPriceFreeOrNan ? (formData.getStarted || 'ON') : 'ON'
   };
 
   try {
@@ -195,6 +199,18 @@ const AddSubscriptionPlan = () => {
        </select>
       </div>
      </div>
+
+     {isPriceFreeOrNan && (
+      <div className="form-row-v">
+       <label>Get Started Option</label>
+       <div className="input-wrapper-v">
+        <select name="getStarted" value={formData.getStarted} onChange={handleChange}>
+         <option value="ON">ON</option>
+         <option value="OFF">OFF</option>
+        </select>
+       </div>
+      </div>
+     )}
 
      <div className="form-actions-v">
       <button type="submit" className="save-btn-v" disabled={loading}>
