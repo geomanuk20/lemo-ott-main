@@ -25,7 +25,7 @@ const AddSeason = () => {
   // Fetch shows for the dropdown
   const fetchShows = async () => {
    try {
-    const response = await fetch('http://localhost:5001/api/shows');
+    const response = await fetch('/api/shows');
     const data = await response.json();
     setShows(data);
    } catch (err) {
@@ -73,7 +73,7 @@ const AddSeason = () => {
   e.preventDefault();
   setLoading(true);
   try {
-   const response = await fetch('http://localhost:5001/api/seasons', {
+   const response = await fetch('/api/seasons', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(formData)

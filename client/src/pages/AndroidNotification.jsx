@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Loader2, CheckCircle2, XCircle, Bell, Send } from 'lucide-react';
 import Loader from '../components/Loader';
 
-const API_URL = 'http://localhost:5001/api/android-app/notification';
+const API_URL = '/api/android-app/notification';
 
 const AndroidNotification = () => {
  const [loading, setLoading] = useState(false);

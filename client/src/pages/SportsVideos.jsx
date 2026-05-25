@@ -4,7 +4,7 @@ import { Plus, Edit, X, Search, ChevronDown, CheckCircle2, AlertTriangle, Loader
 import Loader from '../components/Loader';
 import { formatImageUrl } from '../utils/image';
 
-const API_URL = 'http://localhost:5001/api/sports-videos';
+const API_URL = '/api/sports-videos';
 
 const SportsVideos = () => {
  const navigate = useNavigate();
@@ -43,7 +43,7 @@ const SportsVideos = () => {
 
  const fetchFilters = async () => {
   try {
-   const response = await fetch('http://localhost:5001/api/sports-categories');
+   const response = await fetch('/api/sports-categories');
    const data = await response.json();
    setCategories(data);
   } catch (err) {

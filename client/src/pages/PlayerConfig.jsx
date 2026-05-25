@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import Loader from '../components/Loader';
 
-const API_URL = 'http://localhost:5001/api/player-settings';
+const API_URL = '/api/player-settings';
 
 const PlayerConfig = () => {
  const [loading, setLoading] = useState(true);
@@ -86,7 +86,7 @@ const PlayerConfig = () => {
 
   try {
    showNotification('Uploading...', 'info');
-   const response = await fetch('http://localhost:5001/api/upload', {
+   const response = await fetch('/api/upload', {
     method: 'POST',
     body: formDataUpload
    });

@@ -29,7 +29,7 @@ const FrontendWebSeries = () => {
   const fetchShows = async () => {
    setLoading(true);
    try {
-    const res = await fetch('http://localhost:5001/api/shows');
+    const res = await fetch('/api/shows');
     const data = await res.json();
     setShows(Array.isArray(data) ? data.filter(s => s.status === 'Active' && s.contentType === 'Short Web Series') : []);
    } catch (err) {
@@ -47,7 +47,7 @@ const FrontendWebSeries = () => {
   if (!url || typeof url !== 'string' || url.trim() === '') return null;
   if (url.startsWith('http') || url.startsWith('//') || url.startsWith('data:')) return url;
   const cleanPath = url.startsWith('/') ? url.substring(1) : url;
-  return `http://localhost:5001/${cleanPath}`;
+  return `/${cleanPath}`;
  };
 
  return (

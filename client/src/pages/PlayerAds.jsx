@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import Loader from '../components/Loader';
 
-const API_URL = 'http://localhost:5001/api/player-ads';
+const API_URL = '/api/player-ads';
 
 const PlayerAds = () => {
  const [loading, setLoading] = useState(false);

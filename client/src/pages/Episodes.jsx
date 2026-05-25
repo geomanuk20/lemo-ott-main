@@ -18,14 +18,14 @@ const Episodes = () => {
  const [deleteMode, setDeleteMode] = useState('single');
  const [deletingId, setDeletingId] = useState(null);
 
- const API_URL = 'http://localhost:5001/api/episodes';
+ const API_URL = '/api/episodes';
 
  useEffect(() => {
   const fetchData = async () => {
    try {
     const [episodesRes, showsRes] = await Promise.all([
      fetch(API_URL),
-     fetch('http://localhost:5001/api/shows')
+     fetch('/api/shows')
     ]);
     const episodesData = await episodesRes.json();
     const showsData = await showsRes.json();

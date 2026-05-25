@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import Loader from '../components/Loader';
 
-const API_URL = 'http://localhost:5001/api/pages';
+const API_URL = '/api/pages';
 
 const PagesList = () => {
  const navigate = useNavigate();

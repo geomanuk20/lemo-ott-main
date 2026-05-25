@@ -9,7 +9,7 @@ const FrontendFooter = ({ settings = null }) => {
   useEffect(() => {
     const fetchPages = async () => {
       try {
-        const res = await fetch('http://localhost:5001/api/pages');
+        const res = await fetch('/api/pages');
         const data = await res.json();
         // Filter out the hardcoded pages so we don't have duplicates
         const hardcodedSlugs = ['about-us', 'contact-us', 'privacy-policy', 'terms-of-use', 'faq', 'help-center', 'supported-devices'];

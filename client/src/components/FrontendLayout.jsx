@@ -38,7 +38,7 @@ const FrontendLayout = ({ children, isTransparent = true, showFooter = true, sho
 
       // 1. Movies & Short Films
       try {
-        const res = await fetch('http://localhost:5001/api/movies');
+        const res = await fetch('/api/movies');
         if (res.ok) {
           const data = await res.json();
           const active = Array.isArray(data) ? data.filter(m => isActive(m.status)) : [];
@@ -57,7 +57,7 @@ const FrontendLayout = ({ children, isTransparent = true, showFooter = true, sho
 
       // 2. TV Shows & Short Web Series
       try {
-        const res = await fetch('http://localhost:5001/api/shows');
+        const res = await fetch('/api/shows');
         if (res.ok) {
           const data = await res.json();
           const active = Array.isArray(data) ? data.filter(s => isActive(s.status)) : [];
@@ -76,7 +76,7 @@ const FrontendLayout = ({ children, isTransparent = true, showFooter = true, sho
 
       // 3. Sports Videos
       try {
-        const res = await fetch('http://localhost:5001/api/sports-videos');
+        const res = await fetch('/api/sports-videos');
         if (res.ok) {
           const data = await res.json();
           const active = Array.isArray(data) ? data.filter(sp => isActive(sp.status)) : [];
@@ -95,7 +95,7 @@ const FrontendLayout = ({ children, isTransparent = true, showFooter = true, sho
 
       // 4. Live TV Channels
       try {
-        const res = await fetch('http://localhost:5001/api/tv-channels');
+        const res = await fetch('/api/tv-channels');
         if (res.ok) {
           const data = await res.json();
           const active = Array.isArray(data) ? data.filter(c => isActive(c.status)) : [];
@@ -114,7 +114,7 @@ const FrontendLayout = ({ children, isTransparent = true, showFooter = true, sho
 
       // 5. New Releases (Shorts)
       try {
-        const res = await fetch('http://localhost:5001/api/new-releases');
+        const res = await fetch('/api/new-releases');
         if (res.ok) {
           const data = await res.json();
           const active = Array.isArray(data) ? data.filter(nr => isActive(nr.status)) : [];
@@ -136,7 +136,7 @@ const FrontendLayout = ({ children, isTransparent = true, showFooter = true, sho
 
     const fetchSettings = async () => {
       try {
-        const res = await fetch('http://localhost:5001/api/general-settings');
+        const res = await fetch('/api/general-settings');
         const data = await res.json();
         setSettings(data);
         localStorage.setItem('fe_general_settings', JSON.stringify(data));
@@ -147,7 +147,7 @@ const FrontendLayout = ({ children, isTransparent = true, showFooter = true, sho
 
     const fetchMenuSettings = async () => {
       try {
-        const res = await fetch('http://localhost:5001/api/menu-settings');
+        const res = await fetch('/api/menu-settings');
         if (res.ok) {
           const data = await res.json();
           setMenuSettings(data);

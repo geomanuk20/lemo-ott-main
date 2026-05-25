@@ -80,11 +80,11 @@ const FrontendViewAll = () => {
    setLoading(true);
    try {
     let url = '';
-    if (type === 'movies' || type === 'short-film') url = 'http://localhost:5001/api/movies';
-    else if (type === 'shows' || type === 'short-web-series') url = 'http://localhost:5001/api/shows';
-    else if (type === 'sports') url = 'http://localhost:5001/api/sports-videos';
-    else if (type === 'live') url = 'http://localhost:5001/api/tv-channels';
-    else if (type === 'new-releases') url = 'http://localhost:5001/api/new-releases';
+    if (type === 'movies' || type === 'short-film') url = '/api/movies';
+    else if (type === 'shows' || type === 'short-web-series') url = '/api/shows';
+    else if (type === 'sports') url = '/api/sports-videos';
+    else if (type === 'live') url = '/api/tv-channels';
+    else if (type === 'new-releases') url = '/api/new-releases';
 
     const res = await fetch(url);
     const data = await res.json();

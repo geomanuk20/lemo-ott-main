@@ -206,7 +206,7 @@ const Home = () => {
         // Fetch menu settings first to keep them perfectly in sync
         let freshMenuSettings = null;
         try {
-          const menuRes = await fetch('http://localhost:5001/api/menu-settings');
+          const menuRes = await fetch('/api/menu-settings');
           if (menuRes.ok) {
             freshMenuSettings = await menuRes.json();
             localStorage.setItem('fe_menu_settings', JSON.stringify(freshMenuSettings));
@@ -217,7 +217,7 @@ const Home = () => {
 
         const currentMenuSettings = freshMenuSettings || mSettings;
 
-        const response = await fetch('http://localhost:5001/api/home-aggregated', { signal: controller.signal });
+        const response = await fetch('/api/home-aggregated', { signal: controller.signal });
         clearTimeout(timeoutId);
         
         if (!response.ok) throw new Error('Aggregated fetch failed');

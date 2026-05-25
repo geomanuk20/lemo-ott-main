@@ -9,7 +9,7 @@ import {
 import Loader from '../components/Loader';
 import { Editor } from '@tinymce/tinymce-react';
 
-const API_URL = 'http://localhost:5001/api/pages';
+const API_URL = '/api/pages';
 const TINY_API_KEY = import.meta.env.VITE_TINYMCE_API_KEY;
 
 const EditPage = () => {

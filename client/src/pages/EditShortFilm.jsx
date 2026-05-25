@@ -66,7 +66,7 @@ const EditShortFilm = () => {
  useEffect(() => {
   const fetchShortFilm = async () => {
    try {
-    const res = await fetch(`http://localhost:5001/api/movies/${id}`);
+    const res = await fetch(`/api/movies/${id}`);
     const data = await res.json();
     if (data.releaseDate) {
      data.releaseDate = new Date(data.releaseDate).toISOString().split('T')[0];
@@ -90,10 +90,10 @@ const EditShortFilm = () => {
   const fetchFilters = async () => {
    try {
     const [genresRes, actorsRes, directorsRes, langRes] = await Promise.all([
-     fetch('http://localhost:5001/api/genres'),
-     fetch('http://localhost:5001/api/actors'),
-     fetch('http://localhost:5001/api/directors'),
-     fetch('http://localhost:5001/api/languages')
+     fetch('/api/genres'),
+     fetch('/api/actors'),
+     fetch('/api/directors'),
+     fetch('/api/languages')
     ]);
     setAvailableGenres(await genresRes.json());
     setAvailableActors(await actorsRes.json());
@@ -171,7 +171,7 @@ const EditShortFilm = () => {
     delete submissionData.releaseDate;
    }
 
-   const response = await fetch(`http://localhost:5001/api/movies/${id}`, {
+   const response = await fetch(`/api/movies/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(submissionData)

@@ -42,7 +42,7 @@ const Sidebar = () => {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const res = await fetch('http://localhost:5001/api/general-settings');
+        const res = await fetch('/api/general-settings');
         const data = await res.json();
         setSettings(data);
       } catch (err) {

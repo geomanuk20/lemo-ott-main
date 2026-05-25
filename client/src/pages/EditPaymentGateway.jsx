@@ -37,7 +37,7 @@ const EditPaymentGateway = () => {
 
   const fetchGatewayDetails = async () => {
     try {
-      const response = await fetch(`http://localhost:5001/api/payment-gateways/${id}`);
+      const response = await fetch(`/api/payment-gateways/${id}`);
       if (!response.ok) throw new Error('Gateway not found');
       const data = await response.json();
       setGateway(data);
@@ -99,7 +99,7 @@ const EditPaymentGateway = () => {
     setSaving(true);
 
     try {
-      const response = await fetch(`http://localhost:5001/api/payment-gateways/${id}`, {
+      const response = await fetch(`/api/payment-gateways/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)

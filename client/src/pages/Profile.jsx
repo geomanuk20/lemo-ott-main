@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import Loader from '../components/Loader';
 
-const API_URL = 'http://localhost:5001/api/profile';
+const API_URL = '/api/profile';
 
 const Profile = () => {
  const [formData, setFormData] = useState({
@@ -26,7 +26,7 @@ const Profile = () => {
    const user = JSON.parse(localStorage.getItem('user') || '{}');
    if (!user.id) return;
 
-   const response = await fetch(`http://localhost:5001/api/users/${user.id}`);
+   const response = await fetch(`/api/users/${user.id}`);
    const data = await response.json();
    if (response.ok) {
     setFormData({
@@ -87,7 +87,7 @@ const Profile = () => {
 
   try {
    // Use the robust users/:id route instead of the generic profile route
-   const response = await fetch(`http://localhost:5001/api/users/${user.id}`, {
+   const response = await fetch(`/api/users/${user.id}`, {
     method: 'PUT',
     body: data
    });

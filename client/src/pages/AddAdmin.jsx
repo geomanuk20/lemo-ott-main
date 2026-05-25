@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Loader2, CheckCircle2, XCircle, UserCircle } from 'lucide-react';
 import Loader from '../components/Loader';
 
-const API_URL = 'http://localhost:5001/api/users';
+const API_URL = '/api/users';
 
 const AddAdmin = () => {
  const navigate = useNavigate();

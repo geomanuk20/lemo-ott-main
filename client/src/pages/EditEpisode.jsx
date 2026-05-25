@@ -53,9 +53,9 @@ const EditEpisode = () => {
   const fetchData = async () => {
    try {
     const [showsRes, seasonsRes, episodeRes] = await Promise.all([
-     fetch('http://localhost:5001/api/shows'),
-     fetch('http://localhost:5001/api/seasons'),
-     fetch(`http://localhost:5001/api/episodes/${id}`)
+     fetch('/api/shows'),
+     fetch('/api/seasons'),
+     fetch(`/api/episodes/${id}`)
     ]);
     const showsData = await showsRes.json();
     const seasonsData = await seasonsRes.json();
@@ -121,7 +121,7 @@ const EditEpisode = () => {
    if (payload.showId && typeof payload.showId === 'object') {
     payload.showId = payload.showId._id || payload.showId.id;
    }
-   const response = await fetch(`http://localhost:5001/api/episodes/${id}`, {
+   const response = await fetch(`/api/episodes/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)

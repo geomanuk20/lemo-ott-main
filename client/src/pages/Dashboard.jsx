@@ -57,7 +57,7 @@ const Dashboard = () => {
 
  useEffect(() => {
   setLoading(true);
-  fetch('http://localhost:5001/api/stats')
+  fetch('/api/stats')
    .then(res => res.json())
    .then(data => { setBackendStats(data); setLoading(false); })
    .catch(err => {

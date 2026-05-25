@@ -50,10 +50,10 @@ const AddShow = () => {
   const fetchData = async () => {
    try {
     const [langRes, genreRes, actorsRes, directorsRes] = await Promise.all([
-     fetch('http://localhost:5001/api/languages'),
-     fetch('http://localhost:5001/api/genres'),
-     fetch('http://localhost:5001/api/actors'),
-     fetch('http://localhost:5001/api/directors')
+     fetch('/api/languages'),
+     fetch('/api/genres'),
+     fetch('/api/actors'),
+     fetch('/api/directors')
     ]);
     setLanguages(await langRes.json());
     setGenresList(await genreRes.json());
@@ -97,7 +97,7 @@ const AddShow = () => {
   e.preventDefault();
   setLoading(true);
   try {
-   const response = await fetch('http://localhost:5001/api/shows', {
+   const response = await fetch('/api/shows', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(formData)

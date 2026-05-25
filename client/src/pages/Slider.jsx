@@ -12,7 +12,7 @@ import {
 import Loader from '../components/Loader';
 import { formatImageUrl } from '../utils/image';
 
-const API_URL = 'http://localhost:5001/api/sliders';
+const API_URL = '/api/sliders';
 
 const Slider = () => {
  const navigate = useNavigate();

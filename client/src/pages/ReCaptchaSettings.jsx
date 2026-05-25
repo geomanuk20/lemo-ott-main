@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import Loader from '../components/Loader';
 
-const API_URL = 'http://localhost:5001/api/recaptcha-settings';
+const API_URL = '/api/recaptcha-settings';
 
 const ReCaptchaSettings = () => {
  const [loading, setLoading] = useState(false);

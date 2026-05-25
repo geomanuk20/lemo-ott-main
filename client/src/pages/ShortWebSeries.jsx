@@ -25,7 +25,7 @@ const ShortWebSeries = () => {
  const [languageSearch, setLanguageSearch] = useState('');
  const [genreSearch, setGenreSearch] = useState('');
 
- const API_URL = 'http://localhost:5001/api/shows';
+ const API_URL = '/api/shows';
 
  useEffect(() => {
   const fetchShows = async () => {
@@ -43,8 +43,8 @@ const ShortWebSeries = () => {
   const fetchFilters = async () => {
    try {
     const [langRes, genreRes] = await Promise.all([
-     fetch('http://localhost:5001/api/languages'),
-     fetch('http://localhost:5001/api/genres')
+     fetch('/api/languages'),
+     fetch('/api/genres')
     ]);
     const langData = await langRes.json();
     const genreData = await genreRes.json();

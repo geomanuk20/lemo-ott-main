@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import Loader from '../components/Loader';
 
-const API_URL = 'http://localhost:5001/api/maintenance-settings';
+const API_URL = '/api/maintenance-settings';
 
 const MaintenanceSettings = () => {
  const [loading, setLoading] = useState(false);

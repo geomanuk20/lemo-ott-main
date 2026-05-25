@@ -17,7 +17,7 @@ const FrontendPage = ({ fixedSlug = null }) => {
     setLoading(true);
     // We fetch all pages and find the one that matches the slug
     // since the API currently only supports fetching all or by ID
-    const response = await fetch('http://localhost:5001/api/pages');
+    const response = await fetch('/api/pages');
     const pages = await response.json();
     const foundPage = pages.find(p => p.slug === slug);
     setPageData(foundPage || null);

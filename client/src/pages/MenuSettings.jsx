@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import Loader from '../components/Loader';
 
-const API_URL = 'http://localhost:5001/api/menu-settings';
+const API_URL = '/api/menu-settings';
 
 const MenuSettings = () => {
  const [loading, setLoading] = useState(false);

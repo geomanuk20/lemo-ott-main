@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import Loader from '../components/Loader';
 
-const API_URL = 'http://localhost:5001/api/smtp-settings';
+const API_URL = '/api/smtp-settings';
 
 const SMTPSettings = () => {
  const [loading, setLoading] = useState(false);

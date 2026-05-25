@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, X, AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react';
 import Loader from '../components/Loader';
 
-const API_URL = 'http://localhost:5001/api/genres';
+const API_URL = '/api/genres';
 const ITEMS_PER_PAGE = 8;
 
 const Genres = () => {

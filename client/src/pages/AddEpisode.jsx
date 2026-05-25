@@ -51,8 +51,8 @@ const AddEpisode = () => {
   const fetchShowsAndSeasons = async () => {
    try {
     const [showsRes, seasonsRes] = await Promise.all([
-     fetch('http://localhost:5001/api/shows'),
-     fetch('http://localhost:5001/api/seasons')
+     fetch('/api/shows'),
+     fetch('/api/seasons')
     ]);
     const showsData = await showsRes.json();
     const seasonsData = await seasonsRes.json();
@@ -104,7 +104,7 @@ const AddEpisode = () => {
    if (!payload.seasonId || isShortPath) {
     payload.seasonId = null;
    }
-   const response = await fetch('http://localhost:5001/api/episodes', {
+   const response = await fetch('/api/episodes', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)

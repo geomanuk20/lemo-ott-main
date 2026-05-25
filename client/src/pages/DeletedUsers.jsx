@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import Loader from '../components/Loader';
 
-const API_URL = 'http://localhost:5001/api/users';
+const API_URL = '/api/users';
 
 const DeletedUsers = () => {
  const [users, setUsers] = useState([]);
@@ -188,7 +188,7 @@ const DeletedUsers = () => {
           <div className="user-info-with-avatar">
            <div className="user-avatar-p">
             <img 
-             src={user.profileImage ? (user.profileImage.startsWith('http') || user.profileImage.startsWith('data:') ? user.profileImage : `http://localhost:5001/uploads/${user.profileImage}`) : 'https://cdn-icons-png.flaticon.com/512/149/149071.png'} 
+             src={user.profileImage ? (user.profileImage.startsWith('http') || user.profileImage.startsWith('data:') ? user.profileImage : `/uploads/${user.profileImage}`) : 'https://cdn-icons-png.flaticon.com/512/149/149071.png'} 
              alt="" 
             />
            </div>

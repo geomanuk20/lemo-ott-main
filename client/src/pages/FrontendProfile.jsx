@@ -16,7 +16,7 @@ const FrontendProfile = () => {
  const [profileImage, setProfileImage] = useState(null);
  const [previewUrl, setPreviewUrl] = useState(
   user.profileImage 
-   ? (user.profileImage.startsWith('http') ? user.profileImage : `http://localhost:5001/uploads/${user.profileImage}`)
+   ? (user.profileImage.startsWith('http') ? user.profileImage : `/uploads/${user.profileImage}`)
    : null
  );
  const [loading, setLoading] = useState(false);
@@ -32,7 +32,7 @@ const FrontendProfile = () => {
  useEffect(() => {
   const fetchUserData = async () => {
    try {
-    const res = await fetch(`http://localhost:5001/api/users/${user.id}`);
+    const res = await fetch(`/api/users/${user.id}`);
     const data = await res.json();
     setFullUser(data);
     
@@ -40,7 +40,7 @@ const FrontendProfile = () => {
     const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
     localStorage.setItem('user', JSON.stringify({ ...currentUser, ...data, id: data._id }));
     
-    const transRes = await fetch(`http://localhost:5001/api/user/transactions/${user.email}`);
+    const transRes = await fetch(`/api/user/transactions/${user.email}`);
     const transData = await transRes.json();
     setTransactions(transData);
    } catch (err) {
@@ -79,7 +79,7 @@ const FrontendProfile = () => {
   if (profileImage) data.append('profileImage', profileImage);
 
   try {
-   const response = await fetch(`http://localhost:5001/api/users/${user.id}`, {
+   const response = await fetch(`/api/users/${user.id}`, {
     method: 'PUT',
     body: data
    });

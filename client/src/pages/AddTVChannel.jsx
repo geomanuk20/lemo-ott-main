@@ -30,7 +30,7 @@ const AddTVChannel = () => {
  useEffect(() => {
   const fetchCategories = async () => {
    try {
-    const response = await fetch('http://localhost:5001/api/tv-categories');
+    const response = await fetch('/api/tv-categories');
     const data = await response.json();
     setCategories(data);
    } catch (err) {
@@ -74,7 +74,7 @@ const AddTVChannel = () => {
   };
 
   try {
-   const response = await fetch('http://localhost:5001/api/tv-channels', {
+   const response = await fetch('/api/tv-channels', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)

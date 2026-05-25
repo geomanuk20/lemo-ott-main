@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import Loader from '../components/Loader';
 
-const API_URL = 'http://localhost:5001/api/payment-gateways';
+const API_URL = '/api/payment-gateways';
 
 const PaymentGateway = () => {
  const navigate = useNavigate();

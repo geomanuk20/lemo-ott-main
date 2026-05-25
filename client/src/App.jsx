@@ -136,7 +136,7 @@ const TokenValidator = () => {
       if (!token) return;
 
       try {
-        const res = await fetch('http://localhost:5001/api/auth/validate', {
+        const res = await fetch('/api/auth/validate', {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`
@@ -182,7 +182,7 @@ function App() {
   useEffect(() => {
     const fetchBranding = async () => {
       try {
-        const res = await fetch('http://localhost:5001/api/general-settings');
+        const res = await fetch('/api/general-settings');
         const settings = await res.json();
         if (settings) {
           // Sync Title Discovery

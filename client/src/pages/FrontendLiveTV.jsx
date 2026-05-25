@@ -37,7 +37,7 @@ const FrontendLiveTV = () => {
   const fetchChannels = async () => {
    setLoading(true);
    try {
-    const res = await fetch('http://localhost:5001/api/tv-channels');
+    const res = await fetch('/api/tv-channels');
     const data = await res.json();
     setChannels(Array.isArray(data) ? data.filter(c => c.status === 'Active') : []);
    } catch (err) {
@@ -55,7 +55,7 @@ const FrontendLiveTV = () => {
   if (!url || typeof url !== 'string' || url.trim() === '') return null;
   if (url.startsWith('http') || url.startsWith('//') || url.startsWith('data:')) return url;
   const cleanPath = url.startsWith('/') ? url.substring(1) : url;
-  return `http://localhost:5001/${cleanPath}`;
+  return `/${cleanPath}`;
  };
 
  return (

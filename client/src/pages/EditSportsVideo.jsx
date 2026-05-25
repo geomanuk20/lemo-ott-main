@@ -46,8 +46,8 @@ const EditSportsVideo = () => {
   const fetchData = async () => {
    try {
     const [videoRes, catRes] = await Promise.all([
-     fetch(`http://localhost:5001/api/sports-videos/${id}`),
-     fetch('http://localhost:5001/api/sports-categories')
+     fetch(`/api/sports-videos/${id}`),
+     fetch('/api/sports-categories')
     ]);
     
     const cats = await catRes.json();
@@ -127,7 +127,7 @@ const EditSportsVideo = () => {
     category: catObj ? catObj._id : null
    };
 
-   const response = await fetch(`http://localhost:5001/api/sports-videos/${id}`, {
+   const response = await fetch(`/api/sports-videos/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(submissionData)

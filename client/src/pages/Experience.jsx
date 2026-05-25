@@ -40,7 +40,7 @@ const Experience = () => {
  const fetchExperiences = async () => {
   setLoading(true);
   try {
-   const response = await fetch('http://localhost:5001/api/experiences');
+   const response = await fetch('/api/experiences');
    if (!response.ok) throw new Error('Fetch failed');
    const data = await response.json();
    setExperiences(data);
@@ -59,7 +59,7 @@ const Experience = () => {
  const handleStatusToggle = async (exp) => {
   const newStatus = exp.status === 'Active' ? 'Inactive' : 'Active';
   try {
-   const response = await fetch(`http://localhost:5001/api/experiences/${exp._id}`, {
+   const response = await fetch(`/api/experiences/${exp._id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ status: newStatus })
@@ -77,7 +77,7 @@ const Experience = () => {
 
  const executeDelete = async () => {
   try {
-   const response = await fetch(`http://localhost:5001/api/experiences/${deletingId}`, {
+   const response = await fetch(`/api/experiences/${deletingId}`, {
     method: 'DELETE'
    });
    if (!response.ok) throw new Error('Delete failed');
@@ -99,7 +99,7 @@ const Experience = () => {
   if (!editingExp.title || !editingExp.description) return showNotification('Required fields missing', 'error');
   
   try {
-   const response = await fetch(`http://localhost:5001/api/experiences/${editingExp._id}`, {
+   const response = await fetch(`/api/experiences/${editingExp._id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(editingExp)
@@ -119,7 +119,7 @@ const Experience = () => {
   if (!newExp.title || !newExp.description) return showNotification('Required fields missing', 'error');
   
   try {
-   const response = await fetch('http://localhost:5001/api/experiences', {
+   const response = await fetch('/api/experiences', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(newExp)

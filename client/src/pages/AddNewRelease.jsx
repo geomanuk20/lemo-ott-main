@@ -116,10 +116,10 @@ const AddNewRelease = () => {
   const fetchData = async () => {
    try {
     const [genresRes, languagesRes, actorsRes, directorsRes] = await Promise.all([
-     fetch('http://localhost:5001/api/genres'),
-     fetch('http://localhost:5001/api/languages'),
-     fetch('http://localhost:5001/api/actors'),
-     fetch('http://localhost:5001/api/directors')
+     fetch('/api/genres'),
+     fetch('/api/languages'),
+     fetch('/api/actors'),
+     fetch('/api/directors')
     ]);
     setAvailableGenres(await genresRes.json());
     setAvailableLanguages(await languagesRes.json());
@@ -144,7 +144,7 @@ const AddNewRelease = () => {
     delete submissionData.releaseDate;
    }
 
-   const response = await fetch('http://localhost:5001/api/new-releases', {
+   const response = await fetch('/api/new-releases', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(submissionData)

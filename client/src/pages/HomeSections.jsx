@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import Loader from '../components/Loader';
 
-const API_URL = 'http://localhost:5001/api/home-sections';
+const API_URL = '/api/home-sections';
 
 const HomeSections = () => {
  const [sections, setSections] = useState([]);

@@ -23,7 +23,7 @@ const AddHomeSection = () => {
   e.preventDefault();
   setLoading(true);
   try {
-   const response = await fetch('http://localhost:5001/api/home-sections', {
+   const response = await fetch('/api/home-sections', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(formData)

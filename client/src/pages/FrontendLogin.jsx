@@ -32,7 +32,7 @@ const FrontendLogin = () => {
  useEffect(() => {
   const fetchSettings = async () => {
    try {
-    const res = await fetch('http://localhost:5001/api/general-settings');
+    const res = await fetch('/api/general-settings');
     const data = await res.json();
     setSettings(data);
    } catch (err) {
@@ -54,7 +54,7 @@ const FrontendLogin = () => {
   // Fetch social settings and load Facebook SDK if configured
   const initFacebookSdk = async () => {
    try {
-    const res = await fetch('http://localhost:5001/api/social-login-settings');
+    const res = await fetch('/api/social-login-settings');
     const data = await res.json();
     setSocialSettings(data);
     if (data && data.facebookLogin?.toUpperCase() !== 'OFF') {
@@ -91,7 +91,7 @@ const FrontendLogin = () => {
   setError('');
   setSuccess('');
   try {
-   const response = await fetch('http://localhost:5001/api/auth/google', {
+   const response = await fetch('/api/auth/google', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ token: accessToken, deviceId: getOrCreateDeviceId() })
@@ -123,7 +123,7 @@ const FrontendLogin = () => {
   setError('');
   setSuccess('');
 
-  fetch('http://localhost:5001/api/social-login-settings')
+  fetch('/api/social-login-settings')
    .then(res => res.json())
    .then(settings => {
     if (!settings || settings.googleLogin?.toUpperCase() === 'OFF') {
@@ -176,7 +176,7 @@ const FrontendLogin = () => {
   setError('');
   setSuccess('');
   try {
-   const response = await fetch('http://localhost:5001/api/auth/facebook', {
+   const response = await fetch('/api/auth/facebook', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ token: accessToken, deviceId: getOrCreateDeviceId() })
@@ -208,7 +208,7 @@ const FrontendLogin = () => {
   setError('');
   setSuccess('');
 
-  fetch('http://localhost:5001/api/social-login-settings')
+  fetch('/api/social-login-settings')
    .then(res => res.json())
    .then(socialSettings => {
     if (!socialSettings || socialSettings.facebookLogin?.toUpperCase() === 'OFF') {
@@ -283,7 +283,7 @@ const FrontendLogin = () => {
   }
 
   try {
-   const response = await fetch(`http://localhost:5001${endpoint}`, {
+   const response = await fetch(`${endpoint}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)

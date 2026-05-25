@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import Loader from '../components/Loader';
 
-const API_URL = 'http://localhost:5001/api/users';
+const API_URL = '/api/users';
 
 const SubAdmin = () => {
  const navigate = useNavigate();
@@ -149,7 +149,7 @@ const SubAdmin = () => {
            <div className="user-avatar-p">
             {admin.profileImage ? (
              <img 
-              src={admin.profileImage.startsWith('http') || admin.profileImage.startsWith('data:') ? admin.profileImage : `http://localhost:5001/uploads/${admin.profileImage}`} 
+              src={admin.profileImage.startsWith('http') || admin.profileImage.startsWith('data:') ? admin.profileImage : `/uploads/${admin.profileImage}`} 
               alt="" 
              />
             ) : (

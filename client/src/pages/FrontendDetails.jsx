@@ -154,7 +154,7 @@ const FrontendDetails = () => {
 
      // Increment view count when video is played
      if (id && type) {
-       fetch(`http://localhost:5001/api/contents/${type}/${id}/view`, {
+       fetch(`/api/contents/${type}/${id}/view`, {
          method: 'POST'
        })
        .then(res => res.json())
@@ -206,7 +206,7 @@ const FrontendDetails = () => {
        endpoint = `/api/seasons/${id}`;
       }
   
-      let response = await fetch(`http://localhost:5001${endpoint}`);
+      let response = await fetch(`${endpoint}`);
       let result = null;
       if (response.ok) {
        try {
@@ -230,7 +230,7 @@ const FrontendDetails = () => {
        for (const route of fallbackRoutes) {
         if (endpoint === `${route.path}/${id}`) continue;
         try {
-         const fallbackRes = await fetch(`http://localhost:5001${route.path}/${id}`);
+         const fallbackRes = await fetch(`${route.path}/${id}`);
          if (fallbackRes.ok) {
           const tempResult = await fallbackRes.json();
           if (tempResult && !tempResult.message && tempResult._id) {
@@ -263,7 +263,7 @@ const FrontendDetails = () => {
       setData(result);
  
      if (normalizedType === 'show' || normalizedType === 'shows' || normalizedType === 'series' || normalizedType === 'short-web-series') {
-      const seasonsRes = await fetch(`http://localhost:5001/api/seasons?showId=${id}`);
+      const seasonsRes = await fetch(`/api/seasons?showId=${id}`);
       if (seasonsRes.ok) {
        const seasonsData = await seasonsRes.json();
        setSeasons(seasonsData);
@@ -271,7 +271,7 @@ const FrontendDetails = () => {
         setSelectedSeasonId(seasonsData[0]._id);
        }
       }
-      const episodesRes = await fetch(`http://localhost:5001/api/episodes?showId=${id}`);
+      const episodesRes = await fetch(`/api/episodes?showId=${id}`);
       if (episodesRes.ok) {
        const episodesData = await episodesRes.json();
        setEpisodes(episodesData);
@@ -287,12 +287,12 @@ const FrontendDetails = () => {
       }
       
       if (showIdStr) {
-       const seasonsRes = await fetch(`http://localhost:5001/api/seasons?showId=${showIdStr}`);
+       const seasonsRes = await fetch(`/api/seasons?showId=${showIdStr}`);
        if (seasonsRes.ok) {
         const seasonsData = await seasonsRes.json();
         setSeasons(seasonsData);
        }
-       const episodesRes = await fetch(`http://localhost:5001/api/episodes?showId=${showIdStr}`);
+       const episodesRes = await fetch(`/api/episodes?showId=${showIdStr}`);
        if (episodesRes.ok) {
         const episodesData = await episodesRes.json();
         setEpisodes(episodesData);
@@ -307,12 +307,12 @@ const FrontendDetails = () => {
        showIdStr = typeof result.showId === 'object' ? (result.showId._id || result.showId.id) : result.showId;
       }
       if (showIdStr) {
-       const seasonsRes = await fetch(`http://localhost:5001/api/seasons?showId=${showIdStr}`);
+       const seasonsRes = await fetch(`/api/seasons?showId=${showIdStr}`);
        if (seasonsRes.ok) {
         const seasonsData = await seasonsRes.json();
         setSeasons(seasonsData);
        }
-       const episodesRes = await fetch(`http://localhost:5001/api/episodes?showId=${showIdStr}`);
+       const episodesRes = await fetch(`/api/episodes?showId=${showIdStr}`);
        if (episodesRes.ok) {
         const episodesData = await episodesRes.json();
         setEpisodes(episodesData);
@@ -340,7 +340,7 @@ const FrontendDetails = () => {
     } else if (normalizedType === 'episode' || normalizedType === 'episodes' || normalizedType === 'season' || normalizedType === 'seasons') {
      relatedEndpoint = '/api/shows';
     }
-    const relatedResponse = await fetch(`http://localhost:5001${relatedEndpoint}`);
+    const relatedResponse = await fetch(`${relatedEndpoint}`);
     const relatedResult = await relatedResponse.json();
     let parentId = '';
     if (result && result.showId) {
@@ -363,7 +363,7 @@ const FrontendDetails = () => {
 
     // Check watchlist
     if (user.id) {
-     const wlResponse = await fetch(`http://localhost:5001/api/watchlist/${user.id}`);
+     const wlResponse = await fetch(`/api/watchlist/${user.id}`);
      const wlData = await wlResponse.json();
      if (Array.isArray(wlData)) {
       setIsWatchlisted(wlData.some(item => item._id === id));
@@ -386,7 +386,7 @@ const FrontendDetails = () => {
  useEffect(() => {
   const fetchPlayerSettings = async () => {
    try {
-    const response = await fetch('http://localhost:5001/api/player-settings');
+    const response = await fetch('/api/player-settings');
     if (response.ok) {
      const psData = await response.json();
      setPlayerSettings(psData);
@@ -427,7 +427,7 @@ const FrontendDetails = () => {
   }
 
   try {
-   const response = await fetch('http://localhost:5001/api/watchlist/toggle', {
+   const response = await fetch('/api/watchlist/toggle', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ userId: user.id, contentId: id, contentType: normalizedWatchlistType })
@@ -499,14 +499,14 @@ const FrontendDetails = () => {
   if (typeof item === 'string') {
    if (item.startsWith('http')) return item;
    const cleanPath = item.startsWith('/') ? item.substring(1) : item;
-   return `http://localhost:5001/${cleanPath}`;
+   return `/${cleanPath}`;
   }
   
   const url = item[typePref] || item.poster || item.logo || item.thumbnail || item.image || '';
   if (!url || typeof url !== 'string' || url.trim() === '') return '';
   if (url.startsWith('http') || url.startsWith('//') || url.startsWith('data:')) return url;
   const cleanPath = url.startsWith('/') ? url.substring(1) : url;
-  return `http://localhost:5001/${cleanPath}`;
+  return `/${cleanPath}`;
  };
 
  const getTitle = (item) => {

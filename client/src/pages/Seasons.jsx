@@ -17,7 +17,7 @@ const Seasons = () => {
  const [notification, setNotification] = useState(null);
 
  // Mock Data
- const API_URL = 'http://localhost:5001/api/seasons';
+ const API_URL = '/api/seasons';
 
  const [shows, setShows] = useState([]);
 
@@ -27,7 +27,7 @@ const Seasons = () => {
    try {
     const [seasonsRes, showsRes] = await Promise.all([
      fetch(API_URL),
-     fetch('http://localhost:5001/api/shows')
+     fetch('/api/shows')
     ]);
     const seasonsData = await seasonsRes.json();
     const showsData = await showsRes.json();

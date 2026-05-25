@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import Loader from '../components/Loader';
 
-const API_URL = 'http://localhost:5001/api/transactions';
+const API_URL = '/api/transactions';
 
 const Transactions = () => {
  const [transactions, setTransactions] = useState([]);

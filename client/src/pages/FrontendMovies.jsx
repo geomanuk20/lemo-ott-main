@@ -36,7 +36,7 @@ const FrontendMovies = () => {
   const fetchMovies = async () => {
    setLoading(true);
    try {
-    const res = await fetch('http://localhost:5001/api/movies');
+    const res = await fetch('/api/movies');
     const data = await res.json();
     setMovies(Array.isArray(data) ? data.filter(m => m.status === 'Active') : []);
    } catch (err) {
@@ -54,7 +54,7 @@ const FrontendMovies = () => {
   if (!url || typeof url !== 'string' || url.trim() === '') return null;
   if (url.startsWith('http') || url.startsWith('//') || url.startsWith('data:')) return url;
   const cleanPath = url.startsWith('/') ? url.substring(1) : url;
-  return `http://localhost:5001/${cleanPath}`;
+  return `/${cleanPath}`;
  };
 
  return (

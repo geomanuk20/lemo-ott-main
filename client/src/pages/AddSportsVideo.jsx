@@ -88,7 +88,7 @@ const AddSportsVideo = () => {
  useEffect(() => {
   const fetchCategories = async () => {
    try {
-    const response = await fetch('http://localhost:5001/api/sports-categories');
+    const response = await fetch('/api/sports-categories');
     const data = await response.json();
     setCategories(data);
    } catch (err) {
@@ -116,7 +116,7 @@ const AddSportsVideo = () => {
     category: catObj ? catObj._id : null
    };
 
-   const response = await fetch('http://localhost:5001/api/sports-videos', {
+   const response = await fetch('/api/sports-videos', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(submissionData)

@@ -40,7 +40,7 @@ const FrontendSidebar = ({
           <div className="fe-sidebar-brand-v">
             <div className="fe-logo-v">
               {settings?.siteLogo ? (
-                <img src={settings.siteLogo.startsWith('http') ? settings.siteLogo : `http://localhost:5001/${settings.siteLogo}`} alt={settings.siteName || "LEMO OTT"} />
+                <img src={settings.siteLogo.startsWith('http') ? settings.siteLogo : `/${settings.siteLogo}`} alt={settings.siteName || "LEMO OTT"} />
               ) : (
                 <img src="/assets/LOGO PNG-01.png" alt="LEMO OTT" />
               )}
@@ -82,7 +82,7 @@ const FrontendSidebar = ({
                 <div className="fe-sidebar-profile-v">
                   {user.profileImage ? (
                     <img
-                      src={user.profileImage.startsWith('http') ? user.profileImage : `http://localhost:5001/uploads/${user.profileImage}`}
+                      src={user.profileImage.startsWith('http') ? user.profileImage : `/uploads/${user.profileImage}`}
                       alt=""
                     />
                   ) : (

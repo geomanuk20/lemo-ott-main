@@ -36,7 +36,7 @@ const Images = () => {
 
  const fetchAssets = async () => {
   try {
-   const response = await fetch('http://localhost:5001/api/assets');
+   const response = await fetch('/api/assets');
    if (!response.ok) throw new Error('Failed to fetch');
    const data = await response.json();
    setImages(data);
@@ -76,7 +76,7 @@ const Images = () => {
 
   try {
    // 1. Upload to Cloudinary
-   const uploadRes = await fetch('http://localhost:5001/api/upload', {
+   const uploadRes = await fetch('/api/upload', {
     method: 'POST',
     body: formData
    });
@@ -92,7 +92,7 @@ const Images = () => {
     dimension: 'Original'
    };
 
-   const saveRes = await fetch('http://localhost:5001/api/assets', {
+   const saveRes = await fetch('/api/assets', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(assetData)
@@ -122,7 +122,7 @@ const Images = () => {
 
  const handleDelete = async (id) => {
   try {
-   const response = await fetch(`http://localhost:5001/api/assets/${id}`, {
+   const response = await fetch(`/api/assets/${id}`, {
     method: 'DELETE'
    });
    if (!response.ok) throw new Error('Delete failed');

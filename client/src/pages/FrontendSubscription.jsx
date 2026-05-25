@@ -30,7 +30,7 @@ const FrontendSubscription = () => {
     setProcessing(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5001/api/payment/free-success', {
+      const response = await fetch('/api/payment/free-success', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -72,8 +72,8 @@ const FrontendSubscription = () => {
   const fetchData = async () => {
    try {
     const [plansRes, settingsRes] = await Promise.all([
-     fetch('http://localhost:5001/api/subscription-plans'),
-     fetch('http://localhost:5001/api/general-settings')
+     fetch('/api/subscription-plans'),
+     fetch('/api/general-settings')
     ]);
     const plansData = await plansRes.json();
     const settingsData = await settingsRes.json();

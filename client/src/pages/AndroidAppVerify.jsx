@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Loader2, CheckCircle2, XCircle, ShieldCheck } from 'lucide-react';
 import Loader from '../components/Loader';
 
-const API_URL = 'http://localhost:5001/api/android-app/verify';
+const API_URL = '/api/android-app/verify';
 
 const AndroidAppVerify = () => {
  const [loading, setLoading] = useState(false);

@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import Loader from '../components/Loader';
 
-const API_URL = 'http://localhost:5001/api/actors';
+const API_URL = '/api/actors';
 const ITEMS_PER_PAGE = 12;
 
 const Actors = () => {

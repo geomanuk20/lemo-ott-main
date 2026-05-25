@@ -69,11 +69,11 @@ const EditNewRelease = () => {
   const fetchData = async () => {
    try {
     const [movieRes, genreRes, languagesRes, actorsRes, directorsRes] = await Promise.all([
-     fetch(`http://localhost:5001/api/new-releases/${id}`),
-     fetch('http://localhost:5001/api/genres'),
-     fetch('http://localhost:5001/api/languages'),
-     fetch('http://localhost:5001/api/actors'),
-     fetch('http://localhost:5001/api/directors')
+     fetch(`/api/new-releases/${id}`),
+     fetch('/api/genres'),
+     fetch('/api/languages'),
+     fetch('/api/actors'),
+     fetch('/api/directors')
     ]);
     
     if (movieRes.ok) {
@@ -189,7 +189,7 @@ const EditNewRelease = () => {
     ...formData
    };
 
-   const response = await fetch(`http://localhost:5001/api/new-releases/${id}`, {
+   const response = await fetch(`/api/new-releases/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(submissionData)

@@ -4,7 +4,7 @@ import { Plus, Edit, X, Search, ChevronDown, CheckCircle2, AlertTriangle, Loader
 import Loader from '../components/Loader';
 import { formatImageUrl } from '../utils/image';
 
-const API_URL = 'http://localhost:5001/api/movies';
+const API_URL = '/api/movies';
 
 const Movies = () => {
  const navigate = useNavigate();
@@ -49,8 +49,8 @@ const Movies = () => {
  const fetchFilters = async () => {
   try {
    const [langRes, genreRes] = await Promise.all([
-    fetch('http://localhost:5001/api/languages'),
-    fetch('http://localhost:5001/api/genres')
+    fetch('/api/languages'),
+    fetch('/api/genres')
    ]);
    const langData = await langRes.json();
    const genreData = await genreRes.json();

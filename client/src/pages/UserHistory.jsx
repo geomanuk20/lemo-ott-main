@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import Loader from '../components/Loader';
 
-const API_URL = 'http://localhost:5001/api/users';
+const API_URL = '/api/users';
 
 const SessionTimer = ({ session, isDeviceA }) => {
   const [timeLeft, setTimeLeft] = useState('');
@@ -102,7 +102,7 @@ const UserHistory = () => {
   const handleTerminateSession = async (sessionId) => {
     if (!window.confirm('Are you sure you want to terminate this active session? This will force-logout the user from this device.')) return;
     try {
-      const res = await fetch(`http://localhost:5001/api/users/${id}/sessions/terminate`, {
+      const res = await fetch(`/api/users/${id}/sessions/terminate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId })
@@ -122,7 +122,7 @@ const UserHistory = () => {
   const handleTerminateAllSessions = async () => {
     if (!window.confirm('Are you sure you want to terminate all active sessions for this user? This will log them out from all devices.')) return;
     try {
-      const res = await fetch(`http://localhost:5001/api/users/${id}/sessions/terminate-all`, {
+      const res = await fetch(`/api/users/${id}/sessions/terminate-all`, {
         method: 'POST'
       });
       if (res.ok) {
@@ -154,7 +154,7 @@ const UserHistory = () => {
    if (response.ok) {
     setUser(data);
     try {
-     const transRes = await fetch(`http://localhost:5001/api/user/transactions/${data.email}`);
+     const transRes = await fetch(`/api/user/transactions/${data.email}`);
      if (transRes.ok) {
       const transData = await transRes.json();
       setTransactions(transData);
@@ -217,7 +217,7 @@ const UserHistory = () => {
       <div className="user-profile-img-p">
        {user.profileImage ? (
         <img 
-         src={user.profileImage.startsWith('http') || user.profileImage.startsWith('data:') ? user.profileImage : `http://localhost:5001/uploads/${user.profileImage}`} 
+         src={user.profileImage.startsWith('http') || user.profileImage.startsWith('data:') ? user.profileImage : `/uploads/${user.profileImage}`} 
          alt="Profile" 
          onError={(e) => { e.target.onerror = null; e.target.src = "https://via.placeholder.com/150?text=Profile"; }}
         />

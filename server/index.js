@@ -3638,4 +3638,13 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: err.message || 'Internal Server Error' });
 });
 
-// Server is started inside connectDB()
+// Serve static files from the React frontend
+app.use(express.static(path.join(__dirname, '../client/dist')));
+
+// Catch-all route to serve the React frontend index.html
+app.get('*', (req, res) => {
+  if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) {
+    return res.status(404).send('Not Found');
+  }
+  res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+});

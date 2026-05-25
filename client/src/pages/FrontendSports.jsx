@@ -37,7 +37,7 @@ const FrontendSports = () => {
   const fetchSports = async () => {
    setLoading(true);
    try {
-    const res = await fetch('http://localhost:5001/api/sports-videos');
+    const res = await fetch('/api/sports-videos');
     const data = await res.json();
     console.log('[DEBUG] Sports data raw:', data);
     // Temporarily remove filter to see everything
@@ -60,7 +60,7 @@ const FrontendSports = () => {
   if (!url || typeof url !== 'string' || url.trim() === '') return null;
   if (url.startsWith('http') || url.startsWith('//') || url.startsWith('data:')) return url;
   const cleanPath = url.startsWith('/') ? url.substring(1) : url;
-  return `http://localhost:5001/${cleanPath}`;
+  return `/${cleanPath}`;
  };
 
  return (

@@ -193,7 +193,7 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
   useEffect(() => {
     if (playbackId) {
       setLoadingToken(true);
-      fetch(`http://localhost:5001/api/mux/sign-token?playbackId=${playbackId}`)
+      fetch(`/api/mux/sign-token?playbackId=${playbackId}`)
         .then(res => {
           if (!res.ok) throw new Error('Token API failed');
           return res.json();
@@ -731,7 +731,7 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
   const getWatermarkUrl = (logo) => {
     if (!logo) return '';
     if (logo.startsWith('http://') || logo.startsWith('https://')) return logo;
-    return `http://localhost:5001/${logo}`;
+    return `/${logo}`;
   };
 
   return (

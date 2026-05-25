@@ -8,7 +8,7 @@ import {
  import Loader from '../components/Loader';
  import { formatBrandingUrl } from '../utils/branding';
 
-const API_URL = 'http://localhost:5001/api/general-settings';
+const API_URL = '/api/general-settings';
 
 const GeneralSettings = () => {
  const [loading, setLoading] = useState(false);
@@ -110,7 +110,7 @@ const GeneralSettings = () => {
 
   try {
    showNotification('Uploading...', 'info');
-   const response = await fetch('http://localhost:5001/api/upload', {
+   const response = await fetch('/api/upload', {
     method: 'POST',
     body: formDataUpload
    });

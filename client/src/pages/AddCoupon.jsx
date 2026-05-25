@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Loader2, CheckCircle2, XCircle, RefreshCw } from 'lucide-react';
 import Loader from '../components/Loader';
 
-const API_URL = 'http://localhost:5001/api/coupons';
+const API_URL = '/api/coupons';
 
 const AddCoupon = () => {
  const navigate = useNavigate();

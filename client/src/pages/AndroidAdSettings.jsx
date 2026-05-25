@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Loader2, CheckCircle2, XCircle, Tag } from 'lucide-react';
 import Loader from '../components/Loader';
 
-const API_URL = 'http://localhost:5001/api/android-app/ads';
+const API_URL = '/api/android-app/ads';
 
 const AndroidAdSettings = () => {
  const [loading, setLoading] = useState(false);

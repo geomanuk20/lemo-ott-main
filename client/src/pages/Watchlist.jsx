@@ -18,7 +18,7 @@ const Watchlist = () => {
   }
   setLoading(true);
   try {
-   const response = await fetch(`http://localhost:5001/api/watchlist/${user.id}`);
+   const response = await fetch(`/api/watchlist/${user.id}`);
    const data = await response.json();
    setWatchlist(Array.isArray(data) ? data : (data.items || data.watchlist || []));
   } catch (err) {
@@ -35,7 +35,7 @@ const Watchlist = () => {
 
  const removeFromWatchlist = async (contentId, contentType) => {
   try {
-   const response = await fetch('http://localhost:5001/api/watchlist/toggle', {
+   const response = await fetch('/api/watchlist/toggle', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ userId: user.id, contentId, contentType })
@@ -60,7 +60,7 @@ const Watchlist = () => {
   if (!url || typeof url !== 'string' || url.trim() === '') return '';
   if (url.startsWith('http') || url.startsWith('//') || url.startsWith('data:')) return url;
   const cleanPath = url.startsWith('/') ? url.substring(1) : url;
-  return `http://localhost:5001/${cleanPath}`;
+  return `/${cleanPath}`;
  };
 
  return (

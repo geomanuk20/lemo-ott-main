@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import Loader from '../components/Loader';
 
-const API_URL = 'http://localhost:5001/api/coupons';
+const API_URL = '/api/coupons';
 
 // Helper: compute time remaining string from an expiryDate string ("YYYY-MM-DD")
 const getTimeRemaining = (expiryDateStr) => {

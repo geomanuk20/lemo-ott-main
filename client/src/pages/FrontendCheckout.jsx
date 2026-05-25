@@ -71,7 +71,7 @@ const FrontendCheckout = () => {
   
   const fetchGateways = async () => {
    try {
-    const response = await fetch('http://localhost:5001/api/payment-gateways');
+    const response = await fetch('/api/payment-gateways');
     const data = await response.json();
     const activeGateways = data.filter(gw => gw.status === 'Active');
     setGateways(activeGateways);
@@ -88,7 +88,7 @@ const FrontendCheckout = () => {
 
   const fetchAvailableCoupons = async () => {
    try {
-    const response = await fetch('http://localhost:5001/api/coupons');
+    const response = await fetch('/api/coupons');
     const data = await response.json();
     const todayStr = new Date().toISOString().split('T')[0];
     const filtered = data.filter(c =>
@@ -129,7 +129,7 @@ const FrontendCheckout = () => {
   setCouponMessage('');
   setCouponError(false);
   try {
-   const response = await fetch('http://localhost:5001/api/coupons/validate', {
+   const response = await fetch('/api/coupons/validate', {
     method: 'POST',
     headers: {
      'Content-Type': 'application/json'
@@ -182,7 +182,7 @@ const FrontendCheckout = () => {
 
    if (finalPriceVal === 0) {
     // Bypassing gateways because price is 0
-    const response = await fetch('http://localhost:5001/api/payment/mock-success', {
+    const response = await fetch('/api/payment/mock-success', {
      method: 'POST',
      headers: {
       'Content-Type': 'application/json',
@@ -219,7 +219,7 @@ const FrontendCheckout = () => {
    
    if (gatewayObj && gatewayObj.name.toLowerCase() === 'phonepe') {
     // PhonePe Real Integration
-    const response = await fetch('http://localhost:5001/api/payment/phonepe/initiate', {
+    const response = await fetch('/api/payment/phonepe/initiate', {
      method: 'POST',
      headers: {
       'Content-Type': 'application/json',
@@ -240,7 +240,7 @@ const FrontendCheckout = () => {
     }
    } else {
     // Fallback Mock Payment for other gateways
-    const response = await fetch('http://localhost:5001/api/payment/mock-success', {
+    const response = await fetch('/api/payment/mock-success', {
      method: 'POST',
      headers: {
       'Content-Type': 'application/json',

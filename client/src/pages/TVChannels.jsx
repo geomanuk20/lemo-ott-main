@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import Loader from '../components/Loader';
 
-const API_URL = 'http://localhost:5001/api/tv-channels';
+const API_URL = '/api/tv-channels';
 
 const TVChannels = () => {
  const navigate = useNavigate();
@@ -44,7 +44,7 @@ const TVChannels = () => {
    try {
     const [channelsRes, categoriesRes] = await Promise.all([
      fetch(API_URL),
-     fetch('http://localhost:5001/api/tv-categories')
+     fetch('/api/tv-categories')
     ]);
     const channelsData = await channelsRes.json();
     const categoriesData = await categoriesRes.json();

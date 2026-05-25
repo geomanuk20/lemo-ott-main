@@ -28,7 +28,7 @@ const EditSlider = () => {
  useEffect(() => {
   const fetchSlider = async () => {
    try {
-    const response = await fetch(`http://localhost:5001/api/sliders/${id}`);
+    const response = await fetch(`/api/sliders/${id}`);
     const data = await response.json();
     setFormData({
      title: data.title || '',
@@ -64,10 +64,10 @@ const EditSlider = () => {
    }
 
    let endpoint = '';
-   if (formData.postType === 'Movies') endpoint = 'http://localhost:5001/api/movies';
-   else if (formData.postType === 'TV Shows') endpoint = 'http://localhost:5001/api/shows';
-   else if (formData.postType === 'Sports') endpoint = 'http://localhost:5001/api/sports-videos';
-   else if (formData.postType === 'Live TV') endpoint = 'http://localhost:5001/api/channels';
+   if (formData.postType === 'Movies') endpoint = '/api/movies';
+   else if (formData.postType === 'TV Shows') endpoint = '/api/shows';
+   else if (formData.postType === 'Sports') endpoint = '/api/sports-videos';
+   else if (formData.postType === 'Live TV') endpoint = '/api/channels';
 
    if (endpoint) {
     try {
@@ -104,7 +104,7 @@ const EditSlider = () => {
   formDataUpload.append('file', file);
   try {
    setLoading(true);
-   const response = await fetch('http://localhost:5001/api/upload', {
+   const response = await fetch('/api/upload', {
     method: 'POST',
     body: formDataUpload
    });
@@ -150,7 +150,7 @@ const EditSlider = () => {
 
   setSaving(true);
   try {
-   const response = await fetch(`http://localhost:5001/api/sliders/${id}`, {
+   const response = await fetch(`/api/sliders/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(formData)

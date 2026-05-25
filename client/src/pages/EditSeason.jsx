@@ -28,8 +28,8 @@ const EditSeason = () => {
   const fetchData = async () => {
    try {
     const [showsRes, seasonRes] = await Promise.all([
-     fetch('http://localhost:5001/api/shows'),
-     fetch(`http://localhost:5001/api/seasons/${id}`)
+     fetch('/api/shows'),
+     fetch(`/api/seasons/${id}`)
     ]);
     const showsData = await showsRes.json();
     const seasonData = await seasonRes.json();
@@ -81,7 +81,7 @@ const EditSeason = () => {
   e.preventDefault();
   setLoading(true);
   try {
-   const response = await fetch(`http://localhost:5001/api/seasons/${id}`, {
+   const response = await fetch(`/api/seasons/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(formData)

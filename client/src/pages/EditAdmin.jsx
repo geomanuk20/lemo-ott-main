@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Loader2, CheckCircle2, XCircle, UserCircle } from 'lucide-react';
 import Loader from '../components/Loader';
 
-const API_URL = 'http://localhost:5001/api/users';
+const API_URL = '/api/users';
 
 const EditAdmin = () => {
  const { id } = useParams();
@@ -37,7 +37,7 @@ const EditAdmin = () => {
      profileImage: null
     });
     if (data.profileImage) {
-     setImagePreview(data.profileImage.startsWith('http') ? data.profileImage : `http://localhost:5001/uploads/${data.profileImage}`);
+     setImagePreview(data.profileImage.startsWith('http') ? data.profileImage : `/uploads/${data.profileImage}`);
     }
    }
   } catch (err) {

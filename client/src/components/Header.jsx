@@ -23,7 +23,7 @@ const Header = () => {
       if (user.profileImage) {
         setProfileImg(user.profileImage);
       } else if (user.id) {
-        const response = await fetch(`http://localhost:5001/api/users/${user.id}`);
+        const response = await fetch(`/api/users/${user.id}`);
         const data = await response.json();
         if (data.profileImage) {
           setProfileImg(data.profileImage);

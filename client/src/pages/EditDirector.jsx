@@ -24,7 +24,7 @@ const EditDirector = () => {
  useEffect(() => {
   const fetchDirector = async () => {
    try {
-    const response = await fetch(`http://localhost:5001/api/directors/${id}`);
+    const response = await fetch(`/api/directors/${id}`);
     const data = await response.json();
     setFormData({
      name: data.name || '',
@@ -81,7 +81,7 @@ const EditDirector = () => {
   e.preventDefault();
   setSaving(true);
   try {
-   const response = await fetch(`http://localhost:5001/api/directors/${id}`, {
+   const response = await fetch(`/api/directors/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(formData)

@@ -74,7 +74,7 @@ const FrontendNavbar = ({
     if (!url || typeof url !== 'string' || url.trim() === '') return null;
     if (url.startsWith('http') || url.startsWith('//') || url.startsWith('data:')) return url;
     const cleanPath = url.startsWith('/') ? url.substring(1) : url;
-    return `http://localhost:5001/${cleanPath}`;
+    return `/${cleanPath}`;
   };
 
   return (
@@ -128,7 +128,7 @@ const FrontendNavbar = ({
                   <div className="fe-profile-v">
                     {user.profileImage ? (
                       <img
-                        src={user.profileImage.startsWith('http') ? user.profileImage : `http://localhost:5001/uploads/${user.profileImage}`}
+                        src={user.profileImage.startsWith('http') ? user.profileImage : `/uploads/${user.profileImage}`}
                         alt=""
                         style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
                       />

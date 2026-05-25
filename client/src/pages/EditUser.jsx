@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import Loader from '../components/Loader';
 
-const API_URL = 'http://localhost:5001/api/users';
+const API_URL = '/api/users';
 
 const EditUser = () => {
  const { id } = useParams();
@@ -43,7 +43,7 @@ const EditUser = () => {
      if (user.profileImage) {
       const previewUrl = user.profileImage.startsWith('data:') || user.profileImage.startsWith('http') 
        ? user.profileImage 
-       : `http://localhost:5001/uploads/${user.profileImage}`;
+       : `/uploads/${user.profileImage}`;
       setImagePreview(previewUrl);
      }
     }

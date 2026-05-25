@@ -31,7 +31,7 @@ const EditActor = () => {
  useEffect(() => {
   const fetchActor = async () => {
    try {
-    const response = await fetch(`http://localhost:5001/api/actors/${id}`);
+    const response = await fetch(`/api/actors/${id}`);
     const data = await response.json();
     setFormData({
      name: data.name || '',
@@ -81,7 +81,7 @@ const EditActor = () => {
   e.preventDefault();
   setSaving(true);
   try {
-   const response = await fetch(`http://localhost:5001/api/actors/${id}`, {
+   const response = await fetch(`/api/actors/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(formData)

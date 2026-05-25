@@ -33,8 +33,8 @@ const EditTVChannel = () => {
   const fetchData = async () => {
    try {
     const [categoriesRes, channelRes] = await Promise.all([
-     fetch('http://localhost:5001/api/tv-categories'),
-     fetch(`http://localhost:5001/api/tv-channels/${id}`)
+     fetch('/api/tv-categories'),
+     fetch(`/api/tv-channels/${id}`)
     ]);
     const categoriesData = await categoriesRes.json();
     const channelData = await channelRes.json();
@@ -80,7 +80,7 @@ const EditTVChannel = () => {
   e.preventDefault();
   setLoading(true);
   try {
-   const response = await fetch(`http://localhost:5001/api/tv-channels/${id}`, {
+   const response = await fetch(`/api/tv-channels/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(formData)
