@@ -25,7 +25,11 @@ export default function ProfileScreen({ navigation }) {
   const [showAllTransactions, setShowAllTransactions] = useState(false);
 
   const fetchProfileData = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
     try {
       // Fetch updated user info & transactions in parallel
       const [userRes, transRes] = await Promise.all([
@@ -48,9 +52,13 @@ export default function ProfileScreen({ navigation }) {
   // Auto-refresh when profile tab is focused
   useFocusEffect(
     useCallback(() => {
-      setLoading(true);
-      fetchProfileData();
-    }, [fetchProfileData])
+      if (isAuthenticated && user) {
+        setLoading(true);
+        fetchProfileData();
+      } else {
+        setLoading(false);
+      }
+    }, [fetchProfileData, isAuthenticated, user])
   );
 
   const onRefresh = () => {
