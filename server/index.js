@@ -11,6 +11,25 @@ const axios = require('axios');
 const app = express();
 const PORT = process.env.PORT || 5001;
 
+// Dynamic URL discovery for emails and payment gateways
+const getClientUrl = (req) => {
+  const host = req.get('host');
+  if (host.includes('localhost') || host.includes('127.0.0.1')) {
+    return 'http://localhost:5173';
+  }
+  const isHttps = req.secure || req.headers['x-forwarded-proto'] === 'https';
+  return `${isHttps ? 'https' : 'http'}://${host}`;
+};
+
+const getServerUrl = (req) => {
+  const host = req.get('host');
+  if (host.includes('localhost') || host.includes('127.0.0.1')) {
+    return 'http://localhost:5001';
+  }
+  const isHttps = req.secure || req.headers['x-forwarded-proto'] === 'https';
+  return `${isHttps ? 'https' : 'http'}://${host}`;
+};
+
 // Enable Mongoose buffering with a reasonable timeout
 mongoose.set('bufferCommands', true);
 mongoose.set('bufferTimeoutMS', 15000);
@@ -927,7 +946,7 @@ app.post('/api/forgot-password', async (req, res) => {
           <p>We received a request to reset your password for your Video OTT account.</p>
           <p>If you made this request, please click the button below to reset your password. This link will expire in 1 hour.</p>
           <div style="text-align: center; margin: 30px 0;">
-            <a href="http://localhost:5173/reset-password?token=${resetToken}" style="background: #ff0000; color: #fff; text-decoration: none; padding: 15px 30px; border-radius: 30px; font-weight: bold; display: inline-block;">RESET PASSWORD</a>
+            <a href="${getClientUrl(req)}/reset-password?token=${resetToken}" style="background: #ff0000; color: #fff; text-decoration: none; padding: 15px 30px; border-radius: 30px; font-weight: bold; display: inline-block;">RESET PASSWORD</a>
           </div>
           <p>If you did not request a password reset, you can safely ignore this email.</p>
           <hr style="border: none; border-top: 1px solid #222; margin: 30px 0;" />
@@ -2428,9 +2447,10 @@ const runAllSeeds = async () => {
     // seedPlans();
 
 // Payment// Helper to send subscription email
-const sendSubscriptionSuccessEmail = async (user, plan, txnId) => {
+const sendSubscriptionSuccessEmail = async (user, plan, txnId, req = null) => {
   try {
     const dynamicTransporter = await getTransporter();
+    const clientUrl = req ? getClientUrl(req) : 'https://lemoott.com';
     const mailOptions = {
       from: process.env.EMAIL_FROM || 'Video OTT Platform <noreply@video.com>',
       to: user.email,
@@ -2448,7 +2468,7 @@ const sendSubscriptionSuccessEmail = async (user, plan, txnId) => {
             <p style="margin: 5px 0;"><strong>Transaction ID:</strong> ${txnId}</p>
           </div>
           <div style="text-align: center; margin: 30px 0;">
-            <a href="http://localhost:5173/user/profile" style="background: #b3d332; color: #000; text-decoration: none; padding: 15px 30px; border-radius: 30px; font-weight: bold; display: inline-block;">VIEW PROFILE</a>
+            <a href="${clientUrl}/user/profile" style="background: #b3d332; color: #000; text-decoration: none; padding: 15px 30px; border-radius: 30px; font-weight: bold; display: inline-block;">VIEW PROFILE</a>
           </div>
           <hr style="border: none; border-top: 1px solid #222; margin: 30px 0;" />
           <p style="font-size: 0.8rem; color: #666; text-align: center;">© 2026 Video OTT Platform. All rights reserved.</p>
@@ -2564,7 +2584,7 @@ app.post('/api/payment/mock-success', async (req, res) => {
     });
     await tx.save();
     
-    await sendSubscriptionSuccessEmail(user, plan, tx.paymentId);
+    await sendSubscriptionSuccessEmail(user, plan, tx.paymentId, req);
     
     res.json({ message: 'Payment successful', user: {
       status: user.status,
@@ -2654,7 +2674,7 @@ app.post('/api/payment/free-success', async (req, res) => {
     });
     await tx.save();
     
-    await sendSubscriptionSuccessEmail(user, plan, tx.paymentId);
+    await sendSubscriptionSuccessEmail(user, plan, tx.paymentId, req);
     
     res.json({ message: 'Plan activated successfully', user: {
       status: user.status,
@@ -2757,7 +2777,8 @@ app.post('/api/payment/phonepe/initiate', async (req, res) => {
     const env = isSandbox ? Env.SANDBOX : Env.PRODUCTION;
     const client = StandardCheckoutClient.getInstance(merchantId, saltKey, parseInt(saltIndex), env);
 
-    const redirectUrl = `http://localhost:5001/api/payment/phonepe/callback?txnId=${transactionId}`;
+    const serverUrl = getServerUrl(req);
+    const redirectUrl = `${serverUrl}/api/payment/phonepe/callback?txnId=${transactionId}`;
     
     // The SDK builder for V2
     const request = StandardCheckoutPayRequest.builder()
@@ -2825,7 +2846,8 @@ app.all('/api/payment/phonepe/callback', async (req, res) => {
 
     if (!tx) {
       require('fs').appendFileSync('phonepe_callback_error.txt', `Txn not found for ID: ${txnId}\n`);
-      return res.redirect('http://localhost:5173/user/profile?payment_status=error');
+      const clientUrl = getClientUrl(req);
+      return res.redirect(`${clientUrl}/user/profile?payment_status=error`);
     }
 
     // You could optionally use the SDK's validateCallback here if needed:
@@ -2866,17 +2888,20 @@ app.all('/api/payment/phonepe/callback', async (req, res) => {
         await user.save();
         
         // Fire and forget email to prevent hanging the redirect
-        sendSubscriptionSuccessEmail(user, plan, txnId).catch(console.error);
+        sendSubscriptionSuccessEmail(user, plan, txnId, req).catch(console.error);
       }
-      return res.redirect('http://localhost:5173/user/profile?payment_status=success');
+      const clientUrl = getClientUrl(req);
+      return res.redirect(`${clientUrl}/user/profile?payment_status=success`);
     } else {
       tx.status = 'Failed';
       await tx.save();
-      return res.redirect('http://localhost:5173/user/profile?payment_status=failed');
+      const clientUrl = getClientUrl(req);
+      return res.redirect(`${clientUrl}/user/profile?payment_status=failed`);
     }
   } catch (err) {
     console.error('Callback error', err);
-    res.redirect('http://localhost:5173/user/profile?payment_status=error');
+    const clientUrl = getClientUrl(req);
+    res.redirect(`${clientUrl}/user/profile?payment_status=error`);
   }
 });
 // Subscription Plan Routes

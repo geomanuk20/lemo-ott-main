@@ -28,9 +28,7 @@ const getHostIP = () => {
 
 export const ACTIVE_IP = getHostIP();
 
-// TODO: Replace this with your actual Hostinger production backend domain URL (e.g. 'https://lemo-ott.com' or 'http://109.106.254.12:5001')
-// Do NOT include a trailing slash
-export const PRODUCTION_URL = 'https://your-hostinger-domain.com';
+export const PRODUCTION_URL = 'https://lemoott.com';
 
 // Set to true if you want to test the production backend API during local development/simulation
 const FORCE_PRODUCTION_API = false;
