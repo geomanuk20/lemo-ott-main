@@ -7,30 +7,23 @@ import AppNavigator from './src/navigation/AppNavigator';
 import client from './src/api/client';
 
 export default function App() {
-  const [maintenance, setMaintenance] = useState(null); // null = loading
+  const [maintenance, setMaintenance] = useState(false);
   const [maintenanceData, setMaintenanceData] = useState(null);
 
   useEffect(() => {
     client.get('/maintenance-settings')
       .then(res => {
-        setMaintenanceData(res.data);
-        // Status is stored as Boolean true/false in the DB schema
-        setMaintenance(res.data?.status === true);
+        if (res.data) {
+          setMaintenanceData(res.data);
+          // Status is stored as Boolean true/false in the DB schema
+          setMaintenance(res.data.status === true);
+        }
       })
       .catch(() => {
         // If maintenance check fails, proceed normally
         setMaintenance(false);
       });
   }, []);
-
-  // Show app loading indicator while checking maintenance
-  if (maintenance === null) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#b3d332" />
-      </View>
-    );
-  }
 
   // Show maintenance screen if admin has enabled it
   if (maintenance === true) {

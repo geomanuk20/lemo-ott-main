@@ -5,19 +5,6 @@ const LOCAL_IP = '192.168.1.3';
 
 // Dynamically detect the host IP address (works for simulators/emulators and physical devices)
 const getHostIP = () => {
-  try {
-    const Constants = require('expo-constants').default;
-    const hostUri = Constants?.expoConfig?.hostUri || Constants?.manifest2?.extra?.expoGo?.debuggerHost || '';
-    if (hostUri) {
-      const ip = hostUri.split(':')[0];
-      if (ip && ip !== 'localhost' && ip !== '127.0.0.1') {
-        return ip;
-      }
-    }
-  } catch (e) {
-    // expo-constants not available or fails
-  }
-
   // Fallback: Simulator/Emulator gets localhost, default fallback to LOCAL_IP
   return Platform.select({
     ios: 'localhost',
