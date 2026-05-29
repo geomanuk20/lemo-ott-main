@@ -3,8 +3,11 @@
   "version": "1.0.0",
   "description": "Video OTT Admin Panel and Streaming Platform",
   "scripts": {
-    "dev": "concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
-    "install-all": "npm install && npm install --prefix server && npm install --prefix client",
+    "dev": "concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\" \"npm start --prefix mobile\"",
+    "mobile": "concurrently \"npm run dev --prefix server\" \"npm start --prefix mobile\"",
+    "android": "concurrently \"npm run dev --prefix server\" \"npm run android --prefix mobile\"",
+    "dev-all": "concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\" \"npm start --prefix mobile\"",
+    "install-all": "npm install && npm install --prefix server && npm install --prefix client && npm install --prefix mobile --legacy-peer-deps",
     "build": "npm install && npm install --prefix client && npm run build --prefix client",
     "start": "node server/index.js"
   },
@@ -15,6 +18,7 @@
     "cloudinary": "^1.41.3",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
+    "expo-screen-orientation": "^56.0.5",
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.6.1",

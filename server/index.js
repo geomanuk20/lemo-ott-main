@@ -95,6 +95,21 @@ const TVCategory = require('./models/TVCategory');
 const Asset = require('./models/Asset');
 const Experience = require('./models/Experience');
 
+const isAdminRequest = async (req) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return false;
+    }
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = await User.findById(decoded.id);
+    return user && ['admin', 'sub-admin'].includes(user.role);
+  } catch (_) {
+    return false;
+  }
+};
+
 const reCaptchaSettingsSchema = new mongoose.Schema({
   siteKey: { type: String, default: 'Hidden in Demo' },
   secretKey: { type: String, default: 'Hidden in Demo' },
@@ -716,6 +731,73 @@ app.post('/api/auth/google', async (req, res) => {
   }
 });
 
+// Dedicated Mobile Social Login Endpoint (Google/Facebook bypass for testing/simulations)
+app.post('/api/auth/social-login-mobile', async (req, res) => {
+  try {
+    const { email, name, provider, deviceId } = req.body;
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+
+    const settings = await SocialLoginSettings.findOne();
+    const providerLower = (provider || 'google').toLowerCase();
+    if (providerLower === 'google' && settings?.googleLogin?.toUpperCase() === 'OFF') {
+      return res.status(400).json({ message: 'Google login is currently disabled by admin' });
+    }
+    if (providerLower === 'facebook' && settings?.facebookLogin?.toUpperCase() === 'OFF') {
+      return res.status(400).json({ message: 'Facebook login is currently disabled by admin' });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    let user = await User.findOne({ email: normalizedEmail });
+
+    if (!user) {
+      const crypto = require('crypto');
+      const randomPassword = crypto.randomBytes(16).toString('hex');
+      user = new User({
+        email: normalizedEmail,
+        name: name || normalizedEmail.split('@')[0],
+        password: randomPassword,
+        authProvider: provider || 'Google',
+        role: 'customer',
+        status: 'Active',
+        subscriptionPlan: 'Basic Plan',
+        expiryDate: '2099-12-31'
+      });
+      await user.save();
+    } else {
+      if (user.status !== 'Active') {
+        return res.status(403).json({ message: 'User account is inactive/suspended' });
+      }
+    }
+
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '12h' }
+    );
+
+    await recordActiveSession(user, token, deviceId);
+    await user.save();
+
+    res.json({
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        profileImage: user.profileImage,
+        status: user.status,
+        subscriptionPlan: user.subscriptionPlan,
+        expiryDate: user.expiryDate
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // Facebook Login / Auth Route
 app.post('/api/auth/facebook', async (req, res) => {
   try {
@@ -883,11 +965,48 @@ app.get('/api/watchlist/:userId', async (req, res) => {
       else if (item.contentType === 'sports') detail = await SportsVideo.findById(item.contentId);
       else if (item.contentType === 'live') detail = await TVChannel.findById(item.contentId);
       
-      if (detail) return { ...detail.toObject(), contentType: item.contentType };
+      if (detail) {
+        return { 
+          ...detail.toObject(), 
+          dbContentType: detail.contentType, // Preserve original contentType
+          contentType: item.contentType 
+        };
+      }
       return null;
     }));
 
-    res.json(watchlistDetails.filter(d => d !== null));
+    let filteredDetails = watchlistDetails.filter(d => d !== null);
+
+    const menuSettings = await MenuSettings.findOne().lean();
+    if (menuSettings) {
+      const moviesOff = menuSettings.movies?.toUpperCase() === 'OFF';
+      const shortFilmsOff = menuSettings.shortFilms?.toUpperCase() === 'OFF';
+      const showsOff = menuSettings.shows?.toUpperCase() === 'OFF';
+      const webSeriesOff = menuSettings.webSeries?.toUpperCase() === 'OFF';
+      const sportsOff = menuSettings.sports?.toUpperCase() === 'OFF';
+      const liveTvOff = menuSettings.liveTv?.toUpperCase() === 'OFF';
+
+      filteredDetails = filteredDetails.filter(item => {
+        if (item.contentType === 'movie') {
+          const isShortFilm = item.dbContentType === 'Short Film' || item.dbContentType === 'short-film';
+          if (isShortFilm && shortFilmsOff) return false;
+          if (!isShortFilm && moviesOff) return false;
+        }
+        if (item.contentType === 'new-releases') {
+          if (moviesOff) return false;
+        }
+        if (item.contentType === 'show') {
+          const isShortWeb = item.dbContentType === 'Short Web Series' || item.dbContentType === 'Short Web-Series' || item.dbContentType === 'web-series';
+          if (isShortWeb && webSeriesOff) return false;
+          if (!isShortWeb && showsOff) return false;
+        }
+        if (item.contentType === 'sports' && sportsOff) return false;
+        if (item.contentType === 'live' && liveTvOff) return false;
+        return true;
+      });
+    }
+
+    res.json(filteredDetails);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -917,7 +1036,7 @@ app.post('/api/watchlist/toggle', async (req, res) => {
 // --- Billing & Invoice Discovery ---
 app.get('/api/user/transactions/:email', async (req, res) => {
   try {
-    const transactions = await Transaction.find({ email: req.params.email }).sort({ createdAt: -1 });
+    const transactions = await Transaction.find({ email: req.params.email }).populate('planId').sort({ createdAt: -1 });
     res.json(transactions);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -1220,7 +1339,26 @@ app.get('/api/mux/sign-token', async (req, res) => {
 // Movie Routes
 app.get('/api/movies', async (req, res) => {
   try {
-    const movies = await Movie.find().sort({ createdAt: -1 });
+    const isAdmin = await isAdminRequest(req);
+    const query = {};
+    if (!isAdmin) {
+      query.status = 'Active';
+      const menuSettings = await MenuSettings.findOne().lean();
+      if (menuSettings) {
+        const moviesOff = menuSettings.movies?.toUpperCase() === 'OFF';
+        const shortFilmsOff = menuSettings.shortFilms?.toUpperCase() === 'OFF';
+
+        if (moviesOff && shortFilmsOff) {
+          return res.json([]);
+        } else if (moviesOff) {
+          query.contentType = { $in: ['Short Film', 'short-film'] };
+        } else if (shortFilmsOff) {
+          query.contentType = { $nin: ['Short Film', 'short-film'] };
+        }
+      }
+    }
+
+    const movies = await Movie.find(query).sort({ createdAt: -1 });
     res.json(movies);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -1233,6 +1371,20 @@ app.get('/api/movies/:id', async (req, res) => {
       .populate('actors')
       .populate('directors');
     if (!movie) return res.status(404).json({ message: 'Movie not found' });
+
+    const isAdmin = await isAdminRequest(req);
+    if (!isAdmin) {
+      const menuSettings = await MenuSettings.findOne().lean();
+      if (menuSettings) {
+        const isShortFilm = movie.contentType === 'Short Film' || movie.contentType === 'short-film';
+        const moviesOff = menuSettings.movies?.toUpperCase() === 'OFF';
+        const shortFilmsOff = menuSettings.shortFilms?.toUpperCase() === 'OFF';
+        if ((isShortFilm && shortFilmsOff) || (!isShortFilm && moviesOff)) {
+          return res.status(403).json({ message: 'Content is disabled' });
+        }
+      }
+    }
+
     res.json(movie);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -1270,6 +1422,10 @@ app.delete('/api/movies/:id', async (req, res) => {
 // NewRelease Routes
 app.get('/api/new-releases', async (req, res) => {
   try {
+    const menuSettings = await MenuSettings.findOne().lean();
+    if (menuSettings && menuSettings.movies?.toUpperCase() === 'OFF') {
+      return res.json([]);
+    }
     const newReleases = await NewRelease.find().sort({ createdAt: -1 });
     res.json(newReleases);
   } catch (err) {
@@ -1279,6 +1435,10 @@ app.get('/api/new-releases', async (req, res) => {
 
 app.get('/api/new-releases/:id', async (req, res) => {
   try {
+    const menuSettings = await MenuSettings.findOne().lean();
+    if (menuSettings && menuSettings.movies?.toUpperCase() === 'OFF') {
+      return res.status(403).json({ message: 'Content is disabled' });
+    }
     const newRelease = await NewRelease.findById(req.params.id)
       .populate('actors')
       .populate('directors');
@@ -1481,7 +1641,7 @@ app.post('/api/coupons/validate', async (req, res) => {
       return res.status(400).json({ message: 'Coupon code is required' });
     }
 
-    const coupon = await Coupon.findOne({ couponCode: couponCode.trim() });
+    const coupon = await Coupon.findOne({ couponCode: { $regex: new RegExp('^' + couponCode.trim() + '$', 'i') } });
     if (!coupon) {
       return res.status(404).json({ message: 'Coupon not found' });
     }
@@ -2282,7 +2442,7 @@ const sendSubscriptionSuccessEmail = async (user, plan, txnId) => {
           <p>Thank you for subscribing! Your payment was successful and your subscription is now active.</p>
           <div style="background: #111; padding: 20px; border-radius: 10px; margin: 20px 0; border: 1px solid #222;">
             <p style="margin: 5px 0;"><strong>Plan:</strong> ${plan.planName}</p>
-            <p style="margin: 5px 0;"><strong>Amount:</strong> ₹${plan.price}</p>
+            <p style="margin: 5px 0;"><strong>Amount:</strong> ${plan.price}</p>
             <p style="margin: 5px 0;"><strong>Duration:</strong> ${plan.duration}</p>
             <p style="margin: 5px 0;"><strong>Expires On:</strong> ${new Date(user.expiryDate).toLocaleDateString()}</p>
             <p style="margin: 5px 0;"><strong>Transaction ID:</strong> ${txnId}</p>
@@ -2310,7 +2470,12 @@ app.post('/api/payment/mock-success', async (req, res) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
     const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (err) {
+      return res.status(401).json({ message: 'Session expired, please login again' });
+    }
     
     const user = await User.findById(decoded.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
@@ -2362,7 +2527,7 @@ app.post('/api/payment/mock-success', async (req, res) => {
 
     if (req.body.couponCode) {
       const Coupon = require('./models/Coupon');
-      const coupon = await Coupon.findOne({ couponCode: req.body.couponCode.trim() });
+      const coupon = await Coupon.findOne({ couponCode: { $regex: new RegExp('^' + req.body.couponCode.trim() + '$', 'i') } });
       if (coupon && coupon.status === 'Active') {
         const todayStr = new Date().toISOString().split('T')[0];
         if (!coupon.expiryDate || coupon.expiryDate >= todayStr) {
@@ -2419,7 +2584,12 @@ app.post('/api/payment/free-success', async (req, res) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
     const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (err) {
+      return res.status(401).json({ message: 'Session expired, please login again' });
+    }
     
     const user = await User.findById(decoded.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
@@ -2504,7 +2674,12 @@ app.post('/api/payment/phonepe/initiate', async (req, res) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
     const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (err) {
+      return res.status(401).json({ message: 'Session expired, please login again' });
+    }
     const user = await User.findById(decoded.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
@@ -2539,7 +2714,7 @@ app.post('/api/payment/phonepe/initiate', async (req, res) => {
 
     if (req.body.couponCode) {
       const Coupon = require('./models/Coupon');
-      const coupon = await Coupon.findOne({ couponCode: req.body.couponCode.trim() });
+      const coupon = await Coupon.findOne({ couponCode: { $regex: new RegExp('^' + req.body.couponCode.trim() + '$', 'i') } });
       if (coupon && coupon.status === 'Active') {
         const todayStr = new Date().toISOString().split('T')[0];
         if (!coupon.expiryDate || coupon.expiryDate >= todayStr) {
@@ -2665,7 +2840,7 @@ app.all('/api/payment/phonepe/callback', async (req, res) => {
       // Increment coupon usage if applied
       if (tx.couponCode) {
         const Coupon = require('./models/Coupon');
-        const coupon = await Coupon.findOne({ couponCode: tx.couponCode.trim() });
+        const coupon = await Coupon.findOne({ couponCode: { $regex: new RegExp('^' + tx.couponCode.trim() + '$', 'i') } });
         if (coupon) {
           coupon.couponUsed = (coupon.couponUsed || 0) + 1;
           await coupon.save();
@@ -2756,7 +2931,25 @@ app.delete('/api/subscription-plans/:id', async (req, res) => {
 // TV Show Routes
 app.get('/api/shows', async (req, res) => {
   try {
+    const isAdmin = await isAdminRequest(req);
     const query = {};
+    if (!isAdmin) {
+      query.status = 'Active';
+      const menuSettings = await MenuSettings.findOne().lean();
+      if (menuSettings) {
+        const showsOff = menuSettings.shows?.toUpperCase() === 'OFF';
+        const webSeriesOff = menuSettings.webSeries?.toUpperCase() === 'OFF';
+
+        if (showsOff && webSeriesOff) {
+          return res.json([]);
+        } else if (showsOff) {
+          query.contentType = { $in: ['Short Web Series', 'Short Web-Series', 'web-series'] };
+        } else if (webSeriesOff) {
+          query.contentType = { $nin: ['Short Web Series', 'Short Web-Series', 'web-series'] };
+        }
+      }
+    }
+
     if (req.query.contentType) {
       query.contentType = req.query.contentType;
     }
@@ -2772,6 +2965,21 @@ app.get('/api/shows/:id', async (req, res) => {
     const show = await Show.findById(req.params.id)
       .populate('actors')
       .populate('directors');
+    if (!show) return res.status(404).json({ message: 'Show not found' });
+
+    const isAdmin = await isAdminRequest(req);
+    if (!isAdmin) {
+      const menuSettings = await MenuSettings.findOne().lean();
+      if (menuSettings) {
+        const isShortWeb = show.contentType === 'Short Web Series' || show.contentType === 'Short Web-Series' || show.contentType === 'web-series';
+        const showsOff = menuSettings.shows?.toUpperCase() === 'OFF';
+        const webSeriesOff = menuSettings.webSeries?.toUpperCase() === 'OFF';
+        if ((isShortWeb && webSeriesOff) || (!isShortWeb && showsOff)) {
+          return res.status(403).json({ message: 'Content is disabled' });
+        }
+      }
+    }
+
     res.json(show);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -2858,6 +3066,13 @@ app.delete('/api/sports-categories/:id', async (req, res) => {
 // Sports Video Routes
 app.get('/api/sports-videos', async (req, res) => {
   try {
+    const isAdmin = await isAdminRequest(req);
+    if (!isAdmin) {
+      const menuSettings = await MenuSettings.findOne().lean();
+      if (menuSettings && menuSettings.sports?.toUpperCase() === 'OFF') {
+        return res.json([]);
+      }
+    }
     const videos = await SportsVideo.find().populate('category');
     res.json(videos);
   } catch (err) {
@@ -2867,6 +3082,13 @@ app.get('/api/sports-videos', async (req, res) => {
 
 app.get('/api/sports-videos/:id', async (req, res) => {
   try {
+    const isAdmin = await isAdminRequest(req);
+    if (!isAdmin) {
+      const menuSettings = await MenuSettings.findOne().lean();
+      if (menuSettings && menuSettings.sports?.toUpperCase() === 'OFF') {
+        return res.status(403).json({ message: 'Content is disabled' });
+      }
+    }
     const video = await SportsVideo.findById(req.params.id);
     if (!video) return res.status(404).json({ message: 'Video not found' });
     res.json(video);
@@ -3097,6 +3319,13 @@ app.delete('/api/tv-categories/:id', async (req, res) => {
 
 app.get('/api/tv-channels', async (req, res) => {
   try {
+    const isAdmin = await isAdminRequest(req);
+    if (!isAdmin) {
+      const menuSettings = await MenuSettings.findOne().lean();
+      if (menuSettings && menuSettings.liveTv?.toUpperCase() === 'OFF') {
+        return res.json([]);
+      }
+    }
     const channels = await TVChannel.find().populate('category').sort({ createdAt: -1 });
     res.json(channels);
   } catch (err) {
@@ -3106,6 +3335,13 @@ app.get('/api/tv-channels', async (req, res) => {
 
 app.get('/api/tv-channels/:id', async (req, res) => {
   try {
+    const isAdmin = await isAdminRequest(req);
+    if (!isAdmin) {
+      const menuSettings = await MenuSettings.findOne().lean();
+      if (menuSettings && menuSettings.liveTv?.toUpperCase() === 'OFF') {
+        return res.status(403).json({ message: 'Content is disabled' });
+      }
+    }
     const channel = await TVChannel.findById(req.params.id).populate('category');
     if (!channel) return res.status(404).json({ message: 'Channel not found' });
     res.json(channel);
@@ -3299,13 +3535,81 @@ app.delete('/api/sliders/:id', async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+// Global Search Endpoint — searches across all content types
+app.get('/api/search', async (req, res) => {
+  try {
+    const { q } = req.query;
+    if (!q || q.trim().length < 2) {
+      return res.json([]);
+    }
+    const regex = new RegExp(q.trim(), 'i');
+    const filter = { status: 'Active', $or: [{ title: regex }, { description: regex }] };
+
+    const [movies, shows, sports, newReleases, menuSettings] = await Promise.all([
+      Movie.find(filter).limit(10).lean(),
+      Show.find(filter).limit(10).lean(),
+      SportsVideo.find({ status: 'Active', $or: [{ title: regex }, { description: regex }] }).limit(5).lean(),
+      NewRelease.find(filter).limit(5).lean(),
+      MenuSettings.findOne().lean(),
+    ]);
+
+    let filteredMovies = movies;
+    let filteredShows = shows;
+    let filteredSports = sports;
+    let filteredNewReleases = newReleases;
+
+    if (menuSettings) {
+      const moviesOff = menuSettings.movies?.toUpperCase() === 'OFF';
+      const shortFilmsOff = menuSettings.shortFilms?.toUpperCase() === 'OFF';
+      const showsOff = menuSettings.shows?.toUpperCase() === 'OFF';
+      const webSeriesOff = menuSettings.webSeries?.toUpperCase() === 'OFF';
+      const sportsOff = menuSettings.sports?.toUpperCase() === 'OFF';
+
+      if (moviesOff && shortFilmsOff) {
+        filteredMovies = [];
+      } else if (moviesOff) {
+        filteredMovies = movies.filter(m => m.contentType === 'Short Film' || m.contentType === 'short-film');
+      } else if (shortFilmsOff) {
+        filteredMovies = movies.filter(m => m.contentType !== 'Short Film' && m.contentType !== 'short-film');
+      }
+
+      if (showsOff && webSeriesOff) {
+        filteredShows = [];
+      } else if (showsOff) {
+        filteredShows = shows.filter(s => s.contentType === 'Short Web Series' || s.contentType === 'Short Web-Series');
+      } else if (webSeriesOff) {
+        filteredShows = shows.filter(s => s.contentType !== 'Short Web Series' && s.contentType !== 'Short Web-Series');
+      }
+
+      if (sportsOff) {
+        filteredSports = [];
+      }
+
+      if (moviesOff) {
+        filteredNewReleases = [];
+      }
+    }
+
+    const results = [
+      ...filteredMovies.map(m => ({ ...m, contentType: 'movie' })),
+      ...filteredShows.map(s => ({ ...s, contentType: 'show' })),
+      ...filteredNewReleases.map(n => ({ ...n, contentType: 'new-release' })),
+      ...filteredSports.map(sp => ({ ...sp, contentType: 'sports' })),
+    ];
+
+    res.json(results);
+  } catch (err) {
+    console.error('Search error:', err);
+    res.status(500).json({ message: err.message });
+  }
+});
 
 // Aggregated Home Data Route for Performance
 app.get('/api/home-aggregated', async (req, res) => {
   try {
     const [
       sliders, movies, assets, experiences, shows, 
-      newReleases, sports, channels, sportsCategories, settings, homeSections
+      newReleases, sports, channels, sportsCategories, settings, homeSections, menuSettings
     ] = await Promise.all([
       Slider.find({ status: 'Active' }).sort({ createdAt: -1 }).lean().maxTimeMS(5000),
       Movie.find({ status: 'Active' }).sort({ createdAt: -1 }).limit(20).lean().maxTimeMS(5000),
@@ -3317,21 +3621,90 @@ app.get('/api/home-aggregated', async (req, res) => {
       TVChannel.find({ status: 'Active' }).sort({ createdAt: -1 }).limit(50).lean().maxTimeMS(5000),
       SportsCategory.find().lean().maxTimeMS(5000),
       GeneralSettings.findOne().lean().maxTimeMS(5000),
-      HomeSection.find({ status: 'Active' }).sort({ order: 1 }).lean().maxTimeMS(5000)
+      HomeSection.find({ status: 'Active' }).sort({ order: 1 }).lean().maxTimeMS(5000),
+      MenuSettings.findOne().lean().maxTimeMS(5000)
     ]);
 
+    let filteredSliders = sliders;
+    let filteredMovies = movies;
+    let filteredShows = shows;
+    let filteredNewReleases = newReleases;
+    let filteredSports = sports;
+    let filteredChannels = channels;
+
+    if (menuSettings) {
+      const moviesOff = menuSettings.movies?.toUpperCase() === 'OFF';
+      const shortFilmsOff = menuSettings.shortFilms?.toUpperCase() === 'OFF';
+      const showsOff = menuSettings.shows?.toUpperCase() === 'OFF';
+      const webSeriesOff = menuSettings.webSeries?.toUpperCase() === 'OFF';
+      const sportsOff = menuSettings.sports?.toUpperCase() === 'OFF';
+      const liveTvOff = menuSettings.liveTv?.toUpperCase() === 'OFF';
+
+      // Filter sliders
+      filteredSliders = sliders.filter(slide => {
+        const postType = slide.postType;
+        if (postType === 'Movies' && moviesOff) return false;
+        if (postType === 'TV Shows' && showsOff) return false;
+        if (postType === 'Sports' && sportsOff) return false;
+        if (postType === 'Live TV' && liveTvOff) return false;
+
+        const contentType = slide.contentType;
+        if (contentType === 'Movie' && moviesOff) return false;
+        if (contentType === 'Short Film' && shortFilmsOff) return false;
+        if (contentType === 'TV Show' && showsOff) return false;
+        if (contentType === 'Short Web Series' && webSeriesOff) return false;
+        if (contentType === 'Sports' && sportsOff) return false;
+        if (contentType === 'Live TV' && liveTvOff) return false;
+        return true;
+      });
+
+      // Filter movies
+      if (moviesOff && shortFilmsOff) {
+        filteredMovies = [];
+      } else if (moviesOff) {
+        filteredMovies = movies.filter(m => m.contentType === 'Short Film' || m.contentType === 'short-film');
+      } else if (shortFilmsOff) {
+        filteredMovies = movies.filter(m => m.contentType !== 'Short Film' && m.contentType !== 'short-film');
+      }
+
+      // Filter shows
+      if (showsOff && webSeriesOff) {
+        filteredShows = [];
+      } else if (showsOff) {
+        filteredShows = shows.filter(s => s.contentType === 'Short Web Series' || s.contentType === 'Short Web-Series' || s.contentType === 'web-series');
+      } else if (webSeriesOff) {
+        filteredShows = shows.filter(s => s.contentType !== 'Short Web Series' && s.contentType !== 'Short Web-Series' && s.contentType !== 'web-series');
+      }
+
+      // Filter newReleases
+      if (moviesOff) {
+        filteredNewReleases = [];
+      }
+
+      // Filter sports
+      if (sportsOff) {
+        filteredSports = [];
+      }
+
+      // Filter channels
+      if (liveTvOff) {
+        filteredChannels = [];
+      }
+    }
+
     res.json({
-      sliders,
-      movies,
+      sliders: filteredSliders,
+      movies: filteredMovies,
       assets,
       experiences,
-      shows,
-      newReleases,
-      sports,
-      channels,
+      shows: filteredShows,
+      newReleases: filteredNewReleases,
+      sports: filteredSports,
+      channels: filteredChannels,
       sportsCategories,
       settings,
-      homeSections
+      homeSections,
+      menuSettings
     });
   } catch (err) {
     console.error('Aggregated Home Error:', err);
@@ -3549,7 +3922,7 @@ app.put('/api/users/:id', upload.single('profileImage'), async (req, res) => {
     const updatedUser = await User.findByIdAndUpdate(
       req.params.id, 
       { $set: updateData }, 
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     );
 
     if (!updatedUser) {
@@ -3616,7 +3989,7 @@ app.post('/api/contents/:type/:id/view', async (req, res) => {
     const updated = await model.findByIdAndUpdate(
       id,
       { $inc: { views: 1 } },
-      { new: true }
+      { returnDocument: 'after' }
     );
     if (!updated) {
       return res.status(404).json({ message: 'Content not found' });

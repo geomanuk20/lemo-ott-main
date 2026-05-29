@@ -1,0 +1,270 @@
+import React, { useState, useEffect } from 'react';
+import {
+  StyleSheet,
+  Text,
+  View,
+  FlatList,
+  Image,
+  TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { ArrowLeft, Trophy, Play } from 'lucide-react-native';
+import client from '../api/client';
+import { formatImageUrl } from '../config/api';
+
+export default function SportsScreen({ navigation }) {
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [videos, setVideos] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState('All');
+
+  const fetchData = async () => {
+    try {
+      const [videosRes, categoriesRes] = await Promise.all([
+        client.get('/sports-videos'),
+        client.get('/sports-categories')
+      ]);
+      setVideos(videosRes.data || []);
+      setCategories(categoriesRes.data || []);
+    } catch (error) {
+      console.error('Error fetching Sports screen data:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchData();
+  };
+
+  const filteredVideos = videos.filter(video => {
+    if (selectedCategory === 'All') return true;
+    const videoCatName = typeof video.category === 'object' ? video.category?.name : video.category;
+    return videoCatName === selectedCategory;
+  });
+
+  const renderVideoItem = ({ item }) => {
+    const imageUrl = formatImageUrl(item, 'landscape');
+    return (
+      <TouchableOpacity
+        style={styles.videoCard}
+        onPress={() => navigation.navigate('Details', { id: item._id, type: 'sports' })}
+      >
+        <View style={styles.thumbnailWrapper}>
+          <Image source={{ uri: imageUrl }} style={styles.videoThumbnail} resizeMode="cover" />
+          <View style={styles.playButtonCircle}>
+            <Play color="#000000" size={20} fill="#000000" style={{ marginLeft: 2 }} />
+          </View>
+          {item.duration ? (
+            <View style={styles.durationBadge}>
+              <Text style={styles.durationText}>{item.duration}</Text>
+            </View>
+          ) : null}
+        </View>
+        <View style={styles.videoInfo}>
+          <Text style={styles.videoTitle} numberOfLines={2}>{item.title}</Text>
+          <Text style={styles.videoCategory}>
+            {typeof item.category === 'object' ? item.category?.name : 'Highlights'}
+          </Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#b3d332" />
+      </View>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <ArrowLeft color="#ffffff" size={24} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Sports Highlights</Text>
+      </View>
+
+      {/* Category Tabs */}
+      <View style={styles.categoriesWrapper}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesScroll}>
+          <TouchableOpacity
+            style={[styles.categoryBtn, selectedCategory === 'All' ? styles.activeCategoryBtn : null]}
+            onPress={() => setSelectedCategory('All')}
+          >
+            <Text style={[styles.categoryText, selectedCategory === 'All' ? styles.activeCategoryText : null]}>All Sports</Text>
+          </TouchableOpacity>
+          {categories.map((cat) => (
+            <TouchableOpacity
+              key={cat._id}
+              style={[styles.categoryBtn, selectedCategory === cat.name ? styles.activeCategoryBtn : null]}
+              onPress={() => setSelectedCategory(cat.name)}
+            >
+              <Text style={[styles.categoryText, selectedCategory === cat.name ? styles.activeCategoryText : null]}>{cat.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
+      {/* Videos list */}
+      <FlatList
+        data={filteredVideos}
+        renderItem={renderVideoItem}
+        keyExtractor={(item) => item._id}
+        contentContainerStyle={styles.listContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#b3d332" />}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Trophy color="#444" size={48} style={{ marginBottom: 12 }} />
+            <Text style={styles.emptyText}>No videos available for this sport.</Text>
+          </View>
+        }
+      />
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#000000',
+  },
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: '#000000',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  backBtn: {
+    marginRight: 16,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#ffffff',
+  },
+  categoriesWrapper: {
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1a1a1a',
+  },
+  categoriesScroll: {
+    paddingHorizontal: 12,
+  },
+  categoryBtn: {
+    backgroundColor: '#1c1c1e',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#2a2c31',
+  },
+  activeCategoryBtn: {
+    backgroundColor: '#b3d332',
+    borderColor: '#b3d332',
+  },
+  categoryText: {
+    color: '#8e8e93',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  activeCategoryText: {
+    color: '#000000',
+  },
+  listContent: {
+    padding: 16,
+  },
+  videoCard: {
+    backgroundColor: '#121212',
+    borderColor: '#1f1f1f',
+    borderWidth: 1,
+    borderRadius: 12,
+    marginBottom: 20,
+    overflow: 'hidden',
+  },
+  thumbnailWrapper: {
+    position: 'relative',
+    width: '100%',
+    height: 180,
+  },
+  videoThumbnail: {
+    width: '100%',
+    height: '100%',
+  },
+  playButtonCircle: {
+    position: 'absolute',
+    alignSelf: 'center',
+    top: '40%',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#b3d332',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#b3d332',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  durationBadge: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  durationText: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  videoInfo: {
+    padding: 14,
+  },
+  videoTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#ffffff',
+    lineHeight: 20,
+    marginBottom: 6,
+  },
+  videoCategory: {
+    fontSize: 12,
+    color: '#b3d332',
+    fontWeight: '700',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 80,
+  },
+  emptyText: {
+    color: '#8e8e93',
+    fontSize: 14,
+    textAlign: 'center',
+  },
+});

@@ -1,0 +1,11 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "0bb266c4-af94-4d33-862a-465e9f35a82f"
+      }
+    },
+    "owner": "geomanu",
+    "slug": "lemo-ott-mobile"
+  }
+}

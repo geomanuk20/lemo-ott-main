@@ -56,13 +56,13 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/video_ott
   await Page.findOneAndUpdate(
     { slug: 'help-center' },
     { title: 'Help Center', slug: 'help-center', content: helpCenterContent, status: 'Active' },
-    { upsert: true, new: true }
+    { upsert: true, returnDocument: 'after' }
   );
 
   await Page.findOneAndUpdate(
     { slug: 'supported-devices' },
     { title: 'Supported Devices', slug: 'supported-devices', content: devicesContent, status: 'Active' },
-    { upsert: true, new: true }
+    { upsert: true, returnDocument: 'after' }
   );
 
   console.log('Successfully seeded Help Center and Supported Devices pages.');

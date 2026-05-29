@@ -4,6 +4,19 @@ import App from './App.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import './index.css';
 
+// Global fetch interceptor to automatically attach Authorization headers from localStorage for all API requests
+const originalFetch = window.fetch;
+window.fetch = async function (url, options = {}) {
+  const token = localStorage.getItem('token');
+  if (token && typeof url === 'string' && (url.startsWith('/api/') || url.startsWith('api/'))) {
+    options.headers = {
+      ...options.headers,
+      'Authorization': `Bearer ${token}`
+    };
+  }
+  return originalFetch.apply(this, [url, options]);
+};
+
 // Global window.alert override for Lemo OTT Custom Glassmorphic Toast Notifications
 window.alert = (message) => {
   let container = document.getElementById('lemo-global-toast-container');
