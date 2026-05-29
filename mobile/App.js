@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { AuthProvider } from './src/context/AuthContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import client from './src/api/client';
+import ErrorBoundary from './src/components/ErrorBoundary';
 
-export default function App() {
+function AppContent() {
   const [maintenance, setMaintenance] = useState(false);
   const [maintenanceData, setMaintenanceData] = useState(null);
 
@@ -52,6 +53,14 @@ export default function App() {
   );
 }
 
+export default function App() {
+  return (
+    <ErrorBoundary>
+      <AppContent />
+    </ErrorBoundary>
+  );
+}
+
 const styles = StyleSheet.create({
   loadingContainer: {
     flex: 1,
@@ -84,3 +93,4 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
 });
+
