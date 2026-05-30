@@ -19,6 +19,7 @@ import { ArrowLeft, Play, Pause, Volume2, VolumeX, MoreHorizontal } from 'lucide
 import Svg, { Path, Text as SvgText } from 'react-native-svg';
 import client from '../api/client';
 import { formatImageUrl } from '../config/api';
+import CustomAlert from '../components/CustomAlert';
 
 /* ─── Custom fullscreen-brackets icon ─── */
 const FullscreenIcon = () => (
@@ -257,6 +258,22 @@ export default function PlayerScreen({ route, navigation }) {
   const [barWidth, setBarWidth]         = useState(1);   // measured progress-bar width
   const [logoUrl, setLogoUrl]           = useState(null);
 
+  const [alertConfig, setAlertConfig] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    buttons: []
+  });
+
+  const showAlert = (title, message, buttons = []) => {
+    setAlertConfig({
+      visible: true,
+      title,
+      message,
+      buttons
+    });
+  };
+
   useEffect(() => {
     const fetchLogo = async () => {
       try {
@@ -465,7 +482,7 @@ export default function PlayerScreen({ route, navigation }) {
 
     // Check premium access
     if (isPremiumQuality(qualityName) && !isPremiumUser()) {
-      Alert.alert(
+      showAlert(
         'Premium Feature',
         '1080p, 1440p, and 2160p (4K) qualities are only available to Premium subscribers. Upgrade your plan to access high-definition streaming!',
         [
@@ -691,7 +708,7 @@ export default function PlayerScreen({ route, navigation }) {
               console.error('[PlayerScreen] Video error:', e);
               setLoading(false);
               shouldSeekRef.current = false;
-              Alert.alert(
+              showAlert(
                 'Playback Error',
                 'Failed to load the video in the selected quality. Please check your internet connection.'
               );
@@ -884,6 +901,14 @@ export default function PlayerScreen({ route, navigation }) {
           <ActivityIndicator size="large" color="#b3d332" />
         </View>
       )}
+
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        buttons={alertConfig.buttons}
+        onClose={() => setAlertConfig(prev => ({ ...prev, visible: false }))}
+      />
     </View>
   );
 }

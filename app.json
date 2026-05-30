@@ -6,6 +6,12 @@
       }
     },
     "owner": "geomanu",
-    "slug": "lemo-ott-mobile"
+    "slug": "lemo-ott-mobile",
+    "ios": {
+      "bundleIdentifier": "com.geomanu.lemoottmobile",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    }
   }
 }

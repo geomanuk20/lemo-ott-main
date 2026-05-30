@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Play, Bookmark, BookmarkCheck, ArrowLeft, Clock, Calendar, Globe, Crown } from 'lucide-react-native';
+import CustomAlert from '../components/CustomAlert';
 import { AuthContext } from '../context/AuthContext';
 import client from '../api/client';
 import { formatImageUrl } from '../config/api';
@@ -88,6 +89,22 @@ export default function DetailsScreen({ route, navigation }) {
   const [watchlistLoading, setWatchlistLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('Failed to load content details.');
 
+  const [alertConfig, setAlertConfig] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    buttons: []
+  });
+
+  const showAlert = (title, message, buttons = []) => {
+    setAlertConfig({
+      visible: true,
+      title,
+      message,
+      buttons
+    });
+  };
+
   useEffect(() => {
     const fetchDetails = async () => {
       try {
@@ -162,7 +179,7 @@ export default function DetailsScreen({ route, navigation }) {
     // Check premium access
     if (detail.access === 'Paid') {
       if (!user) {
-        Alert.alert(
+        showAlert(
           'Subscription Required',
           'Please sign in to access premium content.',
           [
@@ -173,7 +190,7 @@ export default function DetailsScreen({ route, navigation }) {
         return;
       }
       if (!isPremiumUser()) {
-        Alert.alert(
+        showAlert(
           'Premium Content',
           'This content is only available to Premium subscribers. Upgrade your plan to watch now!',
           [
@@ -191,7 +208,7 @@ export default function DetailsScreen({ route, navigation }) {
     console.log('[DetailsScreen] Playing Main Video:', { title: detail.title || detail.name, videoUrl, videoType });
 
     if (!videoUrl) {
-      Alert.alert(
+      showAlert(
         'Video Unavailable',
         'No playable video URL is configured for this video.'
       );
@@ -218,7 +235,7 @@ export default function DetailsScreen({ route, navigation }) {
     // Check premium access (if either the show itself is Paid or the specific episode is Paid)
     if (detail?.access === 'Paid' || episode.access === 'Paid') {
       if (!user) {
-        Alert.alert(
+        showAlert(
           'Subscription Required',
           'Please sign in to access premium content.',
           [
@@ -229,7 +246,7 @@ export default function DetailsScreen({ route, navigation }) {
         return;
       }
       if (!isPremiumUser()) {
-        Alert.alert(
+        showAlert(
           'Premium Content',
           'This episode is only available to Premium subscribers. Upgrade your plan to watch now!',
           [
@@ -257,7 +274,7 @@ export default function DetailsScreen({ route, navigation }) {
     const videoType = episode.videoType || episode.streamType || 'hls';
 
     if (!videoUrl) {
-      Alert.alert(
+      showAlert(
         'Video Unavailable',
         'No playable video URL is configured for this episode.'
       );
@@ -521,6 +538,13 @@ export default function DetailsScreen({ route, navigation }) {
           )}
         </View>
       </ScrollView>
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        buttons={alertConfig.buttons}
+        onClose={() => setAlertConfig(prev => ({ ...prev, visible: false }))}
+      />
     </View>
   );
 }
