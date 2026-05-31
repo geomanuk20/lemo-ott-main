@@ -250,6 +250,15 @@ export default function PlayerScreen({ route, navigation }) {
   const videoRef = useRef(null);
   const hideTimer = useRef(null);
 
+  const [loading, setLoading]           = useState(true);
+  const [resolvedUrl, setResolvedUrl]   = useState(null);
+  const [status, setStatus]             = useState({});
+  const [showControls, setShowControls] = useState(true);
+  const [speed, setSpeed]               = useState(1.0);
+  const [muted, setMuted]               = useState(false);
+  const [barWidth, setBarWidth]         = useState(1);   // measured progress-bar width
+  const [logoUrl, setLogoUrl]           = useState(null);
+
   // Pulse wave animation values for when player is paused
   const ring1Scale = useRef(new Animated.Value(1)).current;
   const ring1Opacity = useRef(new Animated.Value(0)).current;
@@ -326,15 +335,6 @@ export default function PlayerScreen({ route, navigation }) {
       ring2Opacity.setValue(0);
     }
   }, [status.isPlaying]);
-
-  const [loading, setLoading]           = useState(true);
-  const [resolvedUrl, setResolvedUrl]   = useState(null);
-  const [status, setStatus]             = useState({});
-  const [showControls, setShowControls] = useState(true);
-  const [speed, setSpeed]               = useState(1.0);
-  const [muted, setMuted]               = useState(false);
-  const [barWidth, setBarWidth]         = useState(1);   // measured progress-bar width
-  const [logoUrl, setLogoUrl]           = useState(null);
 
   const [alertConfig, setAlertConfig] = useState({
     visible: false,
