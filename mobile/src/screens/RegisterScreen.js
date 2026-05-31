@@ -61,7 +61,7 @@ export default function RegisterScreen({ navigation }) {
     setLoading(true);
     setErrorMsg('');
     try {
-      const email = `${provider.toLowerCase()}_demo@lemoott.com`;
+      const email = `${provider.toLowerCase()}_demo@gmail.com`;
       const name = `${provider} Demo User`;
       
       const result = await socialLoginMobile(email, name, provider);
@@ -89,10 +89,24 @@ export default function RegisterScreen({ navigation }) {
       return;
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email.trim())) {
-      setErrorMsg('Please enter a valid email address (e.g. user@example.com).');
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!emailRegex.test(trimmedEmail)) {
+      setErrorMsg('Please enter a valid email address.');
       return;
     }
+
+    const isAdminDomain = trimmedEmail.endsWith('@video.com') || trimmedEmail === 'admin@video.com';
+    const isGmailDomain = trimmedEmail.endsWith('@gmail.com');
+
+    if (isAdminDomain) {
+      setErrorMsg('Registration is not permitted for admin email accounts.');
+      return;
+    }
+    if (!isGmailDomain) {
+      setErrorMsg('Only @gmail.com email addresses are permitted for registration.');
+      return;
+    }
+
     if (password.length < 6) {
       setErrorMsg('Password must be at least 6 characters long.');
       return;
@@ -101,7 +115,7 @@ export default function RegisterScreen({ navigation }) {
     setErrorMsg('');
     setLoading(true);
 
-    const result = await register(name.trim(), email.trim(), password);
+    const result = await register(name.trim(), trimmedEmail, password);
 
     setLoading(false);
     if (!result.success) {

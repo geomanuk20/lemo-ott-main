@@ -9,7 +9,8 @@ import {
   StatusBar,
   Platform,
   Alert,
-  Image
+  Image,
+  Animated
 } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -248,6 +249,83 @@ export default function PlayerScreen({ route, navigation }) {
 
   const videoRef = useRef(null);
   const hideTimer = useRef(null);
+
+  // Pulse wave animation values for when player is paused
+  const ring1Scale = useRef(new Animated.Value(1)).current;
+  const ring1Opacity = useRef(new Animated.Value(0)).current;
+  const ring2Scale = useRef(new Animated.Value(1)).current;
+  const ring2Opacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    let isAnimActive = true;
+    const isPaused = !status.isPlaying;
+
+    if (isPaused) {
+      ring1Scale.setValue(1);
+      ring1Opacity.setValue(0.6);
+      ring2Scale.setValue(1);
+      ring2Opacity.setValue(0.6);
+
+      const animateRing1 = () => {
+        if (!isAnimActive) return;
+        ring1Scale.setValue(1);
+        ring1Opacity.setValue(0.6);
+        Animated.parallel([
+          Animated.timing(ring1Scale, {
+            toValue: 1.75,
+            duration: 2000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(ring1Opacity, {
+            toValue: 0,
+            duration: 2000,
+            useNativeDriver: true,
+          })
+        ]).start(() => {
+          if (isAnimActive) animateRing1();
+        });
+      };
+
+      const animateRing2 = () => {
+        if (!isAnimActive) return;
+        ring2Scale.setValue(1);
+        ring2Opacity.setValue(0.6);
+        Animated.parallel([
+          Animated.timing(ring2Scale, {
+            toValue: 1.75,
+            duration: 2000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(ring2Opacity, {
+            toValue: 0,
+            duration: 2000,
+            useNativeDriver: true,
+          })
+        ]).start(() => {
+          if (isAnimActive) animateRing2();
+        });
+      };
+
+      animateRing1();
+      const delayTimeout = setTimeout(() => {
+        animateRing2();
+      }, 1000);
+
+      return () => {
+        isAnimActive = false;
+        clearTimeout(delayTimeout);
+        ring1Scale.setValue(1);
+        ring1Opacity.setValue(0);
+        ring2Scale.setValue(1);
+        ring2Opacity.setValue(0);
+      };
+    } else {
+      ring1Scale.setValue(1);
+      ring1Opacity.setValue(0);
+      ring2Scale.setValue(1);
+      ring2Opacity.setValue(0);
+    }
+  }, [status.isPlaying]);
 
   const [loading, setLoading]           = useState(true);
   const [resolvedUrl, setResolvedUrl]   = useState(null);
@@ -758,9 +836,15 @@ export default function PlayerScreen({ route, navigation }) {
             </TouchableOpacity>
 
             <TouchableOpacity onPress={togglePlay} style={[styles.centerCircle, styles.centerPlayCircle]} activeOpacity={0.7}>
+              {!status.isPlaying && (
+                <>
+                  <Animated.View style={[styles.pulseRing, { transform: [{ scale: ring1Scale }], opacity: ring1Opacity }]} pointerEvents="none" />
+                  <Animated.View style={[styles.pulseRing, { transform: [{ scale: ring2Scale }], opacity: ring2Opacity }]} pointerEvents="none" />
+                </>
+              )}
               {status.isPlaying
-                ? <Pause color="#fff" size={32} fill="#fff" />
-                : <Play  color="#fff" size={32} fill="#fff" style={{ marginLeft: 4 }} />}
+                ? <Play  color="#000" size={32} fill="#000" style={{ marginLeft: 4 }} />
+                : <Pause color="#000" size={32} fill="#000" />}
             </TouchableOpacity>
 
             <TouchableOpacity onPress={handleRightPress} style={styles.centerCircle} activeOpacity={0.7}>
@@ -780,6 +864,7 @@ export default function PlayerScreen({ route, navigation }) {
             >
               <View style={styles.seekTrack}>
                 <View style={[styles.seekFill, { width: `${progress}%` }]} />
+                <View style={[styles.seekThumb, { left: `${progress}%` }]} />
               </View>
             </TouchableOpacity>
 
@@ -789,8 +874,8 @@ export default function PlayerScreen({ route, navigation }) {
               <View style={styles.ctrlLeft}>
                 <TouchableOpacity onPress={togglePlay} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                   {status.isPlaying
-                    ? <Pause color="#fff" size={20} fill="#fff" />
-                    : <Play  color="#fff" size={20} fill="#fff" />}
+                    ? <Pause color="#b3d332" size={20} fill="#b3d332" />
+                    : <Play  color="#b3d332" size={20} fill="#b3d332" />}
                 </TouchableOpacity>
 
                 <TouchableOpacity onPress={() => seek(-10000)} style={styles.skipBtn}>
@@ -800,6 +885,7 @@ export default function PlayerScreen({ route, navigation }) {
                 <TouchableOpacity onPress={() => seek(10000)} style={styles.skipBtn}>
                   <Text style={styles.skipTxt}>10▸</Text>
                 </TouchableOpacity>
+
 
                 <Text style={styles.timeTxt}>
                   {fmt(status.positionMillis)} / {fmt(status.durationMillis)}
@@ -972,15 +1058,30 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   seekTrack: {
-    height: 3,
+    height: 4,
     width: '100%',
-    backgroundColor: 'rgba(255,255,255,0.25)',
+    backgroundColor: 'rgba(255,255,255,0.22)',
     borderRadius: 2,
+    position: 'relative',
   },
   seekFill: {
     height: '100%',
-    backgroundColor: '#ff1493',
+    backgroundColor: '#b3d332',
     borderRadius: 2,
+  },
+  seekThumb: {
+    position: 'absolute',
+    top: -3,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#b3d332',
+    transform: [{ translateX: -5 }],
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.5,
+    shadowRadius: 1,
+    elevation: 2,
   },
 
   /* controls row */
@@ -1081,18 +1182,31 @@ const styles = StyleSheet.create({
     zIndex: 15,
   },
   centerCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'transparent',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  centerPlayCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(179, 211, 50, 0.95)',
+    borderWidth: 0,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  centerPlayCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: 'transparent',
+  pulseRing: {
+    position: 'absolute',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#b3d332',
+    zIndex: -1,
   },
   centerSkipIcon: {
     color: '#fff',
@@ -1114,17 +1228,17 @@ const styles = StyleSheet.create({
   },
   qualityMenuContainer: {
     position: 'absolute',
-    width: 140,
-    backgroundColor: '#ffffff',
-    borderRadius: 6,
-    paddingVertical: 6,
+    width: 150,
+    backgroundColor: 'rgba(18, 18, 18, 0.96)',
+    borderRadius: 10,
+    paddingVertical: 8,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: 'rgba(255, 255, 255, 0.15)',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 5,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 10,
     zIndex: 100,
   },
   menuItem: {
@@ -1139,31 +1253,31 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   checkIcon: {
-    color: '#00c853',
+    color: '#b3d332',
     fontSize: 13,
     fontWeight: 'bold',
     width: 18,
   },
   menuItemText: {
-    color: '#333333',
+    color: 'rgba(255, 255, 255, 0.7)',
     fontSize: 13,
     fontWeight: '500',
   },
   menuItemActiveText: {
-    color: '#000000',
+    color: '#b3d332',
     fontWeight: '700',
   },
   proBadge: {
-    backgroundColor: '#ff9500',
+    backgroundColor: '#b3d332',
     paddingHorizontal: 5,
     paddingVertical: 1.5,
     borderRadius: 3,
   },
   proBadgeActive: {
-    backgroundColor: '#000000',
+    backgroundColor: '#b3d332',
   },
   proBadgeText: {
-    color: '#fff',
+    color: '#000000',
     fontSize: 9,
     fontWeight: '800',
   },

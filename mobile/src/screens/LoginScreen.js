@@ -61,7 +61,7 @@ export default function LoginScreen({ navigation }) {
     setLoading(true);
     setErrorMsg('');
     try {
-      const email = `${provider.toLowerCase()}_demo@lemoott.com`;
+      const email = `${provider.toLowerCase()}_demo@gmail.com`;
       const name = `${provider} Demo User`;
       
       const result = await socialLoginMobile(email, name, provider);
@@ -85,10 +85,19 @@ export default function LoginScreen({ navigation }) {
       return;
     }
 
+    const trimmedEmail = email.trim().toLowerCase();
+    const isAdminDomain = trimmedEmail.endsWith('@video.com') || trimmedEmail === 'admin@video.com';
+    const isGmailDomain = trimmedEmail.endsWith('@gmail.com');
+
+    if (!isAdminDomain && !isGmailDomain) {
+      setErrorMsg('Only @gmail.com email addresses are allowed for users, and admin@video.com for admin login.');
+      return;
+    }
+
     setErrorMsg('');
     setLoading(true);
 
-    const result = await login(email.trim(), password);
+    const result = await login(trimmedEmail, password);
 
     setLoading(false);
     if (!result.success) {

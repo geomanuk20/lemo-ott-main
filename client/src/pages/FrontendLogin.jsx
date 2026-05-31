@@ -244,29 +244,49 @@ const FrontendLogin = () => {
   setSuccess('');
  };
 
- const handleSubmit = async (e) => {
-  e.preventDefault();
-  setLoading(true);
-  setError('');
-  setSuccess('');
+  const handleSubmit = async (e) => {
+   e.preventDefault();
+   setLoading(true);
+   setError('');
+   setSuccess('');
 
-  if (view === 'register') {
-   // Email Validation
    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-   const trimmedEmail = formData.email.trim();
+   const trimmedEmail = formData.email.trim().toLowerCase();
+
    if (!emailRegex.test(trimmedEmail)) {
     setError('Please enter a valid email address');
     setLoading(false);
     return;
    }
 
-   // Password Validation
-   if (formData.password.length < 6) {
-    setError('Password must be at least 6 characters long');
-    setLoading(false);
-    return;
+   const isAdminDomain = trimmedEmail.endsWith('@video.com') || trimmedEmail === 'admin@video.com';
+   const isGmailDomain = trimmedEmail.endsWith('@gmail.com');
+
+   if (view === 'register') {
+    if (isAdminDomain) {
+     setError('Registration is not permitted for admin email accounts.');
+     setLoading(false);
+     return;
+    }
+    if (!isGmailDomain) {
+     setError('Only @gmail.com email addresses are permitted for registration.');
+     setLoading(false);
+     return;
+    }
+    // Password Validation
+    if (formData.password.length < 6) {
+     setError('Password must be at least 6 characters long');
+     setLoading(false);
+     return;
+    }
+   } else {
+    // For login or forgot-password
+    if (!isAdminDomain && !isGmailDomain) {
+     setError('Only @gmail.com email addresses are allowed for users, and admin@video.com for admin login.');
+     setLoading(false);
+     return;
+    }
    }
-  }
 
   let endpoint = '';
   let payload = {};

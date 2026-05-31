@@ -212,9 +212,85 @@ const menuSettingsSchema = new mongoose.Schema({
 });
 const MenuSettings = mongoose.model('MenuSettings', menuSettingsSchema);
 // jwt already declared at top
-const { upload } = require('./cloudinaryConfig');
+const { cloudinary, upload } = require('./cloudinaryConfig');
+const { uploadFileToS3, uploadInputToS3, getPresignedUrlIfS3, uploadHlsToS3, getS3FileStream } = require('./s3Config');
+const { transcodeToHls } = require('./hlsTranscoder');
 const { uploadToMux, getPlaybackPolicyCached, signPlaybackId } = require('./muxService');
+const { createMediaConvertHlsJob } = require('./mediaConvert');
+const { signCloudFrontUrl, getCloudFrontUrl } = require('./cloudFrontSigner');
+
+
+const getProxiedHlsUrlIfS3 = (url, req) => {
+  if (!url || typeof url !== 'string' || !url.includes('.m3u8')) return url;
+
+  const bucketName = process.env.AWS_BUCKET_NAME;
+  if (!bucketName) return url;
+
+  const match = url.match(/\/videos\/(hls_\d+\/index\.m3u8)/);
+  if (!match) return url;
+
+  const serverUrl = getServerUrl(req);
+  
+  // Extract token from request headers or query to secure the stream automatically
+  let tokenParam = '';
+  const authHeader = req?.headers?.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.split(' ')[1];
+    tokenParam = `?token=${token}`;
+  } else if (req?.query?.token) {
+    tokenParam = `?token=${req.query.token}`;
+  }
+
+  return `${serverUrl}/api/videos/${match[1]}${tokenParam}`;
+};
+
+const signVideoDocument = async (doc, req) => {
+  if (!doc) return doc;
+  const obj = doc.toObject ? doc.toObject() : doc;
+  const fields = ['videoFile', 'videoFile480', 'videoFile720', 'videoFile1080', 'trailerUrl', 'downloadUrl'];
+  for (const field of fields) {
+    if (obj[field]) {
+      if (process.env.AWS_CLOUDFRONT_DOMAIN && process.env.AWS_CLOUDFRONT_KEY_PAIR_ID && process.env.AWS_CLOUDFRONT_PRIVATE_KEY) {
+        obj[field] = signCloudFrontUrl(obj[field]);
+      } else {
+        if (obj[field].includes('.m3u8')) {
+          obj[field] = getProxiedHlsUrlIfS3(obj[field], req);
+        } else {
+          obj[field] = await getPresignedUrlIfS3(obj[field]);
+        }
+      }
+    }
+  }
+  return obj;
+};
+
+const signVideoDocuments = async (docs, req) => {
+  if (!docs) return docs;
+  if (Array.isArray(docs)) {
+    return Promise.all(docs.map(doc => signVideoDocument(doc, req)));
+  }
+  return signVideoDocument(docs, req);
+};
+
 const multer = require('multer');
+const fs = require('fs');
+
+// Ensure tmp upload directory exists
+const tmpDir = path.join(__dirname, 'uploads', 'tmp');
+if (!fs.existsSync(tmpDir)) {
+  fs.mkdirSync(tmpDir, { recursive: true });
+}
+
+// Multer Disk Storage for temporary file parsing
+const diskStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, tmpDir);
+  },
+  filename: (req, file, cb) => {
+    cb(null, `${Date.now()}_${file.originalname}`);
+  }
+});
+const localUpload = multer({ storage: diskStorage });
 
 // Middleware
 app.use(cors());
@@ -310,37 +386,68 @@ app.get('/api/youtube/live-m3u8', async (req, res) => {
   }
 });
 
-// Upload Route - wraps multer to catch Cloudinary/middleware errors
-app.post('/api/upload', (req, res) => {
-  upload.single('file')(req, res, async (err) => {
-    if (err) {
-      console.error('Upload middleware error:', err);
-      return res.status(500).json({ message: err.message || 'File upload failed' });
-    }
-    if (!req.file) {
-      return res.status(400).json({ message: 'No file uploaded' });
-    }
+// Upload Route - handles local disk staging, then S3 (videos) or Cloudinary (images) upload
+app.post('/api/upload', localUpload.single('file'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ message: 'No file uploaded' });
+  }
 
-    let fileUrl = req.file.path;
-    const isVideo = req.file.mimetype.startsWith('video/') || req.file.originalname.match(/\.(mp4|mkv|webm|avi|mov)$/i);
+  const filePath = req.file.path;
+  const originalName = req.file.originalname || '';
+  const mimeType = req.file.mimetype || '';
+  const isVideo = mimeType.startsWith('video/') || !!originalName.match(/\.(mp4|mkv|webm|avi|mov)$/i);
 
-    if (isVideo && process.env.MUX_TOKEN_ID && process.env.MUX_TOKEN_SECRET) {
-      try {
-        console.log(`Video detected: ${req.file.originalname}. Ingesting to Mux...`);
-        const muxUrl = await uploadToMux(fileUrl);
-        if (muxUrl) {
-          console.log(`Mux playback URL created: ${muxUrl}`);
-          fileUrl = muxUrl;
-        }
-      } catch (muxErr) {
-        console.error('Mux ingestion failed, falling back to Cloudinary URL:', muxErr.message);
+  try {
+    let fileUrl = '';
+
+    if (isVideo) {
+      if (!process.env.AWS_MEDIACONVERT_ENDPOINT || !process.env.AWS_MEDIACONVERT_ROLE_ARN) {
+        throw new Error('AWS MediaConvert settings (endpoint and/or role ARN) are not configured in environment variables.');
       }
+
+      console.log(`[UPLOAD] Video detected: ${originalName}. Uploading raw file to S3...`);
+      // 1. Upload raw video to S3 inputs folder
+      const inputS3Url = await uploadInputToS3(filePath, originalName, mimeType);
+
+      // 2. Generate unique HLS output folder and name
+      const timestamp = Date.now();
+      const bucketName = process.env.AWS_BUCKET_NAME;
+      const region = process.env.AWS_REGION || 'ap-south-1';
+      
+      const outputS3Folder = `s3://${bucketName}/videos/hls_${timestamp}/index`;
+
+      // 3. Trigger AWS MediaConvert job
+      await createMediaConvertHlsJob(inputS3Url, outputS3Folder);
+
+      // 4. Construct S3 playlist URL and convert to CloudFront CDN URL
+      const s3PlaylistUrl = `https://${bucketName}.s3.${region}.amazonaws.com/videos/hls_${timestamp}/index.m3u8`;
+      fileUrl = getCloudFrontUrl(s3PlaylistUrl);
+
+      console.log(`[UPLOAD] MediaConvert job triggered successfully. Permanent playback URL: ${fileUrl}`);
     } else {
-      console.log('File uploaded to Cloudinary:', fileUrl);
+      console.log(`[UPLOAD] Image/Asset detected: ${originalName}. Uploading to Cloudinary...`);
+      // Upload image to Cloudinary
+      const uploadResult = await cloudinary.uploader.upload(filePath, {
+        folder: 'video_ott_uploads',
+        resource_type: 'image',
+      });
+      fileUrl = uploadResult.secure_url;
+    }
+
+    // Clean up temporary local file
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
     }
 
     res.json({ url: fileUrl });
-  });
+  } catch (err) {
+    console.error('[UPLOAD ERROR]:', err);
+    // Clean up temporary local file on error
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+    res.status(500).json({ message: err.message || 'File upload failed' });
+  }
 });
 
 // Assets API
@@ -492,10 +599,24 @@ app.post('/api/login', async (req, res) => {
   try {
     const { email, password, deviceId } = req.body;
     const normalizedEmail = email.trim().toLowerCase();
+
+    // Enforce email domain checks for login
+    const isAdminDomain = normalizedEmail.endsWith('@video.com') || normalizedEmail === 'admin@video.com';
+    const isGmailDomain = normalizedEmail.endsWith('@gmail.com');
+
+    if (!isAdminDomain && !isGmailDomain) {
+      return res.status(400).json({ message: 'Only @gmail.com email addresses are allowed for users, and admin@video.com for admin login.' });
+    }
+
     const user = await User.findOne({ email: normalizedEmail });
     
     if (!user) {
       return res.status(401).json({ message: 'Invalid email or password' });
+    }
+
+    // If logging in with admin format, ensure the user is actually an admin/sub-admin
+    if (isAdminDomain && user.role !== 'admin' && user.role !== 'sub-admin') {
+      return res.status(403).json({ message: 'Access denied. This format is reserved for admin login.' });
     }
 
     const isMatch = await user.comparePassword(password);
@@ -616,6 +737,16 @@ app.post('/api/register', async (req, res) => {
   try {
     const { name, email, password, deviceId } = req.body;
     const normalizedEmail = email.trim().toLowerCase();
+
+    // Enforce email domain checks for registration
+    if (normalizedEmail.endsWith('@video.com') || normalizedEmail === 'admin@video.com') {
+      return res.status(400).json({ message: 'Registration is not permitted for admin email accounts.' });
+    }
+
+    if (!normalizedEmail.endsWith('@gmail.com')) {
+      return res.status(400).json({ message: 'Only @gmail.com email addresses are permitted for registration.' });
+    }
+
     console.log('Registering user:', normalizedEmail);
     const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
@@ -676,6 +807,14 @@ app.post('/api/auth/google', async (req, res) => {
     const payload = response.data;
 
     const email = payload.email.trim().toLowerCase();
+    
+    // Enforce email domain checks for social login (Gmail only for customers, admin can use admin@video.com or @video.com)
+    const isAdminDomain = email.endsWith('@video.com') || email === 'admin@video.com';
+    const isGmailDomain = email.endsWith('@gmail.com');
+    if (!isAdminDomain && !isGmailDomain) {
+      return res.status(400).json({ message: 'Only @gmail.com email addresses are permitted.' });
+    }
+
     const name = payload.name;
     const profileImage = payload.picture;
 
@@ -768,6 +907,14 @@ app.post('/api/auth/social-login-mobile', async (req, res) => {
     }
 
     const normalizedEmail = email.trim().toLowerCase();
+    
+    // Enforce email domain checks for mobile social login
+    const isAdminDomain = normalizedEmail.endsWith('@video.com') || normalizedEmail === 'admin@video.com';
+    const isGmailDomain = normalizedEmail.endsWith('@gmail.com');
+    if (!isAdminDomain && !isGmailDomain) {
+      return res.status(400).json({ message: 'Only @gmail.com email addresses are permitted.' });
+    }
+
     let user = await User.findOne({ email: normalizedEmail });
 
     if (!user) {
@@ -839,6 +986,14 @@ app.post('/api/auth/facebook', async (req, res) => {
     }
 
     const email = payload.email.trim().toLowerCase();
+    
+    // Enforce email domain checks for Facebook social login
+    const isAdminDomain = email.endsWith('@video.com') || email === 'admin@video.com';
+    const isGmailDomain = email.endsWith('@gmail.com');
+    if (!isAdminDomain && !isGmailDomain) {
+      return res.status(400).json({ message: 'Only @gmail.com email addresses are permitted.' });
+    }
+
     const name = payload.name;
     const profileImage = payload.picture?.data?.url;
 
@@ -919,6 +1074,14 @@ app.post('/api/forgot-password', async (req, res) => {
     const { email } = req.body;
     const normalizedEmail = email.trim().toLowerCase();
     console.log('Searching for user to reset:', normalizedEmail);
+    
+    // Enforce email domain checks for password reset
+    const isAdminDomain = normalizedEmail.endsWith('@video.com') || normalizedEmail === 'admin@video.com';
+    const isGmailDomain = normalizedEmail.endsWith('@gmail.com');
+    if (!isAdminDomain && !isGmailDomain) {
+      return res.status(400).json({ message: 'Only @gmail.com email addresses are permitted.' });
+    }
+
     const user = await User.findOne({ email: normalizedEmail });
     console.log('User found:', user ? 'YES' : 'NO');
     
@@ -1355,6 +1518,61 @@ app.get('/api/mux/sign-token', async (req, res) => {
   }
 });
 
+// Video Proxy and Streaming Endpoint
+app.get('/api/videos/:folder/:file', async (req, res) => {
+  const { folder, file } = req.params;
+  const token = req.query.token;
+
+  // 1. Authorize the request
+  if (!token) {
+    return res.status(401).json({ message: 'Authorization token is required to stream this video' });
+  }
+
+  try {
+    jwt.verify(token, JWT_SECRET);
+  } catch (err) {
+    return res.status(401).json({ message: 'Invalid or expired authorization token' });
+  }
+
+  // 2. Fetch the file from S3
+  const s3Key = `videos/${folder}/${file}`;
+  
+  try {
+    const { stream, contentType, contentLength } = await getS3FileStream(s3Key);
+    
+    // Set headers
+    res.setHeader('Content-Type', contentType);
+    if (contentLength) {
+      res.setHeader('Content-Length', contentLength);
+    }
+    
+    // For browsers to allow cross-origin media requests
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Headers', '*');
+
+    // If it's a playlist (.m3u8), we rewrite it on the fly to append the token to all segments
+    if (file.endsWith('.m3u8')) {
+      const chunks = [];
+      stream.on('data', chunk => chunks.push(chunk));
+      stream.on('end', () => {
+        const body = Buffer.concat(chunks);
+        let playlistText = body.toString('utf-8');
+        
+        // Append ?token=... to all segment URLs (.ts) inside the m3u8 playlist file
+        playlistText = playlistText.replace(/([a-zA-Z0-9_-]+\.ts)/g, `$1?token=${token}`);
+        
+        res.send(playlistText);
+      });
+    } else {
+      // Pipe the raw video segment (.ts) stream directly to the response
+      stream.pipe(res);
+    }
+  } catch (err) {
+    console.error(`[VIDEO PROXY ERROR] Failed fetching S3 key ${s3Key}:`, err.message);
+    res.status(404).json({ message: 'Video segment not found or access denied' });
+  }
+});
+
 // Movie Routes
 app.get('/api/movies', async (req, res) => {
   try {
@@ -1378,7 +1596,8 @@ app.get('/api/movies', async (req, res) => {
     }
 
     const movies = await Movie.find(query).sort({ createdAt: -1 });
-    res.json(movies);
+    const signedMovies = await signVideoDocuments(movies, req);
+    res.json(signedMovies);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -1404,7 +1623,8 @@ app.get('/api/movies/:id', async (req, res) => {
       }
     }
 
-    res.json(movie);
+    const signedMovie = await signVideoDocument(movie, req);
+    res.json(signedMovie);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -1446,7 +1666,8 @@ app.get('/api/new-releases', async (req, res) => {
       return res.json([]);
     }
     const newReleases = await NewRelease.find().sort({ createdAt: -1 });
-    res.json(newReleases);
+    const signedNewReleases = await signVideoDocuments(newReleases, req);
+    res.json(signedNewReleases);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -1462,7 +1683,8 @@ app.get('/api/new-releases/:id', async (req, res) => {
       .populate('actors')
       .populate('directors');
     if (!newRelease) return res.status(404).json({ message: 'New Release not found' });
-    res.json(newRelease);
+    const signedNewRelease = await signVideoDocument(newRelease, req);
+    res.json(signedNewRelease);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -3099,7 +3321,8 @@ app.get('/api/sports-videos', async (req, res) => {
       }
     }
     const videos = await SportsVideo.find().populate('category');
-    res.json(videos);
+    const signedVideos = await signVideoDocuments(videos, req);
+    res.json(signedVideos);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -3116,7 +3339,8 @@ app.get('/api/sports-videos/:id', async (req, res) => {
     }
     const video = await SportsVideo.findById(req.params.id);
     if (!video) return res.status(404).json({ message: 'Video not found' });
-    res.json(video);
+    const signedVideo = await signVideoDocument(video, req);
+    res.json(signedVideo);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -3219,7 +3443,8 @@ app.get('/api/episodes', async (req, res) => {
       .populate('showId', 'title contentType')
       .populate('seasonId', 'title')
       .sort({ createdAt: 1 });
-    res.json(episodes);
+    const signedEpisodes = await signVideoDocuments(episodes, req);
+    res.json(signedEpisodes);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -3230,7 +3455,8 @@ app.get('/api/episodes/:id', async (req, res) => {
     const episode = await Episode.findById(req.params.id)
       .populate('showId', 'title contentType')
       .populate('seasonId', 'title');
-    res.json(episode);
+    const signedEpisode = await signVideoDocument(episode, req);
+    res.json(signedEpisode);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

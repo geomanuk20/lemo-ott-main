@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, forwardRef, isValidElement } from 'react';
 import MuxPlayer from '@mux/mux-player-react';
-import { createPlayer, videoFeatures } from '@videojs/react';
-import { VideoSkin } from '@videojs/react/video';
+import { createPlayer } from '@videojs/react';
+import { VideoSkin, videoFeatures } from '@videojs/react/video';
 import { HlsVideo } from '@videojs/react/media/hls-video';
 import '@videojs/react/video/skin.css';
 
-const VideoJSPlayer = createPlayer({ features: videoFeatures });
+const SEEK_TIME = 10;
+export const Player = createPlayer({ features: videoFeatures });
 
 const HtmlScriptExecutor = ({ html }) => {
   const containerRef = useRef(null);
@@ -84,25 +85,431 @@ const HtmlScriptExecutor = ({ html }) => {
   );
 };
 
-const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, videoTitle, videoId, userId, playerSettings }) => {
-  const videoRef = useRef(null);
-  const hlsRef = useRef(null);
-  const dashRef = useRef(null);
+function CentralControlsOverlay() {
+  const paused = Player.usePlayer((s) => s.paused);
+  const togglePaused = Player.usePlayer((s) => s.togglePaused);
+  const currentTime = Player.usePlayer((s) => s.currentTime);
+  const seek = Player.usePlayer((s) => s.seek);
+  const controlsVisible = Player.usePlayer((s) => s.controlsVisible);
+
+  const lastClickRef = useRef({ time: 0, count: 0, side: null, amount: 0 });
+  const [activeFeedback, setActiveFeedback] = useState(null); // { side: 'left' | 'right', amount: number, key: number }
+  const [transientIcon, setTransientIcon] = useState(null); // 'play' | 'pause'
+  const isFirstRender = useRef(true);
+
+  // Trigger transient play/pause pop animation on toggle
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    setTransientIcon(paused ? 'pause' : 'play');
+    const t = setTimeout(() => setTransientIcon(null), 500);
+    return () => clearTimeout(t);
+  }, [paused]);
+
+  const handleZoneClick = (side, e) => {
+    e.stopPropagation();
+    const now = Date.now();
+    const last = lastClickRef.current;
+
+    // Check if within double/triple click time threshold (450ms)
+    if (last.side === side && now - last.time < 450) {
+      const nextCount = last.count + 1;
+      let skipAmount = 0;
+      let displayAmount = 0;
+
+      if (nextCount === 2) {
+        skipAmount = 2;
+        displayAmount = 2;
+      } else if (nextCount === 3) {
+        // Triple click: we seek 3s more to make it 5s total
+        skipAmount = 3;
+        displayAmount = 5;
+      } else if (nextCount === 4) {
+        // Quad click: seek 5s more to make it 10s total
+        skipAmount = 5;
+        displayAmount = 10;
+      } else {
+        // Repeated clicks: keep seeking 10s more
+        skipAmount = 10;
+        displayAmount = last.amount + 10;
+      }
+
+      lastClickRef.current = { time: now, count: nextCount, side, amount: displayAmount };
+
+      const targetTime = side === 'left' ? currentTime - skipAmount : currentTime + skipAmount;
+      if (seek) seek(targetTime);
+
+      setActiveFeedback({
+        side,
+        amount: displayAmount,
+        key: now
+      });
+    } else {
+      // First click: set timer to execute single click action
+      lastClickRef.current = { time: now, count: 1, side, amount: 0 };
+
+      setTimeout(() => {
+        const currentLast = lastClickRef.current;
+        if (currentLast.side === side && currentLast.count === 1 && Date.now() - currentLast.time >= 250) {
+          // Single tap toggles play/pause
+          if (togglePaused) togglePaused();
+          lastClickRef.current = { time: 0, count: 0, side: null, amount: 0 };
+        }
+      }, 260);
+    }
+  };
+
+  const handlePlayPause = (e) => {
+    e.stopPropagation();
+    if (togglePaused) togglePaused();
+  };
+
+  const isVisible = controlsVisible || paused;
+
+  return (
+    <>
+      <style dangerouslySetInnerHTML={{ __html: `
+        .central-controls-overlay {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(0, 0, 0, 0);
+          backdrop-filter: blur(0px);
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), backdrop-filter 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          z-index: 5;
+        }
+
+        .central-controls-overlay.visible {
+          opacity: 1;
+          pointer-events: auto;
+          backdrop-filter: blur(1.5px);
+          background: rgba(0, 0, 0, 0.35);
+        }
+
+        .central-click-zone {
+          position: absolute;
+          top: 0;
+          bottom: 0;
+          width: 35%;
+          cursor: pointer;
+          z-index: 1;
+        }
+
+        .left-zone {
+          left: 0;
+        }
+
+        .right-zone {
+          right: 0;
+        }
+
+        .center-control-wrapper {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 40px;
+          z-index: 2;
+          pointer-events: auto;
+        }
+
+        .central-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: none;
+          border-radius: 50%;
+          cursor: pointer;
+          color: #ffffff;
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+          outline: none;
+          user-select: none;
+        }
+
+        .central-btn.skip-btn {
+          width: 56px;
+          height: 56px;
+          background: transparent !important;
+          box-shadow: none !important;
+          border: none !important;
+          backdrop-filter: none !important;
+        }
+
+        .central-btn.skip-btn:hover {
+          transform: scale(1.25);
+          background: transparent !important;
+        }
+
+        .central-btn.skip-btn:active {
+          transform: scale(0.9);
+        }
+
+        .central-btn.play-pause-btn {
+          position: relative;
+          width: 76px;
+          height: 76px;
+          background: var(--media-brand, #b3d332);
+          color: var(--media-brand-text, #ffffff);
+          box-shadow: 0 8px 25px rgba(var(--media-brand-rgb, 179, 211, 50), 0.4);
+        }
+
+        .central-btn.play-pause-btn:hover {
+          transform: scale(1.1);
+          filter: brightness(1.08);
+          box-shadow: 0 10px 30px rgba(var(--media-brand-rgb, 179, 211, 50), 0.6);
+        }
+
+        .central-btn.play-pause-btn:active {
+          transform: scale(0.95);
+        }
+
+        /* Dynamic Sonar Pulsing Waves when paused */
+        .central-btn.play-pause-btn.is-paused::before,
+        .central-btn.play-pause-btn.is-paused::after {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          border-radius: 50%;
+          background: var(--media-brand, #b3d332);
+          opacity: 0;
+          pointer-events: none;
+          z-index: -1;
+        }
+
+        .central-btn.play-pause-btn.is-paused::before {
+          animation: play-pause-sonar 2s infinite cubic-bezier(0.25, 0, 0, 1);
+        }
+
+        .central-btn.play-pause-btn.is-paused::after {
+          animation: play-pause-sonar 2s infinite cubic-bezier(0.25, 0, 0, 1);
+          animation-delay: 1s;
+        }
+
+        @keyframes play-pause-sonar {
+          0% {
+            transform: scale(1);
+            opacity: 0.6;
+          }
+          100% {
+            transform: scale(1.75);
+            opacity: 0;
+          }
+        }
+
+        /* Skip ripple & text animation */
+        @keyframes ripple-wave-left {
+          0% {
+            opacity: 0.5;
+            transform: scale(0.4) translateX(-40%);
+            border-radius: 50%;
+          }
+          100% {
+            opacity: 0;
+            transform: scale(1.8) translateX(0%);
+            border-radius: 0 100px 100px 0;
+          }
+        }
+
+        @keyframes ripple-wave-right {
+          0% {
+            opacity: 0.5;
+            transform: scale(0.4) translateX(40%);
+            border-radius: 50%;
+          }
+          100% {
+            opacity: 0;
+            transform: scale(1.8) translateX(0%);
+            border-radius: 100px 0 0 100px;
+          }
+        }
+
+        @keyframes text-pop {
+          0% { opacity: 0; transform: scale(0.8); }
+          20% { opacity: 1; transform: scale(1.15); }
+          80% { opacity: 1; transform: scale(1); }
+          100% { opacity: 0; transform: scale(0.9); }
+        }
+
+        .skip-feedback {
+          position: absolute;
+          top: 0;
+          bottom: 0;
+          width: 35%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          pointer-events: none;
+          overflow: hidden;
+          z-index: 4;
+        }
+
+        .left-feedback {
+          left: 0;
+        }
+
+        .right-feedback {
+          right: 0;
+        }
+
+        .skip-ripple {
+          position: absolute;
+          width: 100%;
+          height: 100%;
+          background: rgba(255, 255, 255, 0.15);
+          top: 0;
+          pointer-events: none;
+        }
+
+        .left-feedback .skip-ripple {
+          left: 0;
+          transform-origin: left center;
+          animation: ripple-wave-left 0.65s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+        }
+
+        .right-feedback .skip-ripple {
+          right: 0;
+          transform-origin: right center;
+          animation: ripple-wave-right 0.65s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+        }
+
+        .skip-text {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 6px;
+          color: #ffffff;
+          font-family: sans-serif;
+          font-size: 15px;
+          font-weight: 800;
+          text-shadow: 0 2px 10px rgba(0,0,0,0.6);
+          animation: text-pop 0.65s ease-out forwards;
+          z-index: 2;
+        }
+
+        /* Transient Mid-Screen Play/Pause Animation */
+        @keyframes transient-scale-fade {
+          0% { transform: scale(0.6); opacity: 0; }
+          30% { transform: scale(1.15); opacity: 0.85; }
+          75% { transform: scale(1); opacity: 0.85; }
+          100% { transform: scale(1.3); opacity: 0; }
+        }
+
+        .transient-play-pause-overlay {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          pointer-events: none;
+          z-index: 6;
+        }
+
+        .transient-icon-wrapper {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 84px;
+          height: 84px;
+          border-radius: 50%;
+          background: rgba(0, 0, 0, 0.6);
+          color: #ffffff;
+          animation: transient-scale-fade 0.5s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+        }
+
+        /* Hide default play buttons */
+        .media-default-skin .media-button--play-large,
+        .media-default-skin .media-play-large-button,
+        .vjs-big-play-button {
+          display: none !important;
+        }
+      ` }} />
+
+      {/* Floating Skip Feedback Wave & Text */}
+      {activeFeedback && activeFeedback.side === 'left' && (
+        <div key={activeFeedback.key} className="skip-feedback left-feedback">
+          <div className="skip-ripple"></div>
+          <div className="skip-text">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
+              <path d="M11 18V6l-8.5 6 8.5 6zm.5-6l8.5 6V6l-8.5 6z"/>
+            </svg>
+            <span>-{activeFeedback.amount}s</span>
+          </div>
+        </div>
+      )}
+
+      {activeFeedback && activeFeedback.side === 'right' && (
+        <div key={activeFeedback.key} className="skip-feedback right-feedback">
+          <div className="skip-ripple"></div>
+          <div className="skip-text">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
+              <path d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z"/>
+            </svg>
+            <span>+{activeFeedback.amount}s</span>
+          </div>
+        </div>
+      )}
+
+      {/* Transient mid-screen Play/Pause animation */}
+      {transientIcon && (
+        <div className="transient-play-pause-overlay">
+          <div className="transient-icon-wrapper">
+            {transientIcon === 'play' ? (
+              <svg viewBox="0 0 24 24" width="38" height="38" fill="currentColor" style={{ marginLeft: '4px' }}><path d="M8 5v14l11-7z"/></svg>
+            ) : (
+              <svg viewBox="0 0 24 24" width="38" height="38" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div 
+        className={`central-controls-overlay ${isVisible ? 'visible' : ''}`}
+        onClick={handlePlayPause}
+      >
+        {/* Invisible Click/Double-click zones */}
+        <div className="central-click-zone left-zone" onClick={(e) => handleZoneClick('left', e)} />
+        <div className="central-click-zone right-zone" onClick={(e) => handleZoneClick('right', e)} />
+
+        <div className="center-control-wrapper">
+          <button 
+            type="button"
+            className={`central-btn play-pause-btn ${paused ? 'is-paused' : ''}`}
+            onClick={handlePlayPause}
+            title={paused ? "Play" : "Pause"}
+          >
+            {paused ? (
+              <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+            ) : (
+              <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor" style={{ marginLeft: '4px' }}><path d="M8 5v14l11-7z"/></svg>
+            )}
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ================================================================
+// Main Video Player
+// ================================================================
+
+const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, videoTitle, videoId, userId, playerSettings, className, poster, ...rest }) => {
   const containerRef = useRef(null);
   const playerRef = useRef(null);
-  
-  // Timer references for overlay and multi-click queuing
-  const overlayTimeoutRef = useRef(null);
-  const clickTimerRef = useRef({ backward: null, forward: null });
-
-  const [showOverlay, setShowOverlay] = useState(true);
-  const [isPaused, setIsPaused] = useState(true);
-  const [playPulse, setPlayPulse] = useState(false);
-
-  // Active seek clicks (state-based to trigger real-time refresh icon updates)
-  const [backwardClicks, setBackwardClicks] = useState(0);
-  const [forwardClicks, setForwardClicks] = useState(0);
-  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Read active video player configuration directly from environment variables (.env)
   const activePlayer = import.meta.env.VITE_ACTIVE_PLAYER || 'MUX_PLAYER';
@@ -115,7 +522,7 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
     ? '#0070f3' 
     : isModernLight 
       ? '#ffffff' 
-      : '#b3d332';
+      : '#b3d332'; // Brand green
 
   const accentRgb = isBlueAccent 
     ? '0, 112, 243' 
@@ -126,52 +533,6 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
   const accentText = isModernLight ? '#000000' : '#ffffff';
   const isAutoplayEnabled = playerSettings?.autoplay === 'YES';
   const isRewindForwardEnabled = playerSettings?.rewindForward !== 'NO';
-
-
-
-  // Track native fullscreen state across all major browsers and vendors
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      const isCurrentlyFullscreen = !!(
-        document.fullscreenElement ||
-        document.webkitFullscreenElement ||
-        document.mozFullScreenElement ||
-        document.msFullscreenElement
-      );
-      setIsFullscreen(isCurrentlyFullscreen);
-    };
-
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
-    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
-    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
-
-    return () => {
-      document.removeEventListener('fullscreenchange', handleFullscreenChange);
-      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
-      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
-      document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
-
-      // Cleanly exit fullscreen if the player is unmounted while active
-      const isCurrentlyFullscreen = !!(
-        document.fullscreenElement ||
-        document.webkitFullscreenElement ||
-        document.mozFullScreenElement ||
-        document.msFullscreenElement
-      );
-      if (isCurrentlyFullscreen) {
-        if (document.exitFullscreen) {
-          document.exitFullscreen().catch(err => console.log('Error exiting fullscreen on unmount:', err));
-        } else if (document.webkitExitFullscreen) {
-          document.webkitExitFullscreen();
-        } else if (document.mozCancelFullScreen) {
-          document.mozCancelFullScreen();
-        } else if (document.msExitFullscreen) {
-          document.msExitFullscreen();
-        }
-      }
-    };
-  }, []);
 
   // Helper to extract playback ID if it's a Mux stream
   const getPlaybackId = (url) => {
@@ -286,229 +647,9 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
 
   const embedInfo = getEmbedInfo(src);
   const isHtmlEmbed = embedInfo.isEmbed && !resolvedYoutubeLiveSrc;
-  const shouldShowOverlayControls = !isHtmlEmbed || playbackId;
 
   // Filter subtitles that have valid URLs
   const activeSubs = (subtitles || []).filter(sub => sub && sub.url && sub.url.trim() !== '');
-
-  // 1. Google Cast Framework dynamic injector (For Mux Player)
-  useEffect(() => {
-    if (activePlayer === 'MUX_PLAYER' && playbackId) {
-      const castScriptId = 'google-cast-sdk';
-      if (!document.getElementById(castScriptId)) {
-        const script = document.createElement('script');
-        script.id = castScriptId;
-        script.src = 'https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1';
-        script.defer = true;
-        document.head.appendChild(script);
-      }
-    }
-  }, [activePlayer, playbackId]);
-
-  // 2. Native HLS.js and Dash.js Player lifecycle
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video || !src || isHtmlEmbed) return;
-
-    if (hlsRef.current) {
-      hlsRef.current.destroy();
-      hlsRef.current = null;
-    }
-    if (dashRef.current) {
-      dashRef.current.destroy();
-      dashRef.current = null;
-    }
-
-    const streamSrc = getStreamSrc();
-    const isHls = streamSrc.includes('.m3u8') || streamSrc.includes('manifest/hls_live') || streamSrc.includes('googlevideo.com');
-    const isDash = streamSrc.includes('.mpd');
-
-    if (isHls) {
-      if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        video.src = streamSrc;
-      } else {
-        const loadHls = () => {
-          if (window.Hls && window.Hls.isSupported()) {
-            const hls = new window.Hls({ maxMaxBufferLength: 10, enableWorker: true });
-            hls.loadSource(streamSrc);
-            hls.attachMedia(video);
-            hlsRef.current = hls;
-          }
-        };
-
-        if (!window.Hls) {
-          const script = document.createElement('script');
-          script.id = 'hls-js-sdk';
-          script.src = 'https://cdn.jsdelivr.net/npm/hls.js@latest';
-          script.onload = loadHls;
-          document.body.appendChild(script);
-        } else {
-          loadHls();
-        }
-      }
-    } else if (isDash) {
-      const loadDash = () => {
-        if (window.dashjs) {
-          const player = window.dashjs.MediaPlayer().create();
-          player.initialize(video, streamSrc, isAutoplayEnabled);
-          dashRef.current = player;
-        }
-      };
-
-      if (!window.dashjs) {
-        const script = document.createElement('script');
-        script.id = 'dash-js-sdk';
-        script.src = 'https://cdn.jsdelivr.net/npm/dashjs@latest/dist/dash.all.min.js';
-        script.onload = loadDash;
-        document.body.appendChild(script);
-      } else {
-        loadDash();
-      }
-    } else {
-      video.src = streamSrc;
-    }
-
-    if (isAutoplayEnabled) {
-      const playPromise = video.play();
-      if (playPromise !== undefined) {
-        playPromise.catch(err => console.log('Autoplay blocked:', err));
-      }
-    }
-
-    return () => {
-      if (hlsRef.current) {
-        hlsRef.current.destroy();
-        hlsRef.current = null;
-      }
-      if (dashRef.current) {
-        dashRef.current.destroy();
-        dashRef.current = null;
-      }
-    };
-  }, [src, isHtmlEmbed, isAutoplayEnabled, signedToken, resolvedYoutubeLiveSrc, resolvingYoutubeLive]);
-
-  // 3. Setup Screen Overlay Controller Event Observers
-  const resetOverlayTimer = () => {
-    setShowOverlay(true);
-    if (overlayTimeoutRef.current) {
-      clearTimeout(overlayTimeoutRef.current);
-    }
-    const video = containerRef.current?.querySelector('video') || playerRef.current;
-    if (video && !video.paused) {
-      overlayTimeoutRef.current = setTimeout(() => {
-        setShowOverlay(false);
-      }, 2500);
-    }
-  };
-
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container || !shouldShowOverlayControls) return;
-
-    const handlePlay = () => {
-      setIsPaused(false);
-      resetOverlayTimer();
-    };
-
-    const handlePause = () => {
-      setIsPaused(true);
-      setShowOverlay(true);
-    };
-
-    container.addEventListener('play', handlePlay, true);
-    container.addEventListener('pause', handlePause, true);
-
-    return () => {
-      container.removeEventListener('play', handlePlay, true);
-      container.removeEventListener('pause', handlePause, true);
-    };
-  }, [src, shouldShowOverlayControls]);
-
-  // Sync initial state of player
-  useEffect(() => {
-    const video = containerRef.current?.querySelector('video');
-    if (video) {
-      setIsPaused(video.paused);
-    } else {
-      setIsPaused(true);
-    }
-    setShowOverlay(true);
-  }, [src]);
-
-  // Clean up timers on unmount
-  useEffect(() => {
-    return () => {
-      if (overlayTimeoutRef.current) clearTimeout(overlayTimeoutRef.current);
-      if (clickTimerRef.current.backward) clearTimeout(clickTimerRef.current.backward);
-      if (clickTimerRef.current.forward) clearTimeout(clickTimerRef.current.forward);
-    };
-  }, []);
-
-  const handlePlayPause = () => {
-    const video = containerRef.current?.querySelector('video') || playerRef.current;
-    if (!video) return;
-
-    // Trigger pop scale animation
-    setPlayPulse(true);
-    setTimeout(() => setPlayPulse(false), 300);
-
-    if (video.paused) {
-      video.play().catch(err => console.log('Playback error:', err));
-    } else {
-      video.pause();
-    }
-  };
-
-  const handleSeek = (offset) => {
-    const video = containerRef.current?.querySelector('video') || playerRef.current;
-    if (!video) return;
-    video.currentTime = Math.max(0, Math.min(video.duration || 0, video.currentTime + offset));
-    resetOverlayTimer();
-  };
-
-  // Dynamic multi-click seek queuing: 1 Click = 2s, 2 Clicks = 5s, 3+ Clicks = 10s
-  const handleSeekClick = (direction) => {
-    const setter = direction === 'forward' ? setForwardClicks : setBackwardClicks;
-
-    setter((prev) => {
-      const nextVal = prev + 1;
-
-      if (clickTimerRef.current[direction]) {
-        clearTimeout(clickTimerRef.current[direction]);
-      }
-
-      clickTimerRef.current[direction] = setTimeout(() => {
-        let offset = 2; // Default: Single Click = 2s
-        if (nextVal === 2) {
-          offset = 5;   // Double Click = 5s
-        } else if (nextVal >= 3) {
-          offset = 10;  // Triple Click = 10s
-        }
-
-        const finalOffset = direction === 'forward' ? offset : -offset;
-        handleSeek(finalOffset);
-
-        // Reset click counting states
-        setter(0);
-        clickTimerRef.current[direction] = null;
-      }, 300);
-
-      return nextVal;
-    });
-  };
-
-  // Helper to render skip values inside seek-btn-content overlay
-  const renderSkipLabel = (count) => {
-    if (count === 0) return null;
-
-    const num = count === 2 ? 5 : count >= 3 ? 10 : 2;
-    const fontSize = num === 10 ? '7.5px' : '9.5px';
-    return (
-      <span className="seek-btn-number" style={{ fontSize }}>
-        {num}
-      </span>
-    );
-  };
 
   const getViewerUserId = () => {
     if (userId) return userId;
@@ -537,7 +678,10 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    boxShadow: '0 20px 40px rgba(0,0,0,0.5)'
+    boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+    "--media-brand": accentColor,
+    "--media-brand-rgb": accentRgb,
+    "--media-brand-text": accentText
   };
 
   const playerStyle = {
@@ -561,146 +705,25 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
     "--time-range": "inline-flex"
   };
 
-  const renderActivePlayer = () => {
-    if (loadingToken || resolvingYoutubeLive) {
-      return (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '450px', background: '#000', color: '#fff', gap: '15px' }}>
-          <div className="token-spinner" style={{ width: '40px', height: '40px', border: '3px solid rgba(255,255,255,0.1)', borderTopColor: accentColor, borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
-          <div style={{ fontFamily: 'sans-serif', fontSize: '0.95rem', fontWeight: 600, letterSpacing: '0.5px', color: '#aaa' }}>
-            {resolvingYoutubeLive ? 'Resolving live stream...' : 'Securing stream...'}
-          </div>
-          <style dangerouslySetInnerHTML={{ __html: `
-            @keyframes spin { to { transform: rotate(360deg); } }
-          ` }} />
-        </div>
-      );
-    }
+  const getWatermarkUrl = (logo) => {
+    if (!logo) return '';
+    if (logo.startsWith('http://') || logo.startsWith('https://')) return logo;
+    return `/${logo}`;
+  };
 
-    // A. MUX PLAYER
-    if (activePlayer === 'MUX_PLAYER') {
-      if (playbackId) {
-        return (
-          <MuxPlayer
-            ref={playerRef}
-            playbackId={playbackId}
-            tokens={signedToken ? { playback: signedToken } : undefined}
-            accentColor={accentColor}
-            playsInline
-            autoPlay={isAutoplayEnabled ? 'any' : false}
-            playbackEngine="mse"
-            forwardSeekOffset={10}
-            backwardSeekOffset={10}
-            playbackRates={[0.5, 1, 1.25, 1.5, 2]}
-            onEnded={onEnded}
-            onTimeUpdate={(e) => {
-              if (onTimeUpdate) {
-                onTimeUpdate(e.target.currentTime, e.target.duration);
-              }
-            }}
-            style={muxPlayerStyle}
-            metadata={metadata}
-            fullscreenElement="lemo-premium-player-container"
-          />
-        );
-      } else {
-        // Fallback for non-Mux direct URLs
-        return (
-          <video
-            ref={videoRef}
-            src={getStreamSrc()}
-            controls={showOverlay}
-            autoPlay={isAutoplayEnabled}
-            playsInline
-            onEnded={onEnded}
-            onTimeUpdate={(e) => {
-              if (onTimeUpdate) {
-                onTimeUpdate(e.target.currentTime, e.target.duration);
-              }
-            }}
-            style={playerStyle}
-          >
-            {subtitlesActive === 'Active' && activeSubs.map((sub, idx) => (
-              <track
-                key={idx}
-                kind="subtitles"
-                src={sub.url}
-                srcLang={sub.language ? sub.language.toLowerCase().substring(0, 2) : 'en'}
-                label={sub.language || 'English'}
-                default={idx === 0}
-              />
-            ))}
-          </video>
-        );
-      }
-    }
-
-    // B. VIDEO.JS PLAYER
-    if (activePlayer === 'VIDEO_JS') {
-      return (
-        <VideoJSPlayer.Provider>
-          <VideoSkin style={{ width: '100%', height: '100%' }}>
-            <HlsVideo 
-              src={getStreamSrc()} 
-              playsInline 
-              autoPlay={isAutoplayEnabled}
-              controls={showOverlay} 
-              onEnded={onEnded}
-              onTimeUpdate={(e) => {
-                if (onTimeUpdate) {
-                  onTimeUpdate(e.target.currentTime, e.target.duration);
-                }
-              }}
-              style={playerStyle} 
-            >
-              {subtitlesActive === 'Active' && activeSubs.map((sub, idx) => (
-                <track
-                  key={idx}
-                  kind="subtitles"
-                  src={sub.url}
-                  srcLang={sub.language ? sub.language.toLowerCase().substring(0, 2) : 'en'}
-                  label={sub.language || 'English'}
-                  default={idx === 0}
-                />
-              ))}
-            </HlsVideo>
-          </VideoSkin>
-        </VideoJSPlayer.Provider>
-      );
-    }
-
-    // C. NATIVE PLAYER (DEFAULT FALLBACK)
-    return (
-      <video
-        ref={videoRef}
-        src={getStreamSrc()}
-        controls={showOverlay}
-        autoPlay={isAutoplayEnabled}
-        playsInline
-        onEnded={onEnded}
-        onTimeUpdate={(e) => {
-          if (onTimeUpdate) {
-            onTimeUpdate(e.target.currentTime, e.target.duration);
-          }
-        }}
-        style={playerStyle}
-      >
-        {subtitlesActive === 'Active' && activeSubs.map((sub, idx) => (
-          <track
-            key={idx}
-            kind="subtitles"
-            src={sub.url}
-            srcLang={sub.language ? sub.language.toLowerCase().substring(0, 2) : 'en'}
-            label={sub.language || 'English'}
-            default={idx === 0}
-          />
-        ))}
-      </video>
-    );
+  const getWatermarkStyle = (position) => {
+    const pos = (position || 'Top Right').toLowerCase();
+    const style = { position: 'absolute', zIndex: 10 };
+    if (pos.includes('top')) style.top = '20px';
+    if (pos.includes('bottom')) style.bottom = '20px';
+    if (pos.includes('left')) style.left = '20px';
+    if (pos.includes('right')) style.right = '20px';
+    return style;
   };
 
   // --- RENDERING PIPELINE ---
 
-  if (isHtmlEmbed && !playbackId) {
+  if (isHtmlEmbed) {
     return (
       <div className="premium-player-wrapper" style={containerStyle}>
         {embedInfo.type === 'html' ? (
@@ -714,448 +737,124 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
             style={{ width: '100%', height: '100%', minHeight: '450px', border: 'none', borderRadius: '12px' }}
           />
         )}
-        <style dangerouslySetInnerHTML={{ __html: `
-          .premium-player-wrapper iframe {
-            width: 100% !important;
-            height: 100% !important;
-            min-height: 450px !important;
-            border: none !important;
-            border-radius: 12px;
-          }
-        `}} />
       </div>
     );
   }
 
-  // Helper to resolve absolute upload path for watermark
-  const getWatermarkUrl = (logo) => {
-    if (!logo) return '';
-    if (logo.startsWith('http://') || logo.startsWith('https://')) return logo;
-    return `/${logo}`;
-  };
-
-  return (
-    <div 
-      id="lemo-premium-player-container"
-      ref={containerRef}
-      className={`premium-player-wrapper ${isFullscreen ? 'is-fullscreen' : 'is-inline'} ${!showOverlay ? 'controls-hidden' : ''}`} 
-      style={containerStyle}
-      onMouseMove={resetOverlayTimer}
-      onMouseEnter={resetOverlayTimer}
-      onMouseLeave={() => {
-        const video = containerRef.current?.querySelector('video') || playerRef.current;
-        if (video && !video.paused) {
-          setShowOverlay(false);
-        }
-      }}
-    >
-      {renderActivePlayer()}
-
-      {/* Floating Center Screen Controls Overlay */}
-      {shouldShowOverlayControls && (
-        <div 
-          className="premium-player-screen-overlay"
-          onClick={resetOverlayTimer}
-        >
-          {/* Left Tap Zone (Left 40% of the screen) */}
-          {isRewindForwardEnabled ? (
-            <div 
-              className="seek-tap-zone left-zone" 
-              onClick={(e) => {
-                e.stopPropagation();
-                handleSeekClick('backward');
-              }}
-            >
-              <div 
-                className="premium-overlay-btn" 
-                style={{
-                  opacity: backwardClicks > 0 ? 1 : 0,
-                  transition: 'opacity 0.25s ease',
-                }}
-              >
-                <div className="seek-btn-content">
-                  <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-                    <path d="M3 3v5h5" />
-                  </svg>
-                  {renderSkipLabel(backwardClicks)}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="seek-tap-zone left-zone-empty" style={{ width: '40%' }} />
-          )}
-
-          {/* Center Play/Pause Zone (Middle 20% of the screen) */}
-          <div className="center-control-zone">
-            <button 
-              className={`premium-overlay-btn center-play ${!isPaused ? 'center-pause' : ''} ${playPulse ? 'play-pulse-active' : ''}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                handlePlayPause();
-              }}
-              title={isPaused ? "Play" : "Pause"}
-            >
-              {isPaused ? (
-                <svg width="34" height="34" viewBox="0 0 24 24" fill="currentColor" style={{ marginLeft: '4px' }}>
-                  <path d="M8 5v14l11-7z" />
-                </svg>
-              ) : (
-                <svg width="34" height="34" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
-                </svg>
-              )}
-            </button>
-          </div>
-
-          {/* Right Tap Zone (Right 40% of the screen) */}
-          {isRewindForwardEnabled ? (
-            <div 
-              className="seek-tap-zone right-zone" 
-              onClick={(e) => {
-                e.stopPropagation();
-                handleSeekClick('forward');
-              }}
-            >
-              <div 
-                className="premium-overlay-btn" 
-                style={{
-                  opacity: forwardClicks > 0 ? 1 : 0,
-                  transition: 'opacity 0.25s ease',
-                }}
-              >
-                <div className="seek-btn-content">
-                  <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-                    <path d="M21 3v5h-5" />
-                  </svg>
-                  {renderSkipLabel(forwardClicks)}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="seek-tap-zone right-zone-empty" style={{ width: '40%' }} />
-          )}
+  if (loadingToken || resolvingYoutubeLive) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '450px', background: '#000', color: '#fff', gap: '15px' }}>
+        <div className="token-spinner" style={{ width: '40px', height: '40px', border: '3px solid rgba(255,255,255,0.1)', borderTopColor: accentColor, borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+        <div style={{ fontFamily: 'sans-serif', fontSize: '0.95rem', fontWeight: 600, letterSpacing: '0.5px', color: '#aaa' }}>
+          {resolvingYoutubeLive ? 'Resolving live stream...' : 'Securing stream...'}
         </div>
-      )}
+        <style dangerouslySetInnerHTML={{ __html: `
+          @keyframes spin { to { transform: rotate(360deg); } }
+        ` }} />
+      </div>
+    );
+  }
 
-      {/* Floating Watermark Layer */}
-      {playerSettings?.watermark === 'YES' && playerSettings?.watermarkLogo && (
-        <a 
-          href={playerSettings.watermarkUrl && playerSettings.watermarkUrl !== '#' ? playerSettings.watermarkUrl : undefined}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={`premium-player-watermark position-${(playerSettings.watermarkPosition || 'Top Right').toLowerCase().replace(' ', '-')}`}
-          onClick={(e) => {
-            if (!playerSettings.watermarkUrl || playerSettings.watermarkUrl === '#') {
-              e.preventDefault();
+  // 1. Render Mux Player if playback ID is present and activePlayer is MUX_PLAYER
+  if (activePlayer === 'MUX_PLAYER' && playbackId) {
+    return (
+      <div style={containerStyle}>
+        <MuxPlayer
+          ref={playerRef}
+          playbackId={playbackId}
+          tokens={signedToken ? { playback: signedToken } : undefined}
+          accentColor={accentColor}
+          playsInline
+          autoPlay={isAutoplayEnabled ? 'any' : false}
+          playbackEngine="mse"
+          forwardSeekOffset={10}
+          backwardSeekOffset={10}
+          playbackRates={[0.5, 1, 1.25, 1.5, 2]}
+          onEnded={onEnded}
+          onTimeUpdate={(e) => {
+            if (onTimeUpdate) {
+              onTimeUpdate(e.target.currentTime, e.target.duration);
             }
           }}
+          style={muxPlayerStyle}
+          metadata={metadata}
+          fullscreenElement="lemo-premium-player-container"
+        />
+        {/* Floating Watermark Layer */}
+        {playerSettings?.watermark === 'YES' && playerSettings?.watermarkLogo && (
+          <a 
+            href={playerSettings.watermarkUrl && playerSettings.watermarkUrl !== '#' ? playerSettings.watermarkUrl : undefined}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`premium-player-watermark position-${(playerSettings.watermarkPosition || 'Top Right').toLowerCase().replace(' ', '-')}`}
+            style={getWatermarkStyle(playerSettings.watermarkPosition)}
+          >
+            <img 
+              src={getWatermarkUrl(playerSettings.watermarkLogo)} 
+              alt="Watermark" 
+              style={{ maxHeight: '35px', opacity: 0.7 }}
+            />
+          </a>
+        )}
+      </div>
+    );
+  }
+
+  // 2. Render V10 @videojs/react Player (HLS, DASH, MP4, etc.)
+  return (
+    <Player.Provider>
+      <VideoSkin
+        poster={poster}
+        className={className}
+        style={containerStyle}
+        {...rest}
+      >
+        <HlsVideo 
+          src={getStreamSrc()} 
+          playsInline 
+          crossOrigin="anonymous"
+          autoPlay={isAutoplayEnabled}
+          onEnded={onEnded}
+          onTimeUpdate={(e) => {
+            if (onTimeUpdate) {
+              onTimeUpdate(e.target.currentTime, e.target.duration);
+            }
+          }}
+          style={playerStyle}
         >
-          <img 
-            src={getWatermarkUrl(playerSettings.watermarkLogo)} 
-            alt="Watermark Logo" 
-          />
-        </a>
-      )}
+          {subtitlesActive === 'Active' && activeSubs.map((sub, idx) => (
+            <track
+              key={idx}
+              kind="subtitles"
+              src={sub.url}
+              srcLang={sub.language ? sub.language.toLowerCase().substring(0, 2) : 'en'}
+              label={sub.language || 'English'}
+              default={idx === 0}
+            />
+          ))}
+        </HlsVideo>
 
-      <style dangerouslySetInnerHTML={{ __html: `
-        .premium-player-wrapper {
-          --player-accent: ${accentColor};
-          --player-accent-rgb: ${accentRgb};
-          --player-accent-text: ${accentText};
-          --player-seek-backward: none;
-          --player-seek-forward: none;
-          position: relative;
-          min-height: 450px;
-          transition: border-radius 0.2s, box-shadow 0.2s;
-        }
-        .premium-player-wrapper mux-player {
-          --seek-backward-button: var(--player-seek-backward);
-          --seek-forward-button: var(--player-seek-forward);
-        }
-        .premium-player-wrapper mux-player,
-        .premium-player-wrapper video {
-          min-height: 450px;
-        }
-        
-        /* Fullscreen styles for the wrapper container */
-        .premium-player-wrapper.is-fullscreen {
-          display: flex !important;
-          align-items: center !important;
-          justify-content: center !important;
-          width: 100vw !important;
-          height: 100vh !important;
-          min-height: 100vh !important;
-          border-radius: 0 !important;
-          box-shadow: none !important;
-          background: #000 !important;
-        }
-        .premium-player-wrapper.is-fullscreen mux-player,
-        .premium-player-wrapper.is-fullscreen video {
-          width: 100% !important;
-          height: 100% !important;
-          max-width: 100% !important;
-          max-height: 100% !important;
-          object-fit: contain !important;
-        }
-        .premium-player-wrapper.is-fullscreen .premium-player-watermark {
-          z-index: 2147483647 !important;
-        }
-        .premium-player-wrapper.is-fullscreen .premium-player-screen-overlay {
-          z-index: 2147483646 !important;
-        }
-        .premium-player-wrapper.is-fullscreen .premium-player-watermark.position-bottom-right,
-        .premium-player-wrapper.is-fullscreen .premium-player-watermark.position-bottom-left {
-          bottom: 100px !important;
-        }
+        {/* Central controls overlay (Big play/pause, backward/forward skip) */}
+        <CentralControlsOverlay />
 
-        .premium-player-screen-overlay {
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          background: rgba(0, 0, 0, 0.45);
-          opacity: 1;
-          z-index: 10;
-          pointer-events: auto;
-          transition: background-color 0.3s ease;
-        }
-
-        .controls-hidden .premium-player-screen-overlay {
-          background: transparent;
-        }
-
-        .seek-tap-zone {
-          width: 40%;
-          height: 100%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          pointer-events: auto;
-          user-select: none;
-          -webkit-tap-highlight-color: transparent;
-          z-index: 11;
-        }
-
-        .center-control-zone {
-          width: 20%;
-          height: 100%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 12;
-          pointer-events: auto;
-          transition: opacity 0.3s ease;
-        }
-
-        .controls-hidden .center-control-zone {
-          opacity: 0;
-          pointer-events: none;
-        }
-
-        /* Synchronization of Mux Player / VideoJS / Native controls with our overlay state */
-        .controls-hidden mux-player {
-          --controls: none !important;
-        }
-        .controls-hidden mux-player::part(control-bar) {
-          display: none !important;
-        }
-        .controls-hidden .vjs-control-bar {
-          display: none !important;
-        }
-
-        /* Keyframes for Continuous Breathing Ripple */
-        @keyframes ripple-breathe {
-          0% {
-            box-shadow: 0 0 0 6px rgba(var(--player-accent-rgb), 0.35), 0 0 0 12px rgba(var(--player-accent-rgb), 0.18);
-          }
-          50% {
-            box-shadow: 0 0 0 11px rgba(var(--player-accent-rgb), 0.45), 0 0 0 22px rgba(var(--player-accent-rgb), 0.25);
-          }
-          100% {
-            box-shadow: 0 0 0 6px rgba(var(--player-accent-rgb), 0.35), 0 0 0 12px rgba(var(--player-accent-rgb), 0.18);
-          }
-        }
-
-        /* Keyframes for Click/Toggle Pop scale */
-        @keyframes play-pop {
-          0% { transform: scale(1); }
-          50% { transform: scale(1.22); }
-          100% { transform: scale(1); }
-        }
-
-        .premium-overlay-btn {
-          width: 58px;
-          height: 58px;
-          background: transparent;
-          border: none;
-          color: #ffffff;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-          filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6));
-          padding: 0;
-          outline: none;
-        }
-        .premium-overlay-btn:hover {
-          color: var(--player-accent);
-          transform: scale(1.15);
-          background: transparent;
-        }
-        
-        .premium-overlay-btn.center-play {
-          width: 76px;
-          height: 76px;
-          border-radius: 50%;
-          background: var(--player-accent);
-          color: var(--player-accent-text);
-          border: none;
-          box-shadow: 0 0 0 8px rgba(var(--player-accent-rgb), 0.3), 0 0 0 16px rgba(var(--player-accent-rgb), 0.15);
-          filter: none;
-          animation: ripple-breathe 2s infinite ease-in-out;
-          transition: background-color 0.2s, color 0.2s, box-shadow 0.2s;
-        }
-
-        .play-pulse-active {
-          animation: play-pop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
-        }
-
-        .premium-overlay-btn.center-play:hover {
-          background: var(--player-accent);
-          color: var(--player-accent-text);
-          box-shadow: 0 0 0 12px rgba(var(--player-accent-rgb), 0.4), 0 0 0 24px rgba(var(--player-accent-rgb), 0.25);
-          filter: none;
-        }
-
-        /* Pause button custom style when video is playing */
-        .premium-overlay-btn.center-play.center-pause {
-          background: var(--player-accent);
-          color: var(--player-accent-text);
-          box-shadow: 0 0 0 8px rgba(var(--player-accent-rgb), 0.3), 0 0 0 16px rgba(var(--player-accent-rgb), 0.15);
-        }
-
-        .seek-btn-content {
-          position: relative;
-          width: 34px;
-          height: 34px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-        .seek-btn-number {
-          position: absolute;
-          top: 54%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          font-weight: 800;
-          color: currentColor;
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-          line-height: 1;
-        }
-
-        /* Premium Watermark styles */
-        .premium-player-watermark {
-          position: absolute;
-          z-index: 9;
-          pointer-events: auto;
-          max-width: 120px;
-          height: auto;
-          display: block;
-        }
-        .premium-player-watermark img {
-          max-width: 100%;
-          max-height: 45px;
-          height: auto;
-          object-fit: contain;
-          opacity: 0.75;
-          transition: opacity 0.25s, transform 0.25s;
-        }
-        .premium-player-watermark img:hover {
-          opacity: 1;
-          transform: scale(1.05);
-        }
-
-        .premium-player-watermark.position-top-right {
-          top: 20px;
-          right: 20px;
-        }
-        .premium-player-watermark.position-top-left {
-          top: 20px;
-          left: 20px;
-        }
-        .premium-player-watermark.position-bottom-right {
-          bottom: 80px;
-          right: 20px;
-        }
-        .premium-player-watermark.position-bottom-left {
-          bottom: 80px;
-          left: 20px;
-        }
-
-        @media (max-width: 768px) {
-          .premium-player-wrapper:not(:fullscreen) {
-            min-height: 0 !important;
-            aspect-ratio: 16/9;
-            --player-seek-backward: ${isRewindForwardEnabled ? 'inline-flex' : 'none'} !important;
-            --player-seek-forward: ${isRewindForwardEnabled ? 'inline-flex' : 'none'} !important;
-          }
-          .premium-player-wrapper:not(:fullscreen) mux-player,
-          .premium-player-wrapper:not(:fullscreen) video {
-            min-height: 0 !important;
-            height: 100% !important;
-          }
-
-
-          
-          /* Make center play button smaller */
-          .premium-overlay-btn.center-play {
-            width: 54px !important;
-            height: 54px !important;
-            box-shadow: 0 0 0 4px rgba(var(--player-accent-rgb), 0.3), 0 0 0 8px rgba(var(--player-accent-rgb), 0.15) !important;
-            animation: ripple-breathe-mobile 2s infinite ease-in-out !important;
-          }
-          
-          .premium-overlay-btn.center-play svg {
-            width: 24px !important;
-            height: 24px !important;
-          }
-          
-          .premium-overlay-btn.center-play.center-pause {
-            box-shadow: 0 0 0 4px rgba(var(--player-accent-rgb), 0.3), 0 0 0 8px rgba(var(--player-accent-rgb), 0.15) !important;
-          }
-          
-          /* Smaller watermark for mobile screen */
-          .premium-player-watermark img {
-            max-height: 25px !important;
-          }
-          .premium-player-wrapper:not(:fullscreen) .premium-player-watermark.position-bottom-right,
-          .premium-player-wrapper:not(:fullscreen) .premium-player-watermark.position-bottom-left {
-            bottom: 60px !important;
-          }
-        }
-
-        /* Mobile specific breathing animation */
-        @keyframes ripple-breathe-mobile {
-          0% {
-            box-shadow: 0 0 0 4px rgba(var(--player-accent-rgb), 0.35), 0 0 0 8px rgba(var(--player-accent-rgb), 0.18);
-          }
-          50% {
-            box-shadow: 0 0 0 7px rgba(var(--player-accent-rgb), 0.45), 0 0 0 14px rgba(var(--player-accent-rgb), 0.25);
-          }
-          100% {
-            box-shadow: 0 0 0 4px rgba(var(--player-accent-rgb), 0.35), 0 0 0 8px rgba(var(--player-accent-rgb), 0.18);
-          }
-        }
-      `}} />
-    </div>
+        {/* Floating Watermark Layer */}
+        {playerSettings?.watermark === 'YES' && playerSettings?.watermarkLogo && (
+          <a 
+            href={playerSettings.watermarkUrl && playerSettings.watermarkUrl !== '#' ? playerSettings.watermarkUrl : undefined}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`premium-player-watermark position-${(playerSettings.watermarkPosition || 'Top Right').toLowerCase().replace(' ', '-')}`}
+            style={getWatermarkStyle(playerSettings.watermarkPosition)}
+          >
+            <img 
+              src={getWatermarkUrl(playerSettings.watermarkLogo)} 
+              alt="Watermark" 
+              style={{ maxHeight: '35px', opacity: 0.7 }}
+            />
+          </a>
+        )}
+      </VideoSkin>
+    </Player.Provider>
   );
 };
 
