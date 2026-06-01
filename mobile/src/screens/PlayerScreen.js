@@ -796,22 +796,36 @@ export default function PlayerScreen({ route, navigation }) {
 
   const togglePlay = async () => {
     if (!videoRef.current) return;
-    if (status.isPlaying) {
-      setShouldPlayNextState(false);
-      await videoRef.current.pauseAsync();
-    } else {
-      setShouldPlayNextState(true);
-      await videoRef.current.playAsync();
+    try {
+      if (status.isPlaying) {
+        setShouldPlayNextState(false);
+        const res = await videoRef.current.pauseAsync();
+        setStatus(res);
+      } else {
+        setShouldPlayNextState(true);
+        const res = await videoRef.current.playAsync();
+        setStatus(res);
+      }
+    } catch (e) {
+      console.warn(e);
     }
   };
 
   const seek = async (delta) => {
-    if (!videoRef.current || !status.positionMillis) return;
-    const next = Math.min(
-      status.durationMillis || 0,
-      Math.max(0, status.positionMillis + delta)
-    );
-    await videoRef.current.setPositionAsync(next);
+    if (!videoRef.current) return;
+    const currentPos = status.positionMillis || 0;
+    const duration = status.durationMillis || 0;
+    const next = Math.min(duration, Math.max(0, currentPos + delta));
+    const wasPlaying = status.isPlaying;
+    try {
+      await videoRef.current.setPositionAsync(next);
+      // Resume if video was playing before seek
+      if (wasPlaying) {
+        await videoRef.current.playAsync();
+      }
+    } catch (e) {
+      console.warn('[PlayerScreen] seek error:', e);
+    }
   };
 
   const cycleSpeed = async () => {
@@ -827,57 +841,134 @@ export default function PlayerScreen({ route, navigation }) {
     setMuted(v => !v);
   };
 
-  const seekByTouch = (e) => {
+  const seekByTouch = async (e) => {
     if (!videoRef.current || !status.durationMillis || barWidth <= 1) return;
     const pct = Math.min(1, Math.max(0, e.nativeEvent.locationX / barWidth));
-    videoRef.current.setPositionAsync(pct * status.durationMillis);
+    try {
+      const res = await videoRef.current.setPositionAsync(pct * status.durationMillis);
+      setStatus(res);
+    } catch (err) {
+      console.warn(err);
+    }
   };
 
   const progress = status.durationMillis
     ? (status.positionMillis / status.durationMillis) * 100
     : 0;
 
-  const [leftTaps, setLeftTaps] = useState(0);
-  const [rightTaps, setRightTaps] = useState(0);
-  const leftTimer = useRef(null);
-  const rightTimer = useRef(null);
+  // Skip flash feedback
+  const [skipFlash, setSkipFlash] = useState(null); // 'left' | 'right' | null
+  const [skipFlashSecs, setSkipFlashSecs] = useState(0);
+  const skipFlashTimer = useRef(null);
 
+  const lastTapTime = useRef(0);
+  const tapCount = useRef(0);
+  const tapTimer = useRef(null);
+  const currentSkipDirection = useRef(null); // 'left' | 'right'
+  const accumulatedSecs = useRef(0);
+
+  // double tap = 2s, triple tap = 5s, quadruple+ = 10s
   const getSecondsForTaps = (taps) => {
-    if (taps <= 2) return 2;
+    if (taps === 2) return 2;
     if (taps === 3) return 5;
-    return 10;
+    if (taps >= 4) return 10;
+    return 0;
   };
 
-  const handleLeftPress = () => {
+  const showSkipFlash = (dir, secs) => {
+    setSkipFlash(dir);
+    setSkipFlashSecs(secs);
+    clearTimeout(skipFlashTimer.current);
+    skipFlashTimer.current = setTimeout(() => setSkipFlash(null), 850);
+  };
+
+  const handleLeftPress = async () => {
     resetHideTimer();
-    setLeftTaps(prev => {
-      const next = prev + 1;
-      clearTimeout(leftTimer.current);
-      leftTimer.current = setTimeout(async () => {
-        const secs = getSecondsForTaps(next);
-        await seek(-secs * 1000);
-        setLeftTaps(0);
-      }, 650);
-      return next;
-    });
+    const now = Date.now();
+    const DOUBLE_TAP_DELAY = 280;
+
+    if (now - lastTapTime.current < DOUBLE_TAP_DELAY && currentSkipDirection.current === 'left') {
+      tapCount.current += 1;
+      clearTimeout(tapTimer.current);
+
+      let increment = 0;
+      if (tapCount.current === 2) {
+        increment = 2;
+        accumulatedSecs.current = 2;
+      } else if (tapCount.current === 3) {
+        increment = 3;
+        accumulatedSecs.current = 5;
+      } else if (tapCount.current >= 4) {
+        increment = 5;
+        accumulatedSecs.current = 10;
+      }
+
+      if (increment > 0) {
+        await seek(-increment * 1000);
+        showSkipFlash('left', accumulatedSecs.current);
+      }
+    } else {
+      tapCount.current = 1;
+      currentSkipDirection.current = 'left';
+      accumulatedSecs.current = 0;
+
+      clearTimeout(tapTimer.current);
+      tapTimer.current = setTimeout(() => {
+        if (tapCount.current === 1) {
+          if (!isAdPlaying) {
+            setShowControls(v => !v);
+          }
+        }
+        tapCount.current = 0;
+        currentSkipDirection.current = null;
+      }, DOUBLE_TAP_DELAY);
+    }
+    lastTapTime.current = now;
   };
 
-  const handleRightPress = () => {
+  const handleRightPress = async () => {
     resetHideTimer();
-    setRightTaps(prev => {
-      const next = prev + 1;
-      clearTimeout(rightTimer.current);
-      rightTimer.current = setTimeout(async () => {
-        const secs = getSecondsForTaps(next);
-        await seek(secs * 1000);
-        setRightTaps(0);
-      }, 650);
-      return next;
-    });
-  };
+    const now = Date.now();
+    const DOUBLE_TAP_DELAY = 280;
 
-  const leftSecs = leftTaps > 0 ? getSecondsForTaps(leftTaps) : 2;
-  const rightSecs = rightTaps > 0 ? getSecondsForTaps(rightTaps) : 2;
+    if (now - lastTapTime.current < DOUBLE_TAP_DELAY && currentSkipDirection.current === 'right') {
+      tapCount.current += 1;
+      clearTimeout(tapTimer.current);
+
+      let increment = 0;
+      if (tapCount.current === 2) {
+        increment = 2;
+        accumulatedSecs.current = 2;
+      } else if (tapCount.current === 3) {
+        increment = 3;
+        accumulatedSecs.current = 5;
+      } else if (tapCount.current >= 4) {
+        increment = 5;
+        accumulatedSecs.current = 10;
+      }
+
+      if (increment > 0) {
+        await seek(increment * 1000);
+        showSkipFlash('right', accumulatedSecs.current);
+      }
+    } else {
+      tapCount.current = 1;
+      currentSkipDirection.current = 'right';
+      accumulatedSecs.current = 0;
+
+      clearTimeout(tapTimer.current);
+      tapTimer.current = setTimeout(() => {
+        if (tapCount.current === 1) {
+          if (!isAdPlaying) {
+            setShowControls(v => !v);
+          }
+        }
+        tapCount.current = 0;
+        currentSkipDirection.current = null;
+      }, DOUBLE_TAP_DELAY);
+    }
+    lastTapTime.current = now;
+  };
 
   /* ─── detect embedded URLs ─── */
   const getYtId  = (u) => { const m = u?.match(/(?:youtu\.be\/|v=|embed\/)([^#&?]{11})/); return m?.[1]; };
@@ -955,6 +1046,7 @@ export default function PlayerScreen({ route, navigation }) {
             useNativeControls={false}
             shouldPlay={isAdPlaying ? false : shouldPlayNextState}
             onPlaybackStatusUpdate={s => setStatus(() => s)}
+            progressUpdateIntervalMillis={100}
             onLoadStart={() => setLoading(true)}
             onLoad={handleLoad}
             onError={e => {
@@ -981,13 +1073,69 @@ export default function PlayerScreen({ route, navigation }) {
               </Text>
             )}
           </View>
+
+          {/* Floating Aspect Ratio Button (Always Visible) */}
+          <TouchableOpacity 
+            onPress={() => {
+              setResizeMode(prev => {
+                if (prev === ResizeMode.CONTAIN) return ResizeMode.STRETCH;
+                if (prev === ResizeMode.STRETCH) return ResizeMode.COVER;
+                return ResizeMode.CONTAIN;
+              });
+            }}
+            style={[styles.aspectRatioBtn, { position: 'absolute', top: pt + 55, left: ph, zIndex: 30 }]}
+          >
+            <Text style={styles.aspectRatioText}>
+              {resizeMode === ResizeMode.CONTAIN ? 'FIT' : resizeMode === ResizeMode.STRETCH ? 'STRETCH' : 'ZOOM'}
+            </Text>
+          </TouchableOpacity>
         </View>
       ) : null}
 
-      {/* ── Tap interceptor ── */}
-      <TouchableWithoutFeedback onPress={handleTap}>
-        <View style={StyleSheet.absoluteFill} />
-      </TouchableWithoutFeedback>
+      {/* ── Tap interceptor with Left/Right Double-tap zones ── */}
+      {!isEmbed && !isAdPlaying ? (
+        <View style={styles.touchOverlayContainer} pointerEvents="box-none">
+          {/* Left zone: 40% width */}
+          <TouchableOpacity
+            activeOpacity={1}
+            style={styles.touchZoneSide}
+            onPress={handleLeftPress}
+          >
+            {skipFlash === 'left' && (
+              <View style={styles.rippleOverlayLeft}>
+                <Text style={styles.rippleText}>◀◀</Text>
+                <Text style={styles.rippleSubtext}>-{skipFlashSecs}s</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+
+          {/* Middle zone: 20% width */}
+          <TouchableOpacity
+            activeOpacity={1}
+            style={styles.touchZoneMiddle}
+            onPress={handleTap}
+          />
+
+          {/* Right zone: 40% width */}
+          <TouchableOpacity
+            activeOpacity={1}
+            style={styles.touchZoneSide}
+            onPress={handleRightPress}
+          >
+            {skipFlash === 'right' && (
+              <View style={styles.rippleOverlayRight}>
+                <Text style={styles.rippleText}>▶▶</Text>
+                <Text style={styles.rippleSubtext}>+{skipFlashSecs}s</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+      ) : (
+        /* Fallback simple tap for Ads/Embeds */
+        <TouchableWithoutFeedback onPress={handleTap}>
+          <View style={StyleSheet.absoluteFill} />
+        </TouchableWithoutFeedback>
+      )}
 
       {/* ── Custom Controls Overlay ── */}
       {!isEmbed && showControls && !isAdPlaying && (
@@ -997,35 +1145,16 @@ export default function PlayerScreen({ route, navigation }) {
           <View style={styles.dimBg} pointerEvents="none" />
 
           {/* ── TOP BAR ── */}
-          <View style={[styles.topBar, { paddingTop: pt, paddingHorizontal: ph, justifyContent: 'space-between' }]}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, marginRight: 16 }}>
-              <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                <ArrowLeft color="#fff" size={22} />
-              </TouchableOpacity>
-              <Text style={styles.titleText} numberOfLines={1}>{videoTitle || ''}</Text>
-            </View>
-            <TouchableOpacity 
-              onPress={() => {
-                setResizeMode(prev => {
-                  if (prev === ResizeMode.CONTAIN) return ResizeMode.STRETCH;
-                  if (prev === ResizeMode.STRETCH) return ResizeMode.COVER;
-                  return ResizeMode.CONTAIN;
-                });
-              }}
-              style={styles.aspectRatioBtn}
-            >
-              <Text style={styles.aspectRatioText}>
-                {resizeMode === ResizeMode.CONTAIN ? 'FIT' : resizeMode === ResizeMode.STRETCH ? 'STRETCH' : 'ZOOM'}
-              </Text>
+          <View style={[styles.topBar, { paddingTop: pt, paddingHorizontal: ph }]}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <ArrowLeft color="#fff" size={22} />
             </TouchableOpacity>
+            <Text style={styles.titleText} numberOfLines={1}>{videoTitle || ''}</Text>
           </View>
 
-          {/* ── CENTER CONTROLS (skip + play/pause) ── */}
+          {/* ── CENTER CONTROLS (play/pause only) ── */}
           <View style={styles.centerControls} pointerEvents="box-none">
-            <TouchableOpacity onPress={handleLeftPress} style={styles.centerCircle} activeOpacity={0.7}>
-              <SkipIcon direction="left" seconds={leftSecs} />
-            </TouchableOpacity>
-
+            {/* Play / Pause */}
             <TouchableOpacity onPress={togglePlay} style={[styles.centerCircle, styles.centerPlayCircle]} activeOpacity={0.7}>
               {!status.isPlaying && (
                 <>
@@ -1036,10 +1165,6 @@ export default function PlayerScreen({ route, navigation }) {
               {status.isPlaying
                 ? <Pause color="#000" size={32} fill="#000" />
                 : <Play  color="#000" size={32} fill="#000" style={{ marginLeft: 4 }} />}
-            </TouchableOpacity>
-
-            <TouchableOpacity onPress={handleRightPress} style={styles.centerCircle} activeOpacity={0.7}>
-              <SkipIcon direction="right" seconds={rightSecs} />
             </TouchableOpacity>
           </View>
 
@@ -1426,6 +1551,56 @@ const styles = StyleSheet.create({
     gap: 28,
     zIndex: 15,
   },
+  touchOverlayContainer: {
+    ...StyleSheet.absoluteFillObject,
+    flexDirection: 'row',
+    zIndex: 12,
+  },
+  touchZoneSide: {
+    flex: 4,
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  touchZoneMiddle: {
+    flex: 2,
+    height: '100%',
+  },
+  rippleOverlayLeft: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'transparent',
+    justifyContent: 'center',
+    alignItems: 'center',
+    alignSelf: 'center',
+  },
+  rippleOverlayRight: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'transparent',
+    justifyContent: 'center',
+    alignItems: 'center',
+    alignSelf: 'center',
+  },
+  rippleText: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: 'bold',
+    textShadowColor: 'rgba(0,0,0,0.85)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
+  },
+  rippleSubtext: {
+    color: '#b3d332',
+    fontSize: 12,
+    fontWeight: '800',
+    marginTop: 2,
+    textShadowColor: 'rgba(0,0,0,0.85)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
+  },
   centerCircle: {
     width: 48,
     height: 48,
@@ -1465,6 +1640,20 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 8,
     fontWeight: '800',
+  },
+  skipFlashLabel: {
+    position: 'absolute',
+    top: -28,
+    alignSelf: 'center',
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    borderRadius: 8,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+  },
+  skipFlashText: {
+    color: '#b3d332',
+    fontSize: 13,
+    fontWeight: '700',
   },
   modalBackdrop: {
     ...StyleSheet.absoluteFillObject,
