@@ -13,6 +13,7 @@ const PlayerAds = () => {
  const [loading, setLoading] = useState(false);
  const [saving, setSaving] = useState(false);
  const [notification, setNotification] = useState(null);
+ const [uploadingAd, setUploadingAd] = useState(null);
  
  const [formData, setFormData] = useState({
   defaultAds: 'VAST, VMAP and IMA',
@@ -52,6 +53,43 @@ const PlayerAds = () => {
 
  const handleChange = (e) => {
   setFormData({ ...formData, [e.target.name]: e.target.value });
+ };
+
+ const handleFileChange = async (num, e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  setUploadingAd(num);
+  try {
+   const formDataObj = new FormData();
+   formDataObj.append('file', file);
+
+   const response = await fetch('/api/upload', {
+    method: 'POST',
+    body: formDataObj
+   });
+
+   if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.message || 'Upload failed');
+   }
+
+   const data = await response.json();
+   if (data.url) {
+    setFormData(prev => ({
+     ...prev,
+     [`ad${num}Source`]: data.url
+    }));
+    showNotification(`Ad ${num} source uploaded successfully!`);
+   } else {
+    showNotification('Failed to get uploaded file URL', 'error');
+   }
+  } catch (err) {
+   console.error('Error uploading ad file:', err);
+   showNotification('Upload failed. Please check backend connection.', 'error');
+  } finally {
+   setUploadingAd(null);
+  }
  };
 
  const handleSubmit = async (e) => {
@@ -159,12 +197,30 @@ const PlayerAds = () => {
      <div key={num} className="ad-slot-v">
       <div className="form-row-full-v">
        <label>Ad{num} Source</label>
-       <input 
-        type="text" 
-        name={`ad${num}Source`} 
-        value={formData[`ad${num}Source`]} 
-        onChange={handleChange} 
-       />
+       <div className="ad-source-input-group-v">
+        <input 
+         type="text" 
+         name={`ad${num}Source`} 
+         value={formData[`ad${num}Source`]} 
+         onChange={handleChange} 
+         placeholder="Enter URL or select a file"
+        />
+        <button
+         type="button"
+         className="ad-upload-btn-v"
+         onClick={() => document.getElementById(`ad${num}File`).click()}
+         disabled={uploadingAd === num}
+        >
+         {uploadingAd === num ? 'Uploading...' : 'Select File'}
+        </button>
+        <input
+         type="file"
+         id={`ad${num}File`}
+         style={{ display: 'none' }}
+         onChange={(e) => handleFileChange(num, e)}
+         accept="video/*,image/*"
+        />
+       </div>
       </div>
       <div className="form-row-full-v">
        <label>Ad{num} Timestart</label>
@@ -176,12 +232,13 @@ const PlayerAds = () => {
        />
       </div>
       <div className="form-row-full-v">
-       <label>Ad{num} {num === 1 ? 'Target Link' : 'Link'}</label>
+       <label>Ad{num} Target Link</label>
        <input 
         type="text" 
-        name={num === 1 ? 'ad1TargetLink' : `ad${num}Link`} 
-        value={num === 1 ? formData.ad1TargetLink : (formData[`ad${num}Link`] || '')} 
+        name={`ad${num}TargetLink`} 
+        value={formData[`ad${num}TargetLink`] || ''} 
         onChange={handleChange} 
+        placeholder="https://example.com"
        />
       </div>
      </div>
@@ -225,6 +282,12 @@ const PlayerAds = () => {
     
     .note-box-v { background: rgba(255, 0, 0, 0.05); border: 1px solid rgba(255, 0, 0, 0.1); padding: 10px 18px; border-radius: 4px; }
     .note-box-v p { color: #ff4d4d; font-size: 0.8rem; margin: 0; opacity: 0.9; }
+    
+    .ad-source-input-group-v { display: flex; flex: 1; gap: 10px; align-items: center; }
+    .ad-source-input-group-v input { flex: 1; }
+    .ad-upload-btn-v { background: #2a2c31; color: #fff; border: 1px solid #3a3c41; padding: 10px 15px; border-radius: 4px; font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: all 0.2s ease; white-space: nowrap; }
+    .ad-upload-btn-v:hover { background: #3a3c41; border-color: #4a4c51; }
+    .ad-upload-btn-v:disabled { opacity: 0.6; cursor: not-allowed; }
     
     .help-texts-v p { font-size: 0.8rem; color: #777; margin-bottom: 6px; line-height: 1.4; }
     .help-texts-v strong { color: #bbb; margin-right: 5px; text-transform: uppercase; font-size: 0.75rem; }

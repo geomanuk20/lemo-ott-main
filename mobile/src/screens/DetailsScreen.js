@@ -80,6 +80,19 @@ export default function DetailsScreen({ route, navigation }) {
     return true;
   };
 
+  const checkIsPaid = (item, contentType) => {
+    if (!item) return false;
+    const t = (contentType || '').toLowerCase().trim();
+    if (t === 'show' || t === 'shows' || t === 'series' || t === 'short-web-series' || t === 'web-series') {
+      return (item.seriesAccess || '').toLowerCase() === 'paid';
+    } else if (t === 'live' || t === 'channel' || t === 'channels' || t === 'tv-channel' || t === 'tv-channels') {
+      return (item.tvAccess || '').toLowerCase() === 'paid' || (item.access || '').toLowerCase() === 'paid';
+    } else {
+      // movie, movies, short-film, sports, new-releases, new-release, etc.
+      return (item.access || '').toLowerCase() === 'paid';
+    }
+  };
+
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState(null);
   const [seasons, setSeasons] = useState([]);
@@ -176,30 +189,17 @@ export default function DetailsScreen({ route, navigation }) {
   const handlePlayMainVideo = () => {
     if (!detail) return;
 
-    // Check premium access
-    if (detail.access === 'Paid') {
-      if (!user) {
-        showAlert(
-          'Subscription Required',
-          'Please sign in to access premium content.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Sign In', onPress: () => navigation.navigate('Login') }
-          ]
-        );
-        return;
-      }
-      if (!isPremiumUser()) {
-        showAlert(
-          'Premium Content',
-          'This content is only available to Premium subscribers. Upgrade your plan to watch now!',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Upgrade Now', onPress: () => navigation.navigate('Subscription') }
-          ]
-        );
-        return;
-      }
+    // Only signed-in users can play videos
+    if (!user) {
+      showAlert(
+        'Sign In Required',
+        'Please sign in to watch videos.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Sign In', onPress: () => navigation.navigate('Login') }
+        ]
+      );
+      return;
     }
 
     const videoUrl = detail.videoFile || detail.videoUrl || detail.streamUrl || detail.videoFile1080 || detail.videoFile720 || detail.videoFile480 || detail.server1Url || detail.server2Url || detail.server3Url || detail.embedUrl || '';
@@ -232,30 +232,17 @@ export default function DetailsScreen({ route, navigation }) {
   const handlePlayEpisode = (episode) => {
     console.log('[DetailsScreen] Playing Episode:', episode);
 
-    // Check premium access (if either the show itself is Paid or the specific episode is Paid)
-    if (detail?.access === 'Paid' || episode.access === 'Paid') {
-      if (!user) {
-        showAlert(
-          'Subscription Required',
-          'Please sign in to access premium content.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Sign In', onPress: () => navigation.navigate('Login') }
-          ]
-        );
-        return;
-      }
-      if (!isPremiumUser()) {
-        showAlert(
-          'Premium Content',
-          'This episode is only available to Premium subscribers. Upgrade your plan to watch now!',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Upgrade Now', onPress: () => navigation.navigate('Subscription') }
-          ]
-        );
-        return;
-      }
+    // Only signed-in users can play videos
+    if (!user) {
+      showAlert(
+        'Sign In Required',
+        'Please sign in to watch videos.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Sign In', onPress: () => navigation.navigate('Login') }
+        ]
+      );
+      return;
     }
     
     // Check all potential video URL fields
@@ -354,7 +341,7 @@ export default function DetailsScreen({ route, navigation }) {
         <View style={styles.contentInfo}>
           <View style={styles.titleRow}>
             <Text style={styles.title}>{detail.title || detail.name}</Text>
-            {detail.access === 'Paid' && (() => {
+            {checkIsPaid(detail, type) && (() => {
               const isSubscribed = isPremiumUser();
               return (
                 <View style={[
@@ -499,25 +486,25 @@ export default function DetailsScreen({ route, navigation }) {
                       <View style={styles.episodeDetails}>
                         <View style={styles.episodeTitleRow}>
                           <Text style={styles.episodeTitle} numberOfLines={1}>{episode.title}</Text>
-                          {episode.access === 'Paid' && (() => {
-                            const isSubscribed = isPremiumUser();
-                            return (
-                              <View style={[
-                                styles.episodePremiumBadge,
-                                isSubscribed && { backgroundColor: '#ffffff', borderColor: '#ffffff' }
-                              ]}>
-                                <Crown 
-                                  color={isSubscribed ? '#000000' : '#ffd700'} 
-                                  size={9} 
-                                  fill={isSubscribed ? '#000000' : '#ffd700'} 
-                                />
-                                <Text style={[
-                                  styles.episodePremiumText,
-                                  isSubscribed && { color: '#000000' }
-                                ]}>PRO</Text>
-                              </View>
-                            );
-                          })()}
+                          {(((detail?.seriesAccess || '').toLowerCase() === 'paid' && (episode.access || '').toLowerCase() === 'paid')) && (() => {
+                             const isSubscribed = isPremiumUser();
+                             return (
+                               <View style={[
+                                 styles.episodePremiumBadge,
+                                 isSubscribed && { backgroundColor: '#ffffff', borderColor: '#ffffff' }
+                               ]}>
+                                 <Crown 
+                                   color={isSubscribed ? '#000000' : '#ffd700'} 
+                                   size={9} 
+                                   fill={isSubscribed ? '#000000' : '#ffd700'} 
+                                 />
+                                 <Text style={[
+                                   styles.episodePremiumText,
+                                   isSubscribed && { color: '#000000' }
+                                 ]}>PRO</Text>
+                               </View>
+                             );
+                           })()}
                         </View>
                         <Text style={styles.episodeDesc} numberOfLines={2}>
                           {stripHtml(episode.description) || 'Watch now.'}

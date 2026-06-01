@@ -85,7 +85,7 @@ const FrontendLiveTV = () => {
          <Link to={`/details/live/${channel._id}`} key={channel._id} className="fe-movie-card-new">
           <div className="card-image-wrapper">
            {formatImageUrl(channel) && <img src={formatImageUrl(channel)} alt={channel.name} />}
-           {channel.tvAccess === 'Paid' && (
+           {(((channel.tvAccess || '').toLowerCase() === 'paid' || (channel.access || '').toLowerCase() === 'paid')) && (
             <div className="fe-premium-indicator-v">
              <Crown size={14} fill="currentColor" />
             </div>

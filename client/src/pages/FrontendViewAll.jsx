@@ -154,11 +154,11 @@ const FrontendViewAll = () => {
        >
         <div className="card-poster-v">
          <img src={formatImageUrl(item, 'poster')} alt={item.title || item.name} />
-         {(item.access === 'Paid' || item.seriesAccess === 'Paid' || item.tvAccess === 'Paid') && (
-          <div className="premium-badge-v">
-           <Crown size={12} fill="currentColor" />
-          </div>
-         )}
+          {(((type === 'shows' || type === 'short-web-series') ? (item.seriesAccess || '').toLowerCase() === 'paid' : type === 'live' ? ((item.tvAccess || '').toLowerCase() === 'paid' || (item.access || '').toLowerCase() === 'paid') : (item.access || '').toLowerCase() === 'paid')) && (
+           <div className="premium-badge-v">
+            <Crown size={12} fill="currentColor" />
+           </div>
+          )}
          <div className="card-overlay-v">
           <div className="play-icon-v"><Play size={24} fill="white" /></div>
          </div>

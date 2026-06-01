@@ -37,6 +37,18 @@ export default function WatchlistScreen({ navigation }) {
     return true;
   };
 
+  const checkIsPaid = (item, contentType) => {
+    if (!item) return false;
+    const t = (contentType || '').toLowerCase().trim();
+    if (t === 'show' || t === 'shows' || t === 'series' || t === 'short-web-series' || t === 'web-series') {
+      return (item.seriesAccess || '').toLowerCase() === 'paid';
+    } else if (t === 'live' || t === 'channel' || t === 'channels' || t === 'tv-channel' || t === 'tv-channels') {
+      return (item.tvAccess || '').toLowerCase() === 'paid' || (item.access || '').toLowerCase() === 'paid';
+    } else {
+      return (item.access || '').toLowerCase() === 'paid';
+    }
+  };
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [watchlist, setWatchlist] = useState([]);
@@ -96,7 +108,7 @@ export default function WatchlistScreen({ navigation }) {
         >
           <View style={{ position: 'relative' }}>
             <Image source={{ uri: imageUrl }} style={styles.posterImage} resizeMode="cover" />
-            {item.access === 'Paid' && (() => {
+            {checkIsPaid(item, item.contentType) && (() => {
               const isSubscribed = isPremiumUser();
               return (
                 <View style={[

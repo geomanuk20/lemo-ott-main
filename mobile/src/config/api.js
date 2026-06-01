@@ -1,10 +1,20 @@
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 
 // For physical device testing, replace this with your machine's local network IP address (e.g. '192.168.1.50')
 const LOCAL_IP = '192.168.1.3'; 
 
 // Dynamically detect the host IP address (works for simulators/emulators and physical devices)
 const getHostIP = () => {
+  // Dynamically extract the host IP from the Expo manifest (gets the exact machine IP running Metro)
+  const hostUri = Constants.expoConfig?.hostUri || Constants.manifest2?.extra?.expoGo?.debuggerHost || Constants.manifest?.hostUri;
+  if (hostUri) {
+    const ip = hostUri.split(':')[0];
+    if (ip && ip !== 'localhost' && ip !== '127.0.0.1') {
+      return ip;
+    }
+  }
+
   // Fallback: Simulator/Emulator gets localhost, default fallback to LOCAL_IP
   return Platform.select({
     ios: 'localhost',

@@ -86,6 +86,19 @@ const isItemActive = (item, type, menuSettings) => {
   return true;
 };
 
+const checkIsPaid = (item, contentType) => {
+  if (!item) return false;
+  const t = (contentType || '').toLowerCase().trim();
+  if (t === 'show' || t === 'shows' || t === 'series' || t === 'short-web-series' || t === 'web-series') {
+    return (item.seriesAccess || '').toLowerCase() === 'paid';
+  } else if (t === 'live' || t === 'channel' || t === 'channels' || t === 'tv-channel' || t === 'tv-channels') {
+    return (item.tvAccess || '').toLowerCase() === 'paid' || (item.access || '').toLowerCase() === 'paid';
+  } else {
+    // movie, movies, short-film, sports, new-releases, new-release, etc.
+    return (item.access || '').toLowerCase() === 'paid';
+  }
+};
+
 const FrontendDetails = () => {
  const { type, id } = useParams();
  const cleanType = type ? type.toLowerCase().trim() : '';
@@ -105,50 +118,12 @@ const FrontendDetails = () => {
  const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   const handlePlayVideo = (url, targetEpisode = null) => {
-    // Determine if the item to play is paid or free
-    let isPaid = false;
-    
-    if (targetEpisode) {
-      isPaid = targetEpisode.access === 'Paid';
-    } else if (data) {
-      isPaid = data.access === 'Paid' || data.seriesAccess === 'Paid' || data.tvAccess === 'Paid';
+    // Ensure user is signed in to play ANY video
+    if (!user || !user.id) {
+      alert('Please login to watch videos.');
+      navigate('/login', { state: { from: window.location.pathname } });
+      return;
     }
-
-     if (isPaid) {
-      if (!user || !user.id) {
-        alert('This is premium content. Please login to watch.');
-        navigate('/login', { state: { from: window.location.pathname } });
-        return;
-      }
-      
-      const isAdmin = user.role === 'admin' || user.role === 'sub-admin';
-      
-      if (!isAdmin) {
-        const planName = (user.subscriptionPlan || '').toLowerCase();
-        const isPremiumOrPlatinum = planName.includes('premium') || planName.includes('platinum') || planName.includes('pro');
-        
-        if (planName.includes('basic')) {
-          alert('Your current plan (Basic Plan) only allows access to free content. Please upgrade to a Premium or Platinum plan to watch paid content.');
-          navigate('/subscription');
-          return;
-        }
-        
-        if (user.status !== 'Active' || !isPremiumOrPlatinum) {
-          alert('This is premium content. Please purchase a Premium or Platinum plan to watch.');
-          navigate('/subscription');
-          return;
-        }
-        
-        if (user.expiryDate) {
-          const expiry = new Date(user.expiryDate);
-          if (expiry < new Date()) {
-            alert('Your subscription has expired. Please renew to watch.');
-            navigate('/subscription');
-            return;
-          }
-        }
-      }
-     }
     
     setActiveVideoUrl(url);
 
@@ -852,7 +827,7 @@ const FrontendDetails = () => {
               <div className="fe-episode-hover-play-v">
                <Play size={20} fill="white" color="white" />
               </div>
-              {ep.access === 'Paid' && (
+              {((data?.seriesAccess || '').toLowerCase() === 'paid' && (ep.access || '').toLowerCase() === 'paid') && (
                <div className="fe-episode-crown-tag-v">
                 <Crown size={12} fill="white" color="white" />
                </div>
@@ -886,7 +861,7 @@ const FrontendDetails = () => {
         <Link to={`/details/${cardType}/${item._id}`} key={item._id} className={`fe-related-card-v ${isSports ? 'related-sports-v' : isLive ? 'related-live-v' : ''}`}>
          <div className="related-poster-v">
           <img src={formatImageUrl(item, isSports ? 'landscape' : 'poster')} alt={getTitle(item)} />
-          {item.access === 'Paid' && <div className="premium-tag-v"><Crown size={11} fill="currentColor" /></div>}
+          {checkIsPaid(item, isSports ? 'sports' : isLive ? 'live' : (cardType === 'shows' || cardType === 'short-web-series') ? 'show' : 'movie') && <div className="premium-tag-v"><Crown size={11} fill="currentColor" /></div>}
          </div>
          <h3>{getTitle(item)}</h3>
         </Link>
@@ -1088,8 +1063,8 @@ const FrontendDetails = () => {
     .fe-episode-card-v:hover .fe-episode-card-title-v { color: #fff; }
     
     /* Fullscreen Cinema Player styles */
-    .fe-cinema-overlay-v { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #050505; z-index: 999999; display: flex; flex-direction: column; padding: 25px; box-sizing: border-box; overflow: hidden; }
-    .fe-cinema-container-v { display: flex; flex-direction: column; width: 100%; height: 100%; max-width: 1600px; margin: 0 auto; gap: 15px; }
+    .fe-cinema-overlay-v { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #050505; z-index: 999999; display: flex; flex-direction: column; padding: 15px 25px 25px 25px; box-sizing: border-box; overflow: hidden; }
+    .fe-cinema-container-v { display: flex; flex-direction: column; width: 100%; height: 100%; max-width: 100%; margin: 0 auto; gap: 15px; }
     
     .fe-cinema-header-v { display: flex; align-items: center; justify-content: flex-end; width: 100%; }
     .fe-cinema-close-v { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-weight: 800; font-size: 0.85rem; display: flex; align-items: center; gap: 8px; cursor: pointer; transition: opacity 0.3s ease, border-color 0.3s, color 0.3s, background-color 0.3s; padding: 8px 16px; border-radius: 20px; }

@@ -250,11 +250,11 @@ const signVideoDocument = async (doc, req) => {
   const fields = ['videoFile', 'videoFile480', 'videoFile720', 'videoFile1080', 'trailerUrl', 'downloadUrl'];
   for (const field of fields) {
     if (obj[field]) {
-      if (process.env.AWS_CLOUDFRONT_DOMAIN && process.env.AWS_CLOUDFRONT_KEY_PAIR_ID && process.env.AWS_CLOUDFRONT_PRIVATE_KEY) {
-        obj[field] = signCloudFrontUrl(obj[field]);
+      if (obj[field].includes('.m3u8')) {
+        obj[field] = getProxiedHlsUrlIfS3(obj[field], req);
       } else {
-        if (obj[field].includes('.m3u8')) {
-          obj[field] = getProxiedHlsUrlIfS3(obj[field], req);
+        if (process.env.AWS_CLOUDFRONT_DOMAIN && process.env.AWS_CLOUDFRONT_KEY_PAIR_ID && process.env.AWS_CLOUDFRONT_PRIVATE_KEY) {
+          obj[field] = signCloudFrontUrl(obj[field]);
         } else {
           obj[field] = await getPresignedUrlIfS3(obj[field]);
         }
@@ -1558,8 +1558,8 @@ app.get('/api/videos/:folder/:file', async (req, res) => {
         const body = Buffer.concat(chunks);
         let playlistText = body.toString('utf-8');
         
-        // Append ?token=... to all segment URLs (.ts) inside the m3u8 playlist file
-        playlistText = playlistText.replace(/([a-zA-Z0-9_-]+\.ts)/g, `$1?token=${token}`);
+        // Append ?token=... to all segment (.ts) and sub-playlist (.m3u8) URLs inside the playlist file
+        playlistText = playlistText.replace(/([a-zA-Z0-9_-]+\.(?:ts|m3u8))/g, `$1?token=${token}`);
         
         res.send(playlistText);
       });
@@ -2189,6 +2189,38 @@ app.put('/api/player-ads', async (req, res) => {
     res.status(400).json({ message: err.message });
   }
 });
+
+app.get('/api/vast-proxy', async (req, res) => {
+  try {
+    const { url } = req.query;
+    if (!url) return res.status(400).json({ error: 'URL is required' });
+
+    console.log(`[VAST-PROXY] Fetching VAST XML from: ${url}`);
+    const response = await axios.get(url, { timeout: 8000 });
+    const xml = response.data;
+
+    // Robust regex parsing for XML structure
+    const mediaFileMatch = xml.match(/<MediaFile[^>]*>([\s\S]*?)<\/MediaFile>/i);
+    const clickThroughMatch = xml.match(/<ClickThrough[^>]*>([\s\S]*?)<\/ClickThrough>/i);
+
+    let mediaUrl = '';
+    if (mediaFileMatch && mediaFileMatch[1]) {
+      mediaUrl = mediaFileMatch[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/gi, '$1').trim();
+    }
+
+    let clickUrl = '';
+    if (clickThroughMatch && clickThroughMatch[1]) {
+      clickUrl = clickThroughMatch[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/gi, '$1').trim();
+    }
+
+    console.log(`[VAST-PROXY] Resolved mediaUrl: "${mediaUrl}", clickUrl: "${clickUrl}"`);
+    res.json({ mediaUrl, clickUrl });
+  } catch (err) {
+    console.error('[VAST-PROXY] Error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 const seedPlayerAds = async () => {
   try {

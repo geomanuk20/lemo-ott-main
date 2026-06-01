@@ -87,7 +87,8 @@ const HtmlScriptExecutor = ({ html }) => {
 
 function CentralControlsOverlay() {
   const paused = Player.usePlayer((s) => s.paused);
-  const togglePaused = Player.usePlayer((s) => s.togglePaused);
+  const play = Player.usePlayer((s) => s.play);
+  const pause = Player.usePlayer((s) => s.pause);
   const currentTime = Player.usePlayer((s) => s.currentTime);
   const seek = Player.usePlayer((s) => s.seek);
   const controlsVisible = Player.usePlayer((s) => s.controlsVisible);
@@ -154,7 +155,11 @@ function CentralControlsOverlay() {
         const currentLast = lastClickRef.current;
         if (currentLast.side === side && currentLast.count === 1 && Date.now() - currentLast.time >= 250) {
           // Single tap toggles play/pause
-          if (togglePaused) togglePaused();
+          if (paused) {
+            if (play) play();
+          } else {
+            if (pause) pause();
+          }
           lastClickRef.current = { time: 0, count: 0, side: null, amount: 0 };
         }
       }, 260);
@@ -163,7 +168,11 @@ function CentralControlsOverlay() {
 
   const handlePlayPause = (e) => {
     e.stopPropagation();
-    if (togglePaused) togglePaused();
+    if (paused) {
+      if (play) play();
+    } else {
+      if (pause) pause();
+    }
   };
 
   const isVisible = controlsVisible || paused;
@@ -171,12 +180,18 @@ function CentralControlsOverlay() {
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: `
+        .premium-aspect-ratio-btn:hover {
+          background: rgba(255,255,255,0.15) !important;
+          border-color: #b3d332 !important;
+          transform: scale(1.05);
+        }
+
         .central-controls-overlay {
           position: absolute;
           top: 0;
           left: 0;
           right: 0;
-          bottom: 0;
+          bottom: 60px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -492,15 +507,102 @@ function CentralControlsOverlay() {
             title={paused ? "Play" : "Pause"}
           >
             {paused ? (
-              <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-            ) : (
               <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor" style={{ marginLeft: '4px' }}><path d="M8 5v14l11-7z"/></svg>
+            ) : (
+              <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
             )}
           </button>
         </div>
       </div>
     </>
   );
+}
+
+// helper to convert hh:mm:ss to seconds
+const timeToSeconds = (timeStr) => {
+  if (!timeStr) return 0;
+  const parts = String(timeStr).split(':').map(Number);
+  if (parts.length === 3) {
+    return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  } else if (parts.length === 2) {
+    return parts[0] * 60 + parts[1];
+  }
+  return Number(timeStr) || 0;
+};
+
+// Video.js (HlsVideo) controller component to handle play/pause sync and ads timing
+function AdsController({ isAdPlaying, adsConfig, playedAdsRef, triggerAd, vastPreRoll }) {
+  const paused = Player.usePlayer((s) => s.paused);
+  const play = Player.usePlayer((s) => s.play);
+  const pause = Player.usePlayer((s) => s.pause);
+  const currentTime = Player.usePlayer((s) => s.currentTime);
+
+  // Monitor currentTime to trigger ads
+  useEffect(() => {
+    if (!adsConfig) return;
+
+    // 1. Handle VAST Pre-roll at 0 seconds
+    if (adsConfig.defaultAds === 'VAST, VMAP and IMA' && vastPreRoll && !playedAdsRef.current.has('vast')) {
+      playedAdsRef.current.add('vast');
+      if (!paused && pause) {
+        pause(); // Pause main video
+      }
+      triggerAd(vastPreRoll.mediaUrl, vastPreRoll.clickUrl);
+      return;
+    }
+
+    // 2. Handle Built-in Ads
+    if (adsConfig.defaultAds === 'Built-in Advertisement') {
+      const checkAd = (num) => {
+        const source = adsConfig[`ad${num}Source`];
+        const timeStr = adsConfig[`ad${num}Timestart`];
+        const targetLink = adsConfig[`ad${num}TargetLink`];
+
+        if (source && timeStr && !playedAdsRef.current.has(String(num))) {
+          const adStart = timeToSeconds(timeStr);
+          if (currentTime >= adStart && currentTime < adStart + 5) {
+            playedAdsRef.current.add(String(num));
+            if (!paused && pause) {
+              pause(); // Pause main video
+            }
+            triggerAd(source, targetLink);
+          }
+        }
+      };
+
+      checkAd(1);
+      checkAd(2);
+      checkAd(3);
+    }
+  }, [currentTime, adsConfig, vastPreRoll, paused, pause, triggerAd, playedAdsRef]);
+
+  // Keep it paused during ad playback
+  useEffect(() => {
+    if (isAdPlaying && !paused && pause) {
+      pause(); // Force pause
+    }
+  }, [isAdPlaying, paused, pause]);
+
+  // Resume playback once ad is finished
+  const prevAdPlaying = useRef(false);
+  const playRef = useRef(play);
+  const pausedRef = useRef(paused);
+
+  useEffect(() => {
+    playRef.current = play;
+    pausedRef.current = paused;
+  }, [play, paused]);
+
+  useEffect(() => {
+    if (prevAdPlaying.current && !isAdPlaying) {
+      if (pausedRef.current && playRef.current) {
+        playRef.current(); // Force resume
+      }
+    }
+    prevAdPlaying.current = isAdPlaying;
+  }, [isAdPlaying]);
+
+  return null;
 }
 
 // ================================================================
@@ -513,6 +615,402 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
 
   // Read active video player configuration directly from environment variables (.env)
   const activePlayer = import.meta.env.VITE_ACTIVE_PLAYER || 'MUX_PLAYER';
+
+  // Gating & Playback Ads Configuration state
+  const [adsConfig, setAdsConfig] = useState(null);
+  const [isAdPlaying, setIsAdPlaying] = useState(false);
+  const [adMediaUrl, setAdMediaUrl] = useState('');
+  const [adClickUrl, setAdClickUrl] = useState('');
+  const [adSecondsLeft, setAdSecondsLeft] = useState(0);
+  const [userShouldSeeAds, setUserShouldSeeAds] = useState(false);
+  const [vastPreRoll, setVastPreRoll] = useState(null);
+  const playedAdsRef = useRef(new Set());
+  const timerRef = useRef(null);
+  const [aspectRatioMode, setAspectRatioMode] = useState('contain'); // 'contain' | 'fill' | 'cover'
+
+  useEffect(() => {
+    const checkUserGating = () => {
+      try {
+        const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+        const role = storedUser.role;
+        console.log('[DEBUG-ADS] checkUserGating - User Role:', role);
+        if (role === 'admin' || role === 'sub-admin') {
+          console.log('[DEBUG-ADS] checkUserGating - User is Admin/Sub-Admin. Gating bypassed (Ads disabled).');
+          return false; // Admins skip ads
+        }
+        const planName = (storedUser.subscriptionPlan || 'Basic Plan').toLowerCase();
+        const isPremiumUser = planName.includes('premium') || planName.includes('platinum') || planName.includes('pro');
+        
+        let isExpired = false;
+        if (storedUser.expiryDate) {
+          const expiry = new Date(storedUser.expiryDate);
+          if (expiry < new Date()) {
+            isExpired = true;
+          }
+        }
+        
+        console.log('[DEBUG-ADS] checkUserGating - Plan:', planName, '| Premium:', isPremiumUser, '| Expired:', isExpired);
+        if (isPremiumUser && !isExpired) {
+          console.log('[DEBUG-ADS] checkUserGating - User is Premium. Gating bypassed (Ads disabled).');
+          return false; // Active Premium subscription, skip ads
+        }
+      } catch (e) {
+        console.error('[DEBUG-ADS] Error parsing user for ad-gating:', e);
+      }
+      console.log('[DEBUG-ADS] checkUserGating - Gating active. User should see ads.');
+      return true; // Basic, Guest, Expired see ads
+    };
+
+    const shouldShow = checkUserGating();
+    setUserShouldSeeAds(shouldShow);
+
+    if (shouldShow) {
+      fetch('/api/player-ads')
+        .then(res => {
+          if (res.ok) return res.json();
+          throw new Error('Failed to fetch player ads');
+        })
+        .then(data => {
+          setAdsConfig(data);
+          // If defaultAds is VAST, VMAP and IMA, trigger VAST proxy fetch right away for pre-roll
+          if (data && data.defaultAds === 'VAST, VMAP and IMA' && data.sourceUrl) {
+            fetch(`/api/vast-proxy?url=${encodeURIComponent(data.sourceUrl)}`)
+              .then(res => {
+                if (!res.ok) throw new Error('VAST Proxy request failed');
+                return res.json();
+              })
+              .then(vastData => {
+                if (vastData.mediaUrl) {
+                  setVastPreRoll(vastData);
+                }
+              })
+              .catch(err => console.error('[VAST Fetch Error]:', err));
+          }
+        })
+        .catch(err => console.error('Error fetching ads settings:', err));
+    }
+  }, []);
+
+  const triggerAd = (mediaUrl, clickUrl) => {
+    if (!mediaUrl) return;
+    setAdMediaUrl(mediaUrl);
+    setAdClickUrl(clickUrl || '#');
+    setIsAdPlaying(true);
+    setAdSecondsLeft(5); // Minimum 5 seconds to skip ad
+
+    // Pause the Mux Player
+    if (activePlayer === 'MUX_PLAYER' && playerRef.current) {
+      try {
+        playerRef.current.pause();
+      } catch (e) {
+        console.error('Failed to pause Mux Player:', e);
+      }
+    }
+
+    // Set countdown timer
+    if (timerRef.current) clearInterval(timerRef.current);
+    let timeRemaining = 5;
+    timerRef.current = setInterval(() => {
+      timeRemaining -= 1;
+      setAdSecondsLeft(timeRemaining);
+      if (timeRemaining <= 0) {
+        clearInterval(timerRef.current);
+      }
+    }, 1000);
+  };
+
+  const skipAd = () => {
+    setIsAdPlaying(false);
+    setAdMediaUrl('');
+    setAdClickUrl('');
+    if (timerRef.current) clearInterval(timerRef.current);
+
+    // Resume playback of Mux Player
+    if (activePlayer === 'MUX_PLAYER' && playerRef.current) {
+      try {
+        playerRef.current.play();
+      } catch (e) {
+        console.error('Failed to play Mux Player:', e);
+      }
+    }
+  };
+
+  const handleAdClick = (e) => {
+    e.stopPropagation();
+    if (adClickUrl && adClickUrl !== '#') {
+      window.open(adClickUrl, '_blank');
+    }
+  };
+
+  // cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
+
+  // Force Mux Player to stay paused when ad is playing
+  useEffect(() => {
+    if (isAdPlaying && activePlayer === 'MUX_PLAYER' && playerRef.current) {
+      const keepPaused = () => {
+        try {
+          playerRef.current.pause();
+        } catch (e) {}
+      };
+      playerRef.current.addEventListener('play', keepPaused);
+      return () => {
+        if (playerRef.current) {
+          playerRef.current.removeEventListener('play', keepPaused);
+        }
+      };
+    }
+  }, [isAdPlaying, activePlayer]);
+
+  const handleMuxTimeUpdate = (currentTime, duration) => {
+    if (onTimeUpdate) {
+      onTimeUpdate(currentTime, duration);
+    }
+
+    if (!userShouldSeeAds || !adsConfig) return;
+
+    // 1. Handle VAST Pre-roll at 0 seconds
+    if (adsConfig.defaultAds === 'VAST, VMAP and IMA' && vastPreRoll && !playedAdsRef.current.has('vast')) {
+      playedAdsRef.current.add('vast');
+      triggerAd(vastPreRoll.mediaUrl, vastPreRoll.clickUrl);
+      return;
+    }
+
+    // 2. Handle Built-in Ads
+    if (adsConfig.defaultAds === 'Built-in Advertisement') {
+      const checkAd = (num) => {
+        const source = adsConfig[`ad${num}Source`];
+        const timeStr = adsConfig[`ad${num}Timestart`];
+        const targetLink = adsConfig[`ad${num}TargetLink`];
+
+        if (source && timeStr && !playedAdsRef.current.has(String(num))) {
+          const adStart = timeToSeconds(timeStr);
+          if (currentTime >= adStart && currentTime < adStart + 5) {
+            playedAdsRef.current.add(String(num));
+            triggerAd(source, targetLink);
+          }
+        }
+      };
+
+      checkAd(1);
+      checkAd(2);
+      checkAd(3);
+    }
+  };
+
+  const getAdMediaUrlNormalized = () => {
+    if (!adMediaUrl) return '';
+    if (adMediaUrl.startsWith('http') || adMediaUrl.startsWith('//') || adMediaUrl.startsWith('/')) {
+      return adMediaUrl;
+    }
+    let normalized = adMediaUrl;
+    if (normalized.startsWith('upload/')) {
+      normalized = 'uploads/' + normalized.substring(7);
+    }
+    return `/${normalized}`;
+  };
+
+  // HLS/m3u8 capable ad player supporting autoplay bypass
+  const AdVideoPlayer = ({ src, onEnded }) => {
+    const videoRef = useRef(null);
+
+    useEffect(() => {
+      const video = videoRef.current;
+      if (!video || !src) return;
+
+      let hlsInstance = null;
+
+      const initPlayer = () => {
+        if (src.toLowerCase().includes('.m3u8')) {
+          if (window.Hls) {
+            if (window.Hls.isSupported()) {
+              hlsInstance = new window.Hls();
+              hlsInstance.loadSource(src);
+              hlsInstance.attachMedia(video);
+              hlsInstance.on(window.Hls.Events.MANIFEST_PARSED, () => {
+                video.play().catch(err => {
+                  console.log('[AdPlayer] Hls Autoplay blocked, trying muted play:', err);
+                  video.muted = true;
+                  video.play().catch(e => console.error('[AdPlayer] Muted autoplay also failed:', e));
+                });
+              });
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+              video.src = src;
+              video.play().catch(err => {
+                console.log('[AdPlayer] Native Hls Autoplay blocked, trying muted play:', err);
+                video.muted = true;
+                video.play().catch(e => console.error('[AdPlayer] Native muted autoplay failed:', e));
+              });
+            }
+          } else {
+            // Hls object not loaded on window, fallback to standard source
+            video.src = src;
+            video.play().catch(err => {
+              console.log('[AdPlayer] Standard Autoplay blocked, trying muted play:', err);
+              video.muted = true;
+              video.play().catch(e => console.error('[AdPlayer] Standard muted autoplay failed:', e));
+            });
+          }
+        } else {
+          video.src = src;
+          video.play().catch(err => {
+            console.log('[AdPlayer] Video Autoplay blocked, trying muted play:', err);
+            video.muted = true;
+            video.play().catch(e => console.error('[AdPlayer] Video muted autoplay failed:', e));
+          });
+        }
+      };
+
+      if (src.toLowerCase().includes('.m3u8') && !window.Hls) {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/hls.js@latest';
+        script.async = true;
+        script.onload = () => {
+          initPlayer();
+        };
+        document.head.appendChild(script);
+      } else {
+        initPlayer();
+      }
+
+      return () => {
+        if (hlsInstance) {
+          hlsInstance.destroy();
+        }
+      };
+    }, [src]);
+
+    return (
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        controls={false}
+        onEnded={onEnded}
+        onError={onEnded} // Skip ad if video source fails to load
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'contain'
+        }}
+      />
+    );
+  };
+
+  const renderAdOverlay = () => {
+    const normalizedAdMediaUrl = getAdMediaUrlNormalized();
+    const isAdVideo = normalizedAdMediaUrl.toLowerCase().match(/\.(mp4|webm|ogg|mov|m3u8)$/) || 
+                      normalizedAdMediaUrl.includes('video') || 
+                      normalizedAdMediaUrl.includes('/uploads/');
+
+    return (
+      <div 
+        className="premium-ad-overlay"
+        onClick={handleAdClick}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.9)',
+          backdropFilter: 'blur(12px)',
+          zIndex: 99999,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: adClickUrl && adClickUrl !== '#' ? 'pointer' : 'default'
+        }}
+      >
+        {/* Header */}
+        <div style={{
+          position: 'absolute',
+          top: '20px',
+          left: '30px',
+          right: '30px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          pointerEvents: 'none',
+          width: 'calc(100% - 60px)'
+        }}>
+          <div style={{
+            background: 'rgba(255,255,255,0.15)',
+            padding: '6px 16px',
+            borderRadius: '20px',
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            letterSpacing: '1px',
+            textTransform: 'uppercase',
+            border: '1px solid rgba(255,255,255,0.1)',
+            color: '#fff'
+          }}>
+            Advertisement
+          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              skipAd();
+            }}
+            disabled={adSecondsLeft > 0}
+            style={{
+              pointerEvents: 'auto',
+              background: adSecondsLeft > 0 ? 'rgba(255,255,255,0.1)' : '#b3d332',
+              color: adSecondsLeft > 0 ? 'rgba(255,255,255,0.4)' : '#000',
+              border: adSecondsLeft > 0 ? '1px solid rgba(255,255,255,0.05)' : 'none',
+              padding: '10px 24px',
+              borderRadius: '4px',
+              fontWeight: 800,
+              fontSize: '0.85rem',
+              cursor: adSecondsLeft > 0 ? 'not-allowed' : 'pointer',
+              transition: 'all 0.3s'
+            }}
+          >
+            {adSecondsLeft > 0 ? `Skip Ad in ${adSecondsLeft}s` : 'Skip Ad'}
+          </button>
+        </div>
+
+        {/* Ad Media */}
+        <div style={{
+          width: '85%',
+          height: '75%',
+          maxWidth: '960px',
+          background: '#000',
+          borderRadius: '8px',
+          overflow: 'hidden',
+          boxShadow: '0 20px 50px rgba(0,0,0,0.8)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          position: 'relative'
+        }}>
+          {isAdVideo ? (
+            <AdVideoPlayer src={normalizedAdMediaUrl} onEnded={skipAd} />
+          ) : (
+            <img
+              src={normalizedAdMediaUrl}
+              alt="Advertisement"
+              onError={skipAd} // Skip ad if image source fails to load
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'contain'
+              }}
+            />
+          )}
+        </div>
+      </div>
+    );
+  };
+
+
+  // activePlayer is declared at the top of the component to prevent TDZ issues
 
   // Compute dynamic player styling parameters based on playerSettings
   const isBlueAccent = playerSettings?.playerStyle === 'Blue Accent';
@@ -614,6 +1112,13 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
     if (signedToken && src && src.includes('stream.mux.com')) {
       return `${src}${src.includes('?') ? '&' : '?'}token=${signedToken}`;
     }
+    if (src && !src.startsWith('http') && !src.startsWith('//') && !src.startsWith('/')) {
+      let normalized = src;
+      if (normalized.startsWith('upload/')) {
+        normalized = 'uploads/' + normalized.substring(7);
+      }
+      return `/${normalized}`;
+    }
     return src;
   };
 
@@ -687,14 +1192,15 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
   const playerStyle = {
     width: '100%',
     height: '100%',
-    maxHeight: '80vh',
-    objectFit: 'contain',
+    maxHeight: '100%',
+    objectFit: aspectRatioMode,
     outline: 'none'
   };
 
   // Explicit CSS variables to force all controls to show up on Mux Player
   const muxPlayerStyle = {
     ...playerStyle,
+    objectFit: aspectRatioMode,
     "--playback-rate-button": "inline-flex",
     "--rendition-menu-button": "inline-flex",
     "--audio-track-menu-button": "inline-flex",
@@ -771,15 +1277,59 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
           backwardSeekOffset={10}
           playbackRates={[0.5, 1, 1.25, 1.5, 2]}
           onEnded={onEnded}
-          onTimeUpdate={(e) => {
-            if (onTimeUpdate) {
-              onTimeUpdate(e.target.currentTime, e.target.duration);
+          onPlay={(e) => {
+            if (isAdPlaying) {
+              try {
+                e.target.pause();
+              } catch (err) {}
             }
+          }}
+          onTimeUpdate={(e) => {
+            handleMuxTimeUpdate(e.target.currentTime, e.target.duration);
           }}
           style={muxPlayerStyle}
           metadata={metadata}
           fullscreenElement="lemo-premium-player-container"
         />
+        {/* Aspect Ratio Toggle Button */}
+        <button 
+          onClick={(e) => {
+            e.stopPropagation();
+            setAspectRatioMode(prev => {
+              if (prev === 'contain') return 'fill';
+              if (prev === 'fill') return 'cover';
+              return 'contain';
+            });
+          }}
+          className="premium-aspect-ratio-btn"
+          style={{
+            position: 'absolute',
+            top: '20px',
+            left: '20px',
+            zIndex: 10,
+            background: 'rgba(0,0,0,0.6)',
+            border: '1px solid rgba(255,255,255,0.2)',
+            color: '#fff',
+            padding: '6px 12px',
+            borderRadius: '20px',
+            fontSize: '0.75rem',
+            fontWeight: 800,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            backdropFilter: 'blur(8px)',
+            transition: 'all 0.3s'
+          }}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <rect width="18" height="18" x="3" y="3" rx="2" />
+            {aspectRatioMode === 'fill' && <path d="M7 7h10v10H7z" fill="currentColor"/>}
+            {aspectRatioMode === 'cover' && <path d="M3 12h18M12 3v18"/>}
+          </svg>
+          {aspectRatioMode === 'contain' ? 'FIT' : aspectRatioMode === 'fill' ? 'STRETCH' : 'ZOOM'}
+        </button>
+
         {/* Floating Watermark Layer */}
         {playerSettings?.watermark === 'YES' && playerSettings?.watermarkLogo && (
           <a 
@@ -796,6 +1346,8 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
             />
           </a>
         )}
+        {/* Ad Overlay */}
+        {isAdPlaying && adMediaUrl && renderAdOverlay()}
       </div>
     );
   }
@@ -837,6 +1389,56 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
         {/* Central controls overlay (Big play/pause, backward/forward skip) */}
         <CentralControlsOverlay />
 
+        {/* AdsController */}
+        {userShouldSeeAds && adsConfig && (
+          <AdsController 
+            isAdPlaying={isAdPlaying} 
+            adsConfig={adsConfig} 
+            playedAdsRef={playedAdsRef} 
+            triggerAd={triggerAd} 
+            vastPreRoll={vastPreRoll} 
+          />
+        )}
+
+        {/* Aspect Ratio Toggle Button */}
+        <button 
+          onClick={(e) => {
+            e.stopPropagation();
+            setAspectRatioMode(prev => {
+              if (prev === 'contain') return 'fill';
+              if (prev === 'fill') return 'cover';
+              return 'contain';
+            });
+          }}
+          className="premium-aspect-ratio-btn"
+          style={{
+            position: 'absolute',
+            top: '20px',
+            left: '20px',
+            zIndex: 10,
+            background: 'rgba(0,0,0,0.6)',
+            border: '1px solid rgba(255,255,255,0.2)',
+            color: '#fff',
+            padding: '6px 12px',
+            borderRadius: '20px',
+            fontSize: '0.75rem',
+            fontWeight: 800,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            backdropFilter: 'blur(8px)',
+            transition: 'all 0.3s'
+          }}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <rect width="18" height="18" x="3" y="3" rx="2" />
+            {aspectRatioMode === 'fill' && <path d="M7 7h10v10H7z" fill="currentColor"/>}
+            {aspectRatioMode === 'cover' && <path d="M3 12h18M12 3v18"/>}
+          </svg>
+          {aspectRatioMode === 'contain' ? 'FIT' : aspectRatioMode === 'fill' ? 'STRETCH' : 'ZOOM'}
+        </button>
+
         {/* Floating Watermark Layer */}
         {playerSettings?.watermark === 'YES' && playerSettings?.watermarkLogo && (
           <a 
@@ -853,6 +1455,9 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
             />
           </a>
         )}
+
+        {/* Ad Overlay */}
+        {isAdPlaying && adMediaUrl && renderAdOverlay()}
       </VideoSkin>
     </Player.Provider>
   );

@@ -76,6 +76,24 @@ export default function HomeScreen({ navigation }) {
     return true;
   };
 
+  const checkIsPaid = (item, contentType) => {
+    if (!item) return false;
+    const t = (contentType || '').toLowerCase().trim();
+    if (t === 'show' || t === 'shows' || t === 'series' || t === 'short-web-series' || t === 'web-series') {
+      return (item.seriesAccess || '').toLowerCase() === 'paid';
+    } else if (t === 'live' || t === 'channel' || t === 'channels' || t === 'tv-channel' || t === 'tv-channels') {
+      return (item.tvAccess || '').toLowerCase() === 'paid' || (item.access || '').toLowerCase() === 'paid';
+    } else {
+      if (t === 'new-release' || t === 'new-releases') {
+        const itemType = (item.contentType || '').toLowerCase();
+        if (itemType.includes('show') || itemType.includes('series') || itemType.includes('web')) {
+          return (item.seriesAccess || '').toLowerCase() === 'paid';
+        }
+      }
+      return (item.access || '').toLowerCase() === 'paid';
+    }
+  };
+
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -204,7 +222,7 @@ export default function HomeScreen({ navigation }) {
       >
         <View style={{ position: 'relative' }}>
           <Image source={{ uri: imageUrl }} style={styles.cardImage} resizeMode="cover" />
-          {item.access === 'Paid' && (() => {
+          {checkIsPaid(item, type) && (() => {
             const isSubscribed = isPremiumUser();
             return (
               <View style={[
@@ -242,7 +260,28 @@ export default function HomeScreen({ navigation }) {
         style={styles.channelCard}
         onPress={() => navigation.navigate('Details', { id: item._id, type: 'live' })}
       >
-        <Image source={{ uri: imageUrl }} style={styles.channelImage} resizeMode="cover" />
+        <View style={{ position: 'relative' }}>
+          <Image source={{ uri: imageUrl }} style={styles.channelImage} resizeMode="cover" />
+          {checkIsPaid(item, 'live') && (() => {
+            const isSubscribed = isPremiumUser();
+            return (
+              <View style={[
+                styles.premiumBadge,
+                isSubscribed && { backgroundColor: '#ffffff', borderColor: '#ffffff' }
+              ]}>
+                <Crown 
+                  color={isSubscribed ? '#000000' : '#ffd700'} 
+                  size={9} 
+                  fill={isSubscribed ? '#000000' : '#ffd700'} 
+                />
+                <Text style={[
+                  styles.premiumBadgeText,
+                  isSubscribed && { color: '#000000' }
+                ]}>PRO</Text>
+              </View>
+            );
+          })()}
+        </View>
         <View style={styles.liveOverlay}>
           <Text style={styles.liveText}>LIVE</Text>
         </View>

@@ -88,7 +88,7 @@ const FrontendShows = () => {
          <Link to={`/details/show/${show._id}`} key={show._id} className="fe-movie-card-new">
           <div className="card-image-wrapper">
            {formatImageUrl(show) && <img src={formatImageUrl(show)} alt={show.title} />}
-           {show.seriesAccess === 'Paid' && (
+           {((show.seriesAccess || '').toLowerCase() === 'paid') && (
             <div className="fe-premium-indicator-v">
              <Crown size={14} fill="currentColor" />
             </div>

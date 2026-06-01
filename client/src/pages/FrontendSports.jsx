@@ -96,7 +96,7 @@ const FrontendSports = () => {
             src={formatImageUrl(sport) || 'https://via.placeholder.com/300x168?text=Sports+Video'} 
             alt={sportTitle} 
            />
-           {sport.access === 'Paid' && (
+           {((sport.access || '').toLowerCase() === 'paid') && (
             <div className="fe-premium-indicator-v">
              <Crown size={14} fill="currentColor" />
             </div>

@@ -107,7 +107,7 @@ export default function MoviesScreen({ navigation }) {
       >
         <View style={{ position: 'relative' }}>
           <Image source={{ uri: imageUrl }} style={styles.posterImage} resizeMode="cover" />
-          {item.access === 'Paid' && (() => {
+          {((item.access || '').toLowerCase() === 'paid') && (() => {
             const isSubscribed = isPremiumUser();
             return (
               <View style={[

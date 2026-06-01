@@ -36,6 +36,9 @@ const getCloudFrontUrl = (url) => {
  * @returns {string} - Signed CloudFront URL
  */
 const signCloudFrontUrl = (url, expirationSeconds = 7200) => {
+  if (!url || typeof url !== 'string' || (!url.startsWith('http://') && !url.startsWith('https://'))) {
+    return url;
+  }
   const domain = process.env.AWS_CLOUDFRONT_DOMAIN;
   const keyPairId = process.env.AWS_CLOUDFRONT_KEY_PAIR_ID;
   const privateKeyRaw = process.env.AWS_CLOUDFRONT_PRIVATE_KEY;
@@ -46,7 +49,10 @@ const signCloudFrontUrl = (url, expirationSeconds = 7200) => {
   }
 
   try {
-    const cdnUrl = getCloudFrontUrl(url);
+    let cdnUrl = getCloudFrontUrl(url);
+    if (cdnUrl.includes('?')) {
+      cdnUrl = cdnUrl.split('?')[0];
+    }
     let privateKey = privateKeyRaw.trim();
 
     // Decode base64 if PEM tags are missing (convenient for environment variables)

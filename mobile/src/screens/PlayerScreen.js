@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   StyleSheet,
   Text,
@@ -10,7 +11,8 @@ import {
   Platform,
   Alert,
   Image,
-  Animated
+  Animated,
+  Linking
 } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,8 +21,9 @@ import { WebView } from 'react-native-webview';
 import { ArrowLeft, Play, Pause, Volume2, VolumeX, MoreHorizontal } from 'lucide-react-native';
 import Svg, { Path, Text as SvgText } from 'react-native-svg';
 import client from '../api/client';
-import { formatImageUrl } from '../config/api';
+import { formatImageUrl, ACTIVE_IP, IMAGE_URL_BASE } from '../config/api';
 import CustomAlert from '../components/CustomAlert';
+import * as ScreenOrientation from 'expo-screen-orientation';
 
 /* ─── Custom fullscreen-brackets icon ─── */
 const FullscreenIcon = () => (
@@ -174,8 +177,23 @@ const parseHlsManifest = async (masterUrl) => {
 };
 
 /* ── helper to resolve video URL ── */
-const resolveVideoUrl = async (url, type) => {
+const resolveVideoUrl = async (url, type, token) => {
   if (!url) return null;
+
+  // Append token to local videos if not present
+  if (url.includes('/api/videos/') && !url.includes('token=')) {
+    let activeToken = token;
+    if (!activeToken) {
+      try {
+        activeToken = await AsyncStorage.getItem('token');
+      } catch (e) {
+        console.warn('[PlayerScreen] Failed to read token from AsyncStorage:', e);
+      }
+    }
+    if (activeToken) {
+      url = `${url}${url.includes('?') ? '&' : '?'}token=${activeToken}`;
+    }
+  }
 
   // If it's already a resolved HLS rendition/sub-manifest URL, return it as-is
   if (url.startsWith('http') && (url.includes('rendition.m3u8') || url.includes('/rendition') || url.includes('manifest.m3u8'))) {
@@ -206,12 +224,10 @@ const resolveVideoUrl = async (url, type) => {
     u = u.replace(/\\/g, '/');
 
     if (u.includes('localhost') || u.includes('127.0.0.1')) {
-      const { ACTIVE_IP } = require('../config/api');
       u = u.replace('localhost', ACTIVE_IP).replace('127.0.0.1', ACTIVE_IP);
     }
 
     if (u && !u.startsWith('http') && !u.startsWith('data:')) {
-      const { IMAGE_URL_BASE } = require('../config/api');
       
       let path = u;
       // Strip leading public/ or public\ folder if present
@@ -236,7 +252,7 @@ const resolveVideoUrl = async (url, type) => {
 };
 
 export default function PlayerScreen({ route, navigation }) {
-  const { user } = useContext(AuthContext);
+  const { user, token } = useContext(AuthContext);
   const {
     videoTitle,
     videoUrl,
@@ -258,6 +274,7 @@ export default function PlayerScreen({ route, navigation }) {
   const [muted, setMuted]               = useState(false);
   const [barWidth, setBarWidth]         = useState(1);   // measured progress-bar width
   const [logoUrl, setLogoUrl]           = useState(null);
+  const [resizeMode, setResizeMode]     = useState(ResizeMode.CONTAIN);
 
   // Pulse wave animation values for when player is paused
   const ring1Scale = useRef(new Animated.Value(1)).current;
@@ -378,6 +395,163 @@ export default function PlayerScreen({ route, navigation }) {
   const shouldSeekRef = useRef(false);
   const lastRequestedQualityRef = useRef(null);
 
+  // helper to convert hh:mm:ss to seconds
+  const timeToSeconds = (timeStr) => {
+    if (!timeStr) return 0;
+    const parts = String(timeStr).split(':').map(Number);
+    if (parts.length === 3) {
+      return parts[0] * 3600 + parts[1] * 60 + parts[2];
+    } else if (parts.length === 2) {
+      return parts[0] * 60 + parts[1];
+    }
+    return Number(timeStr) || 0;
+  };
+
+  // helper to check if source is video file
+  const isVideoUrl = (url) => {
+    if (!url) return false;
+    const lower = url.toLowerCase();
+    return lower.includes('.mp4') || lower.includes('.webm') || lower.includes('.mov') || lower.includes('.m3u8') || lower.includes('/uploads/') || lower.includes('video');
+  };
+
+  // Ads gating and playback states
+  const [adsConfig, setAdsConfig] = useState(null);
+  const [isAdPlaying, setIsAdPlaying] = useState(false);
+  const [adMediaUrl, setAdMediaUrl] = useState('');
+  const [adClickUrl, setAdClickUrl] = useState('');
+  const [adSecondsLeft, setAdSecondsLeft] = useState(0);
+  const [userShouldSeeAds, setUserShouldSeeAds] = useState(false);
+  const [vastPreRoll, setVastPreRoll] = useState(null);
+  const playedAdsRef = useRef(new Set());
+  const adTimerRef = useRef(null);
+
+  useEffect(() => {
+    const shouldSee = !isPremiumUser();
+    setUserShouldSeeAds(shouldSee);
+
+    if (shouldSee) {
+      client.get('/player-ads')
+        .then(res => {
+          if (res.data) {
+            setAdsConfig(res.data);
+            if (res.data.defaultAds === 'VAST, VMAP and IMA' && res.data.sourceUrl) {
+              client.get(`/vast-proxy?url=${encodeURIComponent(res.data.sourceUrl)}`)
+                .then(vastRes => {
+                  if (vastRes.data && vastRes.data.mediaUrl) {
+                    setVastPreRoll(vastRes.data);
+                  }
+                })
+                .catch(err => console.warn('Failed to fetch VAST ad for mobile:', err));
+            }
+          }
+        })
+        .catch(err => console.warn('Failed to fetch ads settings for mobile:', err));
+    }
+  }, []);
+
+  const triggerAd = async (mediaUrl, clickUrl) => {
+    if (!mediaUrl) return;
+
+    // Resolve ad URL for mobile (handles localhost, local assets etc.)
+    let resolvedAdUrl = mediaUrl;
+    try {
+      resolvedAdUrl = await resolveVideoUrl(mediaUrl, isVideoUrl(mediaUrl) ? 'HLS' : 'IMAGE', token);
+    } catch (e) {
+      console.warn('[PlayerScreen] Failed to resolve ad media URL:', e);
+    }
+
+    setAdMediaUrl(resolvedAdUrl);
+    setAdClickUrl(clickUrl || '#');
+    setIsAdPlaying(true);
+    setAdSecondsLeft(5);
+
+    // Pause main video playback and hide main video controls
+    setShouldPlayNextState(false);
+    setShowControls(false);
+
+    if (videoRef.current) {
+      try {
+        await videoRef.current.pauseAsync();
+      } catch (err) {
+        console.warn('[PlayerScreen] Failed to pause main video on ad start:', err);
+      }
+    }
+
+    if (adTimerRef.current) clearInterval(adTimerRef.current);
+    let timeRemaining = 5;
+    adTimerRef.current = setInterval(() => {
+      timeRemaining -= 1;
+      setAdSecondsLeft(timeRemaining);
+      if (timeRemaining <= 0) {
+        clearInterval(adTimerRef.current);
+      }
+    }, 1000);
+  };
+
+  const skipAd = async () => {
+    setIsAdPlaying(false);
+    setAdMediaUrl('');
+    setAdClickUrl('');
+    if (adTimerRef.current) clearInterval(adTimerRef.current);
+    // Resume main video playback
+    setShouldPlayNextState(true);
+
+    if (videoRef.current) {
+      try {
+        await videoRef.current.playAsync();
+      } catch (err) {
+        console.warn('[PlayerScreen] Failed to resume main video on ad skip:', err);
+      }
+    }
+  };
+
+  const handleAdClick = () => {
+    if (adClickUrl && adClickUrl !== '#') {
+      Linking.openURL(adClickUrl).catch(err => console.warn('Failed to open link:', err));
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (adTimerRef.current) clearInterval(adTimerRef.current);
+    };
+  }, []);
+
+  // Handle mobile ad triggers based on current playback position
+  useEffect(() => {
+    if (isAdPlaying || !userShouldSeeAds || !adsConfig || !status.positionMillis) return;
+
+    const currentTime = status.positionMillis / 1000;
+
+    // 1. Handle VAST Pre-roll at 0 seconds
+    if (adsConfig.defaultAds === 'VAST, VMAP and IMA' && vastPreRoll && !playedAdsRef.current.has('vast')) {
+      playedAdsRef.current.add('vast');
+      triggerAd(vastPreRoll.mediaUrl, vastPreRoll.clickUrl);
+      return;
+    }
+
+    // 2. Handle Built-in Ads
+    if (adsConfig.defaultAds === 'Built-in Advertisement') {
+      const checkAd = (num) => {
+        const source = adsConfig[`ad${num}Source`];
+        const timeStr = adsConfig[`ad${num}Timestart`];
+        const targetLink = adsConfig[`ad${num}TargetLink`];
+
+        if (source && timeStr && !playedAdsRef.current.has(String(num))) {
+          const adStart = timeToSeconds(timeStr);
+          if (currentTime >= adStart && currentTime < adStart + 5) {
+            playedAdsRef.current.add(String(num));
+            triggerAd(source, targetLink);
+          }
+        }
+      };
+
+      checkAd(1);
+      checkAd(2);
+      checkAd(3);
+    }
+  }, [status.positionMillis, adsConfig, vastPreRoll, userShouldSeeAds, isAdPlaying]);
+
   const isPremiumUser = () => {
     if (!user) return false;
     const plan = user.subscriptionPlan || 'Basic Plan';
@@ -413,34 +587,22 @@ export default function PlayerScreen({ route, navigation }) {
     return () => StatusBar.setHidden(false, 'fade');
   }, []);
 
-  // Dynamically load screen orientation to prevent crash if not installed
-  let ScreenOrientation;
-  try {
-    ScreenOrientation = require('expo-screen-orientation');
-  } catch (e) {
-    // not installed
-  }
-
   /* ── auto-lock orientation to portrait on mount ── */
   useEffect(() => {
     const lock = async () => {
-      if (ScreenOrientation) {
-        try {
-          await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
-        } catch (e) {
-          console.warn('Failed to lock orientation:', e);
-        }
+      try {
+        await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+      } catch (e) {
+        console.warn('Failed to lock orientation:', e);
       }
     };
     lock();
     return () => {
       const unlock = async () => {
-        if (ScreenOrientation) {
-          try {
-            await ScreenOrientation.unlockAsync();
-          } catch (e) {
-            console.warn('Failed to unlock orientation:', e);
-          }
+        try {
+          await ScreenOrientation.unlockAsync();
+        } catch (e) {
+          console.warn('Failed to unlock orientation:', e);
         }
       };
       unlock();
@@ -479,6 +641,7 @@ export default function PlayerScreen({ route, navigation }) {
   }, [showControls, status.isPlaying, showQualityMenu]);
 
   const handleTap = () => {
+    if (isAdPlaying) return;
     setShowControls(v => !v);
   };
 
@@ -487,7 +650,7 @@ export default function PlayerScreen({ route, navigation }) {
     let active = true;
     const resolve = async () => {
       setLoading(true);
-      const u = await resolveVideoUrl(videoUrl, videoType);
+      const u = await resolveVideoUrl(videoUrl, videoType, token);
       if (active && (lastRequestedQualityRef.current === null || lastRequestedQualityRef.current === 'Auto')) {
         if (u) {
           setResolvedUrl(u);
@@ -500,7 +663,7 @@ export default function PlayerScreen({ route, navigation }) {
     return () => {
       active = false;
     };
-  }, [videoUrl, videoType]);
+  }, [videoUrl, videoType, token]);
 
   /* ── reset quality when navigating to a new video ── */
   useEffect(() => {
@@ -559,7 +722,7 @@ export default function PlayerScreen({ route, navigation }) {
     if (qualityName === selectedQuality) return;
 
     // Check premium access
-    if (isPremiumQuality(qualityName) && !isPremiumUser()) {
+    if (isPremiumQuality(qualityName) && !user) {
       showAlert(
         'Premium Feature',
         '1080p, 1440p, and 2160p (4K) qualities are only available to Premium subscribers. Upgrade your plan to access high-definition streaming!',
@@ -593,7 +756,7 @@ export default function PlayerScreen({ route, navigation }) {
     setShouldPlayNextState(status.isPlaying || false);
 
     // Resolve URL
-    const resolved = await resolveVideoUrl(rawUrl, videoType);
+    const resolved = await resolveVideoUrl(rawUrl, videoType, token);
     
     // Ignore stale request results if a different quality was requested since starting this request
     if (lastRequestedQualityRef.current !== qualityName) {
@@ -620,14 +783,26 @@ export default function PlayerScreen({ route, navigation }) {
   /* ── helpers ── */
   const fmt = (ms) => {
     if (!ms || isNaN(ms)) return '0:00';
-    const s = Math.floor(ms / 1000);
-    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+    const totalSecs = Math.floor(ms / 1000);
+    const hrs = Math.floor(totalSecs / 3600);
+    const mins = Math.floor((totalSecs % 3600) / 60);
+    const secs = totalSecs % 60;
+    
+    if (hrs > 0) {
+      return `${hrs}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
+    return `${mins}:${String(secs).padStart(2, '0')}`;
   };
 
   const togglePlay = async () => {
     if (!videoRef.current) return;
-    status.isPlaying ? await videoRef.current.pauseAsync()
-                     : await videoRef.current.playAsync();
+    if (status.isPlaying) {
+      setShouldPlayNextState(false);
+      await videoRef.current.pauseAsync();
+    } else {
+      setShouldPlayNextState(true);
+      await videoRef.current.playAsync();
+    }
   };
 
   const seek = async (delta) => {
@@ -776,9 +951,9 @@ export default function PlayerScreen({ route, navigation }) {
             ref={videoRef}
             source={{ uri: resolvedUrl }}
             style={StyleSheet.absoluteFill}
-            resizeMode={ResizeMode.CONTAIN}
+            resizeMode={resizeMode}
             useNativeControls={false}
-            shouldPlay={shouldPlayNextState}
+            shouldPlay={isAdPlaying ? false : shouldPlayNextState}
             onPlaybackStatusUpdate={s => setStatus(() => s)}
             onLoadStart={() => setLoading(true)}
             onLoad={handleLoad}
@@ -815,18 +990,34 @@ export default function PlayerScreen({ route, navigation }) {
       </TouchableWithoutFeedback>
 
       {/* ── Custom Controls Overlay ── */}
-      {!isEmbed && showControls && (
+      {!isEmbed && showControls && !isAdPlaying && (
         <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
 
           {/* dim backdrop */}
           <View style={styles.dimBg} pointerEvents="none" />
 
           {/* ── TOP BAR ── */}
-          <View style={[styles.topBar, { paddingTop: pt, paddingHorizontal: ph }]}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <ArrowLeft color="#fff" size={22} />
+          <View style={[styles.topBar, { paddingTop: pt, paddingHorizontal: ph, justifyContent: 'space-between' }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, marginRight: 16 }}>
+              <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <ArrowLeft color="#fff" size={22} />
+              </TouchableOpacity>
+              <Text style={styles.titleText} numberOfLines={1}>{videoTitle || ''}</Text>
+            </View>
+            <TouchableOpacity 
+              onPress={() => {
+                setResizeMode(prev => {
+                  if (prev === ResizeMode.CONTAIN) return ResizeMode.STRETCH;
+                  if (prev === ResizeMode.STRETCH) return ResizeMode.COVER;
+                  return ResizeMode.CONTAIN;
+                });
+              }}
+              style={styles.aspectRatioBtn}
+            >
+              <Text style={styles.aspectRatioText}>
+                {resizeMode === ResizeMode.CONTAIN ? 'FIT' : resizeMode === ResizeMode.STRETCH ? 'STRETCH' : 'ZOOM'}
+              </Text>
             </TouchableOpacity>
-            <Text style={styles.titleText} numberOfLines={1}>{videoTitle || ''}</Text>
           </View>
 
           {/* ── CENTER CONTROLS (skip + play/pause) ── */}
@@ -843,8 +1034,8 @@ export default function PlayerScreen({ route, navigation }) {
                 </>
               )}
               {status.isPlaying
-                ? <Play  color="#000" size={32} fill="#000" style={{ marginLeft: 4 }} />
-                : <Pause color="#000" size={32} fill="#000" />}
+                ? <Pause color="#000" size={32} fill="#000" />
+                : <Play  color="#000" size={32} fill="#000" style={{ marginLeft: 4 }} />}
             </TouchableOpacity>
 
             <TouchableOpacity onPress={handleRightPress} style={styles.centerCircle} activeOpacity={0.7}>
@@ -995,6 +1186,60 @@ export default function PlayerScreen({ route, navigation }) {
         buttons={alertConfig.buttons}
         onClose={() => setAlertConfig(prev => ({ ...prev, visible: false }))}
       />
+
+      {/* Ads Overlay for Basic/Free users */}
+      {isAdPlaying && adMediaUrl ? (
+        <View style={adStyles.adOverlay}>
+          <View style={adStyles.adHeader}>
+            <View style={adStyles.adBadge}>
+              <Text style={adStyles.adBadgeText}>Advertisement</Text>
+            </View>
+            <TouchableOpacity 
+              style={[adStyles.skipBtn, adSecondsLeft > 0 && adStyles.skipBtnDisabled]}
+              disabled={adSecondsLeft > 0}
+              onPress={skipAd}
+            >
+              <Text style={[adStyles.skipBtnText, adSecondsLeft > 0 && adStyles.skipBtnTextDisabled]}>
+                {adSecondsLeft > 0 ? `Skip in ${adSecondsLeft}s` : 'Skip Ad'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+          
+          {isVideoUrl(adMediaUrl) ? (
+            <TouchableWithoutFeedback onPress={handleAdClick}>
+              <View style={StyleSheet.absoluteFill}>
+                <Video
+                  source={{ uri: adMediaUrl }}
+                  style={adStyles.adVideo}
+                  resizeMode={ResizeMode.CONTAIN}
+                  shouldPlay={true}
+                  useNativeControls={false}
+                  onPlaybackStatusUpdate={adStatus => {
+                    if (adStatus.didJustFinish) {
+                      skipAd();
+                    }
+                  }}
+                  onError={(err) => {
+                    console.warn('[AdPlayer-Mobile] Video error:', err);
+                    skipAd();
+                  }}
+                />
+              </View>
+            </TouchableWithoutFeedback>
+          ) : (
+            <TouchableOpacity style={adStyles.adImageTouch} onPress={handleAdClick} activeOpacity={0.9}>
+              <Image 
+                source={{ uri: adMediaUrl }} 
+                style={adStyles.adImage} 
+                onError={(err) => {
+                  console.warn('[AdPlayer-Mobile] Image error:', err);
+                  skipAd();
+                }}
+              />
+            </TouchableOpacity>
+          )}
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -1296,4 +1541,85 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: 0.5,
   },
+  aspectRatioBtn: {
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+  },
+  aspectRatioText: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+});
+
+const adStyles = StyleSheet.create({
+  adOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#000000',
+    zIndex: 99999,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  adVideo: {
+    width: '100%',
+    height: '100%',
+  },
+  adImageTouch: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  adImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'contain',
+  },
+  adHeader: {
+    position: 'absolute',
+    top: 35,
+    left: 20,
+    right: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    zIndex: 100000,
+  },
+  adBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  adBadgeText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  skipBtn: {
+    backgroundColor: '#b3d332',
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    borderRadius: 4,
+  },
+  skipBtnDisabled: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  skipBtnText: {
+    color: '#000000',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  skipBtnTextDisabled: {
+    color: 'rgba(255, 255, 255, 0.4)',
+  }
 });

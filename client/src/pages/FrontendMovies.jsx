@@ -87,7 +87,7 @@ const FrontendMovies = () => {
          <Link to={`/details/movie/${movie._id}`} key={movie._id} className="fe-movie-card-new">
           <div className="card-image-wrapper">
            {formatImageUrl(movie) && <img src={formatImageUrl(movie)} alt={movie.title} />}
-           {movie.access === 'Paid' && (
+           {((movie.access || '').toLowerCase() === 'paid') && (
             <div className="fe-premium-indicator-v">
              <Crown size={14} fill="currentColor" />
             </div>

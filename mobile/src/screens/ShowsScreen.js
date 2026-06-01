@@ -106,7 +106,7 @@ export default function ShowsScreen({ navigation }) {
       >
         <View style={{ position: 'relative' }}>
           <Image source={{ uri: imageUrl }} style={styles.posterImage} resizeMode="cover" />
-          {item.access === 'Paid' && (() => {
+          {((item.seriesAccess || '').toLowerCase() === 'paid') && (() => {
             const isSubscribed = isPremiumUser();
             return (
               <View style={[

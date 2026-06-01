@@ -499,7 +499,7 @@ const Home = () => {
                       {formatImageUrl(m, 'poster') && (
                         <img src={formatImageUrl(m, 'poster')} alt={m.title} />
                       )}
-                      {m.access === 'Paid' && (
+                      {((m.access || '').toLowerCase() === 'paid') && (
                         <div className="fe-premium-indicator-v">
                           <Crown size={12} fill="currentColor" />
                         </div>
@@ -572,7 +572,7 @@ const Home = () => {
                         {formatImageUrl(show, 'poster') && (
                           <img src={formatImageUrl(show, 'poster')} alt={show.title} />
                         )}
-                        {show.seriesAccess === 'Paid' && (
+                        {((show.seriesAccess || '').toLowerCase() === 'paid') && (
                           <div className="fe-premium-indicator-v">
                             <Crown size={12} fill="currentColor" />
                           </div>
@@ -635,7 +635,7 @@ const Home = () => {
                       <div key={item._id} className="fe-landscape-card-v outside-content-v" onClick={() => handleOpenModal(item, 'sports')}>
                         <div className="fe-landscape-img-wrapper-v">
                           <img src={formatImageUrl(item, 'landscape')} alt={item.title} />
-                          {item.access === 'Paid' && (
+                          {((item.access || '').toLowerCase() === 'paid') && (
                             <div className="fe-premium-indicator-v">
                               <Crown size={12} fill="currentColor" />
                             </div>
@@ -693,7 +693,7 @@ const Home = () => {
                       <div key={item._id} className="fe-channel-card-v" onClick={() => handleOpenModal(item, 'live')}>
                         <div className="channel-logo-wrapper-v">
                           <img src={formatImageUrl(item, 'poster')} alt={item.name} />
-                          {(item.tvAccess === 'Paid' || item.access === 'Paid') && (
+                          {(((item.tvAccess || '').toLowerCase() === 'paid' || (item.access || '').toLowerCase() === 'paid')) && (
                             <div className="fe-premium-indicator-v">
                               <Crown size={12} fill="currentColor" />
                             </div>
@@ -733,7 +733,7 @@ const Home = () => {
                       {formatImageUrl(m, 'poster') && (
                         <img src={formatImageUrl(m, 'poster')} alt={m.title} />
                       )}
-                      {m.access === 'Paid' && (
+                      {((m.access || '').toLowerCase() === 'paid') && (
                         <div className="fe-premium-indicator-v">
                           <Crown size={12} fill="currentColor" />
                         </div>
@@ -801,7 +801,7 @@ const Home = () => {
                       {formatImageUrl(m, 'poster') && (
                         <img src={formatImageUrl(m, 'poster')} alt={m.title} />
                       )}
-                      {m.access === 'Paid' && (
+                      {((m.access || '').toLowerCase() === 'paid') && (
                         <div className="fe-premium-indicator-v">
                           <Crown size={12} fill="currentColor" />
                         </div>
@@ -874,7 +874,7 @@ const Home = () => {
                         {formatImageUrl(show, 'poster') && (
                           <img src={formatImageUrl(show, 'poster')} alt={show.title} />
                         )}
-                        {show.seriesAccess === 'Paid' && (
+                        {((show.seriesAccess || '').toLowerCase() === 'paid') && (
                           <div className="fe-premium-indicator-v">
                             <Crown size={12} fill="currentColor" />
                           </div>

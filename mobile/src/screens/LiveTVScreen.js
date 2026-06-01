@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import {
   StyleSheet,
   Text,
@@ -11,11 +11,32 @@ import {
   ScrollView
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Tv } from 'lucide-react-native';
+import { ArrowLeft, Tv, Crown } from 'lucide-react-native';
 import client from '../api/client';
 import { formatImageUrl } from '../config/api';
+import { AuthContext } from '../context/AuthContext';
 
 export default function LiveTVScreen({ navigation }) {
+  const { user } = useContext(AuthContext);
+
+  const isPremiumUser = () => {
+    if (!user) return false;
+    const plan = user.subscriptionPlan || 'Basic Plan';
+    if (plan.toLowerCase() === 'basic plan') {
+      return false;
+    }
+    if (user.expiryDate) {
+      try {
+        const expiry = new Date(user.expiryDate);
+        const now = new Date();
+        if (expiry < now) return false;
+      } catch (e) {
+        console.warn('Failed to parse expiry date:', e);
+      }
+    }
+    return true;
+  };
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [channels, setChannels] = useState([]);
@@ -60,7 +81,28 @@ export default function LiveTVScreen({ navigation }) {
         style={styles.channelRow}
         onPress={() => navigation.navigate('Details', { id: item._id, type: 'live' })}
       >
-        <Image source={{ uri: logoUrl }} style={styles.channelLogo} resizeMode="cover" />
+        <View style={{ position: 'relative' }}>
+          <Image source={{ uri: logoUrl }} style={styles.channelLogo} resizeMode="cover" />
+          {(((item.tvAccess || '').toLowerCase() === 'paid' || (item.access || '').toLowerCase() === 'paid')) && (() => {
+            const isSubscribed = isPremiumUser();
+            return (
+              <View style={[
+                styles.premiumBadge,
+                isSubscribed && { backgroundColor: '#ffffff', borderColor: '#ffffff' }
+              ]}>
+                <Crown 
+                  color={isSubscribed ? '#000000' : '#ffd700'} 
+                  size={9} 
+                  fill={isSubscribed ? '#000000' : '#ffd700'} 
+                />
+                <Text style={[
+                  styles.premiumBadgeText,
+                  isSubscribed && { color: '#000000' }
+                ]}>PRO</Text>
+              </View>
+            );
+          })()}
+        </View>
         <View style={styles.channelInfo}>
           <Text style={styles.channelName} numberOfLines={1}>{item.title || item.name}</Text>
           <Text style={styles.categoryName}>
@@ -243,5 +285,24 @@ const styles = StyleSheet.create({
     color: '#8e8e93',
     fontSize: 14,
     textAlign: 'center',
+  },
+  premiumBadge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 5,
+    paddingVertical: 1.5,
+    borderRadius: 4,
+    borderWidth: 0.5,
+    borderColor: '#ffd700',
+    gap: 2.5,
+  },
+  premiumBadgeText: {
+    color: '#ffd700',
+    fontSize: 7.5,
+    fontWeight: '800',
   },
 });
