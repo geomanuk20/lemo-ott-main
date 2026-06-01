@@ -95,19 +95,6 @@ function CentralControlsOverlay() {
 
   const lastClickRef = useRef({ time: 0, count: 0, side: null, amount: 0 });
   const [activeFeedback, setActiveFeedback] = useState(null); // { side: 'left' | 'right', amount: number, key: number }
-  const [transientIcon, setTransientIcon] = useState(null); // 'play' | 'pause'
-  const isFirstRender = useRef(true);
-
-  // Trigger transient play/pause pop animation on toggle
-  useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      return;
-    }
-    setTransientIcon(paused ? 'pause' : 'play');
-    const t = setTimeout(() => setTransientIcon(null), 500);
-    return () => clearTimeout(t);
-  }, [paused]);
 
   const handleZoneClick = (side, e) => {
     e.stopPropagation();
@@ -478,18 +465,7 @@ function CentralControlsOverlay() {
         </div>
       )}
 
-      {/* Transient mid-screen Play/Pause animation */}
-      {transientIcon && (
-        <div className="transient-play-pause-overlay">
-          <div className="transient-icon-wrapper">
-            {transientIcon === 'play' ? (
-              <svg viewBox="0 0 24 24" width="38" height="38" fill="currentColor" style={{ marginLeft: '4px' }}><path d="M8 5v14l11-7z"/></svg>
-            ) : (
-              <svg viewBox="0 0 24 24" width="38" height="38" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-            )}
-          </div>
-        </div>
-      )}
+
 
       <div 
         className={`central-controls-overlay ${isVisible ? 'visible' : ''}`}
