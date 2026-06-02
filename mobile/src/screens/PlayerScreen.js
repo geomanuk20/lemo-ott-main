@@ -24,6 +24,7 @@ import client from '../api/client';
 import { formatImageUrl, ACTIVE_IP, IMAGE_URL_BASE } from '../config/api';
 import CustomAlert from '../components/CustomAlert';
 import * as ScreenOrientation from 'expo-screen-orientation';
+import { useKeepAwake } from 'expo-keep-awake';
 
 /* ─── Custom fullscreen-brackets icon ─── */
 const FullscreenIcon = () => (
@@ -252,6 +253,7 @@ const resolveVideoUrl = async (url, type, token) => {
 };
 
 export default function PlayerScreen({ route, navigation }) {
+  useKeepAwake();
   const { user, token } = useContext(AuthContext);
   const {
     videoTitle,
