@@ -9,9 +9,11 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Image
+  Image,
+  Modal
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { WebView } from 'react-native-webview';
 import { Shield } from 'lucide-react-native';
 import Svg, { Path } from 'react-native-svg';
 import { AuthContext } from '../context/AuthContext';
@@ -34,7 +36,7 @@ const FacebookIcon = () => (
 );
 
 export default function RegisterScreen({ navigation }) {
-  const { register, socialLoginMobile } = useContext(AuthContext);
+  const { register, socialLoginMobile, socialLoginReal } = useContext(AuthContext);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -42,6 +44,11 @@ export default function RegisterScreen({ navigation }) {
   const [errorMsg, setErrorMsg] = useState('');
   const [settings, setSettings] = useState(null);
   const [socialSettings, setSocialSettings] = useState(null);
+
+  // Social Login WebView States
+  const [showSocialWebView, setShowSocialWebView] = useState(false);
+  const [socialAuthUrl, setSocialAuthUrl] = useState('');
+  const [socialProvider, setSocialProvider] = useState('');
 
   useEffect(() => {
     client.get('/general-settings')
@@ -57,25 +64,63 @@ export default function RegisterScreen({ navigation }) {
       .catch(() => {});
   }, []);
 
-  const handleSocialLogin = async (provider) => {
-    setLoading(true);
+  const handleSocialLogin = (provider) => {
     setErrorMsg('');
-    try {
-      const email = `${provider.toLowerCase()}_demo@gmail.com`;
-      const name = `${provider} Demo User`;
-      
-      const result = await socialLoginMobile(email, name, provider);
-      if (!result.success) {
-        setErrorMsg(result.error || `Failed to authenticate with ${provider}.`);
-      } else {
-        if (navigation.canGoBack()) {
-          navigation.goBack();
-        }
+    if (!socialSettings) {
+      setErrorMsg('Failed to load social settings.');
+      return;
+    }
+
+    if (provider === 'Google') {
+      const clientId = socialSettings.googleClientId;
+      if (!clientId || clientId === 'Hidden in Demo') {
+        setErrorMsg('Google Client ID is not configured.');
+        return;
       }
-    } catch (e) {
-      setErrorMsg(`Failed to connect to ${provider} authentication.`);
-    } finally {
-      setLoading(false);
+      const redirectUri = 'https://lemoott.com';
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=email%20profile%20openid`;
+      
+      setSocialProvider('Google');
+      setSocialAuthUrl(authUrl);
+      setShowSocialWebView(true);
+    } else if (provider === 'Facebook') {
+      const appId = socialSettings.facebookAppId;
+      if (!appId || appId === 'Hidden in Demo') {
+        setErrorMsg('Facebook App ID is not configured.');
+        return;
+      }
+      const redirectUri = 'https://lemoott.com';
+      const authUrl = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=email,public_profile`;
+      
+      setSocialProvider('Facebook');
+      setSocialAuthUrl(authUrl);
+      setShowSocialWebView(true);
+    }
+  };
+
+  const handleWebViewNavigationStateChange = async (webViewState) => {
+    const url = webViewState.url;
+    if (url.includes('access_token=')) {
+      setShowSocialWebView(false);
+      setLoading(true);
+      try {
+        const match = url.match(/access_token=([^&]+)/);
+        if (match && match[1]) {
+          const accessToken = match[1];
+          const result = await socialLoginReal(accessToken, socialProvider);
+          if (!result.success) {
+            setErrorMsg(result.error || `Failed to login with ${socialProvider}`);
+          } else {
+            if (navigation.canGoBack()) {
+              navigation.goBack();
+            }
+          }
+        }
+      } catch (err) {
+        setErrorMsg(`Failed during ${socialProvider} authentication.`);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -252,6 +297,59 @@ export default function RegisterScreen({ navigation }) {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Social Webview Modal */}
+      <Modal
+        visible={showSocialWebView}
+        animationType="slide"
+        onRequestClose={() => setShowSocialWebView(false)}
+      >
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#121212' }}>
+          {/* Header Row to Close */}
+          <View style={{
+            height: 50,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingHorizontal: 16,
+            borderBottomWidth: 1,
+            borderBottomColor: '#1f1f1f',
+            backgroundColor: '#121212'
+          }}>
+            <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>
+              Sign In with {socialProvider}
+            </Text>
+            <TouchableOpacity 
+              onPress={() => setShowSocialWebView(false)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Text style={{ color: '#ff4d4d', fontSize: 15, fontWeight: '700' }}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <WebView
+            source={{ uri: socialAuthUrl }}
+            onNavigationStateChange={handleWebViewNavigationStateChange}
+            javaScriptEnabled={true}
+            domStorageEnabled={true}
+            startInLoadingState={true}
+            incognito={true}
+            renderLoading={() => (
+              <ActivityIndicator 
+                color="#b3d332" 
+                size="large" 
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: [{ translateX: -25 }, { translateY: -25 }]
+                }} 
+              />
+            )}
+          />
+        </SafeAreaView>
+      </Modal>
+
     </SafeAreaView>
   );
 }

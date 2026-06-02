@@ -139,6 +139,29 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const socialLoginReal = async (tokenVal, provider) => {
+    try {
+      const deviceId = await getDeviceId();
+      const endpoint = provider === 'Google' ? '/auth/google' : '/auth/facebook';
+      const response = await client.post(endpoint, { token: tokenVal, deviceId });
+      const { token: receivedToken, user: receivedUser } = response.data;
+
+      if (!receivedToken || !receivedUser) {
+        throw new Error('Invalid login response from server');
+      }
+
+      await AsyncStorage.setItem('token', receivedToken);
+      await AsyncStorage.setItem('user', JSON.stringify(receivedUser));
+
+      setToken(receivedToken);
+      setUser(receivedUser);
+      return { success: true };
+    } catch (error) {
+      const message = error.response?.data?.message || error.message || 'Social login failed';
+      return { success: false, error: message };
+    }
+  };
+
   const logout = async () => {
     try {
       await AsyncStorage.removeItem('token');
@@ -170,6 +193,7 @@ export const AuthProvider = ({ children }) => {
         login,
         register,
         socialLoginMobile,
+        socialLoginReal,
         logout,
         setUser,
         updateUser
