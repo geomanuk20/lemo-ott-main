@@ -19,7 +19,7 @@ const AndroidAppSettings = () => {
   try {
    const res = await fetch(API_URL);
    const data = await res.json();
-   setFormData(data);
+   setFormData(prev => ({ ...prev, ...data }));
   } catch (err) { console.error(err); } finally { setLoading(false); }
  };
 
@@ -32,10 +32,16 @@ const AndroidAppSettings = () => {
   e.preventDefault();
   setSaving(true);
   try {
+   const saveData = { ...formData };
+   delete saveData._id;
+   delete saveData.__v;
+   delete saveData.createdAt;
+   delete saveData.updatedAt;
+
    const res = await fetch(API_URL, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(formData)
+    body: JSON.stringify(saveData)
    });
    if (res.ok) showNotification('App settings saved successfully');
    else showNotification('Error saving settings', 'error');

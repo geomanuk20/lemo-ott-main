@@ -155,7 +155,8 @@ const maintenanceSettingsSchema = new mongoose.Schema({
   status: { type: Boolean, default: false },
   title: { type: String, default: 'The Website Under Maintenance!' },
   description: { type: String, default: 'This Website Under Maintenance!' },
-  secret: { type: String, default: 'viaviweb' }
+  secret: { type: String, default: 'viaviweb' },
+  endTime: { type: String, default: '' }
 });
 const MaintenanceSettings = mongoose.model('MaintenanceSettings', maintenanceSettingsSchema);
 
@@ -2121,6 +2122,16 @@ const seedPages = async () => {
     console.error('Error seeding pages:', err);
   }
 };
+
+const sanitizeSettingsBody = (body) => {
+  const updateData = { ...body };
+  delete updateData._id;
+  delete updateData.__v;
+  delete updateData.createdAt;
+  delete updateData.updatedAt;
+  return updateData;
+};
+
 // Player Settings Routes
 app.get('/api/player-settings', async (req, res) => {
   try {
@@ -2138,10 +2149,11 @@ app.get('/api/player-settings', async (req, res) => {
 app.put('/api/player-settings', async (req, res) => {
   try {
     let settings = await PlayerSettings.findOne();
+    const cleanBody = sanitizeSettingsBody(req.body);
     if (!settings) {
-      settings = new PlayerSettings(req.body);
+      settings = new PlayerSettings(cleanBody);
     } else {
-      Object.assign(settings, req.body);
+      Object.assign(settings, cleanBody);
     }
     await settings.save();
     res.json(settings);
@@ -2178,10 +2190,11 @@ app.get('/api/player-ads', async (req, res) => {
 app.put('/api/player-ads', async (req, res) => {
   try {
     let ads = await PlayerAds.findOne();
+    const cleanBody = sanitizeSettingsBody(req.body);
     if (!ads) {
-      ads = new PlayerAds(req.body);
+      ads = new PlayerAds(cleanBody);
     } else {
-      Object.assign(ads, req.body);
+      Object.assign(ads, cleanBody);
     }
     await ads.save();
     res.json(ads);
@@ -2299,10 +2312,11 @@ app.get('/api/smtp-settings', async (req, res) => {
 app.put('/api/smtp-settings', async (req, res) => {
   try {
     let settings = await SMTPSettings.findOne();
+    const cleanBody = sanitizeSettingsBody(req.body);
     if (!settings) {
-      settings = new SMTPSettings(req.body);
+      settings = new SMTPSettings(cleanBody);
     } else {
-      Object.assign(settings, req.body);
+      Object.assign(settings, cleanBody);
     }
     await settings.save();
     res.json(settings);
@@ -2423,10 +2437,11 @@ app.get('/api/social-login-settings', async (req, res) => {
 app.put('/api/social-login-settings', async (req, res) => {
   try {
     let settings = await SocialLoginSettings.findOne();
+    const cleanBody = sanitizeSettingsBody(req.body);
     if (!settings) {
-      settings = new SocialLoginSettings(req.body);
+      settings = new SocialLoginSettings(cleanBody);
     } else {
-      Object.assign(settings, req.body);
+      Object.assign(settings, cleanBody);
     }
     await settings.save();
     res.json(settings);
@@ -2463,10 +2478,11 @@ app.get('/api/menu-settings', async (req, res) => {
 app.put('/api/menu-settings', async (req, res) => {
   try {
     let settings = await MenuSettings.findOne();
+    const cleanBody = sanitizeSettingsBody(req.body);
     if (!settings) {
-      settings = new MenuSettings(req.body);
+      settings = new MenuSettings(cleanBody);
     } else {
-      Object.assign(settings, req.body);
+      Object.assign(settings, cleanBody);
     }
     await settings.save();
     res.json(settings);
@@ -2503,10 +2519,11 @@ app.get('/api/recaptcha-settings', async (req, res) => {
 app.put('/api/recaptcha-settings', async (req, res) => {
   try {
     let settings = await ReCaptchaSettings.findOne();
+    const cleanBody = sanitizeSettingsBody(req.body);
     if (!settings) {
-      settings = new ReCaptchaSettings(req.body);
+      settings = new ReCaptchaSettings(cleanBody);
     } else {
-      Object.assign(settings, req.body);
+      Object.assign(settings, cleanBody);
     }
     await settings.save();
     res.json(settings);
@@ -2543,10 +2560,11 @@ app.get('/api/banner-ads', async (req, res) => {
 app.put('/api/banner-ads', async (req, res) => {
   try {
     let ads = await BannerAds.findOne();
+    const cleanBody = sanitizeSettingsBody(req.body);
     if (!ads) {
-      ads = new BannerAds(req.body);
+      ads = new BannerAds(cleanBody);
     } else {
-      Object.assign(ads, req.body);
+      Object.assign(ads, cleanBody);
     }
     await ads.save();
     res.json(ads);
@@ -2574,6 +2592,14 @@ app.get('/api/maintenance-settings', async (req, res) => {
       settings = new MaintenanceSettings();
       await settings.save();
     }
+
+    // Auto-expire maintenance mode if the end time has passed
+    if (settings.status && settings.endTime && new Date(settings.endTime) <= new Date()) {
+      settings.status = false;
+      await settings.save();
+      console.log('[Maintenance] Auto-expired maintenance mode because the end time was reached:', settings.endTime);
+    }
+
     res.json(settings);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -2583,10 +2609,11 @@ app.get('/api/maintenance-settings', async (req, res) => {
 app.put('/api/maintenance-settings', async (req, res) => {
   try {
     let settings = await MaintenanceSettings.findOne();
+    const cleanBody = sanitizeSettingsBody(req.body);
     if (!settings) {
-      settings = new MaintenanceSettings(req.body);
+      settings = new MaintenanceSettings(cleanBody);
     } else {
-      Object.assign(settings, req.body);
+      Object.assign(settings, cleanBody);
     }
     await settings.save();
     res.json(settings);
@@ -2624,10 +2651,11 @@ const createAndroidRoutes = (path, model, seedName) => {
   app.put(`/api/android-app/${path}`, async (req, res) => {
     try {
       let settings = await model.findOne();
+      const cleanBody = sanitizeSettingsBody(req.body);
       if (!settings) {
-        settings = new model(req.body);
+        settings = new model(cleanBody);
       } else {
-        Object.assign(settings, req.body);
+        Object.assign(settings, cleanBody);
       }
       await settings.save();
       res.json(settings);
@@ -2641,6 +2669,53 @@ createAndroidRoutes('verify', AppVerifySettings, 'verify');
 createAndroidRoutes('settings', AndroidAppSettings, 'settings');
 createAndroidRoutes('ads', AppAdSettings, 'ads');
 createAndroidRoutes('notification', AppNotificationSettings, 'notification');
+
+app.post('/api/android-app/notification/send', async (req, res) => {
+  try {
+    const settings = await AppNotificationSettings.findOne();
+    if (!settings || !settings.onesignalAppId || !settings.onesignalRestApiKey) {
+      return res.status(400).json({ message: 'OneSignal Push Notification credentials are not configured in settings.' });
+    }
+
+    const { title, message, imageUrl, externalLink } = req.body;
+    if (!title || !message) {
+      return res.status(400).json({ message: 'Title and Message are required' });
+    }
+
+    const payload = {
+      app_id: settings.onesignalAppId,
+      headings: { en: title },
+      contents: { en: message },
+      included_segments: ['All']
+    };
+
+    if (imageUrl && imageUrl.trim() !== '') {
+      payload.big_picture = imageUrl.trim();
+      payload.ios_attachments = { id1: imageUrl.trim() };
+    }
+
+    if (externalLink && externalLink.trim() !== '') {
+      payload.url = externalLink.trim();
+      payload.data = { externalLink: externalLink.trim() };
+    }
+
+    console.log('[OneSignal] Sending push notification with payload:', payload);
+
+    const response = await axios.post('https://onesignal.com/api/v1/notifications', payload, {
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Authorization': `Basic ${settings.onesignalRestApiKey}`
+      }
+    });
+
+    console.log('[OneSignal] Response status:', response.status, 'Response data:', response.data);
+    res.json({ message: 'Push Notification Sent Successfully', data: response.data });
+  } catch (err) {
+    const errMsg = err.response?.data || err.message;
+    console.error('[OneSignal] Error sending push notification:', errMsg);
+    res.status(500).json({ message: 'Failed to send push notification', error: errMsg });
+  }
+});
 
 const seedAndroidApp = async () => {
   try {

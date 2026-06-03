@@ -178,6 +178,204 @@ const AdminLayout = () => (
   </div>
 );
 
+// Premium Countdown Timer for Maintenance Mode
+const CountdownTimer = ({ targetDate }) => {
+  const [timeLeft, setTimeLeft] = React.useState('');
+
+  React.useEffect(() => {
+    if (!targetDate) return;
+
+    let timer;
+    const calculateTimeLeft = () => {
+      const diff = +new Date(targetDate) - +new Date();
+      if (diff <= 0) {
+        setTimeLeft('Maintenance is completing...');
+        clearInterval(timer);
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+        return;
+      }
+
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff / (1000 * 60)) % 60);
+      const seconds = Math.floor((diff / 1000) % 60);
+
+      const parts = [];
+      if (hours > 0) parts.push(`${hours}h`);
+      if (minutes > 0 || hours > 0) parts.push(`${minutes}m`);
+      parts.push(`${seconds}s`);
+
+      setTimeLeft(`Estimated completion in: ${parts.join(' ')}`);
+    };
+
+    calculateTimeLeft();
+    timer = setInterval(calculateTimeLeft, 1000);
+    return () => clearInterval(timer);
+  }, [targetDate]);
+
+  return (
+    <div style={{
+      marginTop: '25px',
+      padding: '12px 20px',
+      backgroundColor: 'rgba(179, 211, 50, 0.1)',
+      border: '1px solid rgba(179, 211, 50, 0.3)',
+      borderRadius: '8px',
+      color: '#b3d332',
+      fontSize: '15px',
+      fontWeight: '700',
+      display: 'inline-block',
+      letterSpacing: '0.5px'
+    }}>
+      ⏱️ {timeLeft}
+    </div>
+  );
+};
+
+// Maintenance Mode Handler Wrapper
+const MaintenanceWrapper = ({ children }) => {
+  const [maintenance, setMaintenance] = React.useState({ status: false, title: '', description: '', secret: '', endTime: '' });
+  const [bypass, setBypass] = React.useState(false);
+  const [loading, setLoading] = React.useState(true);
+  const location = useLocation();
+
+  React.useEffect(() => {
+    const checkMaintenance = async () => {
+      try {
+        const res = await fetch('/api/maintenance-settings');
+        const settings = await res.json();
+        if (settings) {
+          setMaintenance(settings);
+
+          // Check if current path is the secret path
+          const path = location.pathname.replace(/^\/|\/$/g, ''); // strip leading/trailing slashes
+          if (settings.status && path && path.toLowerCase() === settings.secret.toLowerCase()) {
+            localStorage.setItem('maintenance_bypass', settings.secret.toLowerCase());
+            setBypass(true);
+            // Redirect to home
+            window.location.href = '/';
+            return;
+          }
+
+          // Verify if stored bypass secret matches the current secret
+          const storedBypass = localStorage.getItem('maintenance_bypass');
+          if (storedBypass && storedBypass.toLowerCase() === settings.secret.toLowerCase()) {
+            setBypass(true);
+          } else {
+            setBypass(false);
+          }
+        }
+      } catch (err) {
+        console.error('Maintenance discovery anomaly:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    checkMaintenance();
+  }, [location.pathname]);
+
+  if (loading) {
+    return (
+      <div style={{
+        backgroundColor: '#000000',
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <div style={{
+          width: '50px',
+          height: '50px',
+          borderRadius: '50%',
+          border: '4px solid rgba(179, 211, 50, 0.15)',
+          borderTopColor: '#b3d332',
+          borderRightColor: '#b3d332',
+          animation: 'loader-spin 0.75s linear infinite',
+          boxShadow: '0 0 18px rgba(179, 211, 50, 0.3)'
+        }} />
+        <style>{`
+          @keyframes loader-spin {
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  const isAdminPath = location.pathname.startsWith('/admin');
+
+  // Check if the currently logged-in user has an admin or sub-admin role
+  const token = localStorage.getItem('token');
+  const userStr = localStorage.getItem('user');
+  let isAdminUser = false;
+  if (token && userStr) {
+    try {
+      const user = JSON.parse(userStr);
+      const roleLower = (user.role || '').toLowerCase();
+      if (user && (roleLower === 'admin' || roleLower === 'sub-admin')) {
+        isAdminUser = true;
+      }
+    } catch (e) {
+      console.error("Error parsing user context in MaintenanceWrapper", e);
+    }
+  }
+
+  if (maintenance.status && !bypass && !isAdminPath && !isAdminUser) {
+    return (
+      <div style={{
+        backgroundColor: '#000000',
+        color: '#ffffff',
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px',
+        textAlign: 'center',
+        fontFamily: "'Inter', sans-serif"
+      }}>
+        <div style={{
+          backgroundColor: '#121212',
+          border: '1px solid #1f1f1f',
+          borderRadius: '16px',
+          padding: '40px 30px',
+          maxWidth: '600px',
+          width: '100%',
+          boxShadow: '0 20px 40px rgba(0,0,0,0.5)'
+        }}>
+          <div style={{
+            fontSize: '64px',
+            marginBottom: '20px'
+          }}>🛠️</div>
+          <h1 style={{
+            fontSize: '28px',
+            fontWeight: '800',
+            marginBottom: '15px',
+            color: '#ffffff',
+            letterSpacing: '-0.5px'
+          }}>
+            {maintenance.title || 'Under Maintenance'}
+          </h1>
+          <div 
+            style={{
+              fontSize: '15px',
+              color: '#8e8e93',
+              lineHeight: '1.6',
+              marginBottom: '20px'
+            }}
+            dangerouslySetInnerHTML={{ __html: maintenance.description || 'We are currently performing scheduled maintenance. Please check back soon.' }}
+          />
+          {maintenance.endTime && new Date(maintenance.endTime) > new Date() && (
+            <CountdownTimer targetDate={maintenance.endTime} />
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return children;
+};
+
 function App() {
   useEffect(() => {
     const fetchBranding = async () => {
@@ -202,7 +400,8 @@ function App() {
   return (
     <Router>
       <TokenValidator />
-      <Routes>
+      <MaintenanceWrapper>
+        <Routes>
         {/* Frontend Route */}
         <Route path="/" element={<Home />} />
         <Route path="/movies" element={<FrontendMovies />} />
@@ -330,6 +529,7 @@ function App() {
           <Route path="profile" element={<Profile />} />
         </Route>
       </Routes>
+      </MaintenanceWrapper>
     </Router>
   );
 }

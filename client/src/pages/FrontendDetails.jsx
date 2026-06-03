@@ -124,6 +124,31 @@ const FrontendDetails = () => {
       navigate('/login', { state: { from: window.location.pathname } });
       return;
     }
+
+    // Gating check for Paid content
+    const isPaid = targetEpisode 
+      ? (checkIsPaid(data, 'show') || (targetEpisode.access || '').toLowerCase() === 'paid')
+      : checkIsPaid(data, cleanType);
+      
+    if (isPaid) {
+      const checkUserPremium = () => {
+        const role = user.role;
+        if (role === 'admin' || role === 'sub-admin') return true;
+        const planName = (user.subscriptionPlan || 'Basic Plan').toLowerCase();
+        const isPremium = planName.includes('premium') || planName.includes('platinum') || planName.includes('pro');
+        if (user.expiryDate) {
+          const expiry = new Date(user.expiryDate);
+          if (expiry < new Date()) return false;
+        }
+        return isPremium;
+      };
+
+      if (!checkUserPremium()) {
+        alert('This content is only available to Premium subscribers. Redirecting to subscription plans.');
+        navigate('/subscription');
+        return;
+      }
+    }
     
     setActiveVideoUrl(url);
 

@@ -202,6 +202,20 @@ export default function DetailsScreen({ route, navigation }) {
       return;
     }
 
+    // Gating check for Paid content
+    const isPaidContent = checkIsPaid(detail, type);
+    if (isPaidContent && !isPremiumUser()) {
+      showAlert(
+        'Premium Content',
+        'This content is only available to Premium subscribers. Upgrade your plan to watch!',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Upgrade Plan', onPress: () => navigation.navigate('Subscription') }
+        ]
+      );
+      return;
+    }
+
     const videoUrl = detail.videoFile || detail.videoUrl || detail.streamUrl || detail.videoFile1080 || detail.videoFile720 || detail.videoFile480 || detail.server1Url || detail.server2Url || detail.server3Url || detail.embedUrl || '';
     const videoType = detail.videoType || detail.streamType || 'hls';
 
@@ -240,6 +254,21 @@ export default function DetailsScreen({ route, navigation }) {
         [
           { text: 'Cancel', style: 'cancel' },
           { text: 'Sign In', onPress: () => navigation.navigate('Login') }
+        ]
+      );
+      return;
+    }
+
+    // Gating check for Paid episode
+    const seriesIsPaid = checkIsPaid(detail, 'show');
+    const episodeIsPaid = (episode.access || '').toLowerCase() === 'paid';
+    if ((seriesIsPaid || episodeIsPaid) && !isPremiumUser()) {
+      showAlert(
+        'Premium Content',
+        'This episode is only available to Premium subscribers. Upgrade your plan to watch!',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Upgrade Plan', onPress: () => navigation.navigate('Subscription') }
         ]
       );
       return;

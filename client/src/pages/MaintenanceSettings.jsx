@@ -20,7 +20,8 @@ const MaintenanceSettings = () => {
   status: false,
   title: 'The Website Under Maintenance!',
   description: 'This Website Under Maintenance!',
-  secret: 'viaviweb'
+  secret: 'viaviweb',
+  endTime: ''
  });
 
  useEffect(() => {
@@ -31,7 +32,7 @@ const MaintenanceSettings = () => {
   try {
    const response = await fetch(API_URL);
    const data = await response.json();
-   setFormData(data);
+   setFormData(prev => ({ ...prev, ...data }));
   } catch (err) {
    console.error('Error fetching settings:', err);
   } finally {
@@ -52,9 +53,30 @@ const MaintenanceSettings = () => {
   });
  };
 
- const toggleStatus = () => {
-  setFormData({ ...formData, status: !formData.status });
- };
+  const toggleStatus = async () => {
+   const newStatus = !formData.status;
+   setFormData(prev => ({ ...prev, status: newStatus }));
+   
+   setSaving(true);
+   try {
+    const response = await fetch(API_URL, {
+     method: 'PUT',
+     headers: { 'Content-Type': 'application/json' },
+     body: JSON.stringify({ ...formData, status: newStatus })
+    });
+
+    if (response.ok) {
+     showNotification(`Maintenance Mode turned ${newStatus ? 'ON' : 'OFF'} successfully`);
+    } else {
+     showNotification('Error updating maintenance status', 'error');
+    }
+   } catch (err) {
+    console.error('Error:', err);
+    showNotification('Something went wrong', 'error');
+   } finally {
+    setSaving(false);
+   }
+  };
 
  const handleSubmit = async (e) => {
   e.preventDefault();
@@ -151,6 +173,17 @@ const MaintenanceSettings = () => {
      </div>
 
      <div className="section-divider-v"></div>
+
+     <div className="form-row-full-v">
+      <label>Expected End Time (Timer)</label>
+      <input 
+       type="datetime-local" 
+       name="endTime" 
+       value={formData.endTime || ''} 
+       onChange={handleChange} 
+       style={{ colorScheme: 'dark' }}
+      />
+     </div>
 
      <div className="form-row-full-v">
       <label>Maintenance Secret*</label>

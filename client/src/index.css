@@ -888,3 +888,38 @@ body {
   from { transform: translate(-50%, 20px); opacity: 0; } 
   to { transform: translate(-50%, 0); opacity: 1; } 
 }
+
+/* Premium Unified Custom Select Dropdowns */
+select,
+.form-row-full-v select {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  background-color: #1a1b1e !important;
+  border: 1px solid #2a2c31 !important;
+  border-radius: 6px !important;
+  color: #ffffff !important;
+  padding: 10px 40px 10px 14px !important;
+  outline: none !important;
+  font-size: 0.9rem !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  background-image: url("data:image/svg+xml;utf8,<svg fill='%23ffffff' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/><path d='M0 0h24v24H0z' fill='none'/></svg>") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 14px center !important;
+  background-size: 18px !important;
+  transition: border-color 0.2s, box-shadow 0.2s !important;
+}
+
+select:focus,
+.form-row-full-v select:focus {
+  border-color: #b3d332 !important;
+  box-shadow: 0 0 0 2px rgba(179, 211, 50, 0.15) !important;
+}
+
+select option,
+.form-row-full-v select option {
+  background-color: #1a1b1e !important;
+  color: #ffffff !important;
+  padding: 10px !important;
+}

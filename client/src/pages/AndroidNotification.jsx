@@ -10,13 +10,15 @@ const AndroidNotification = () => {
  const [notification, setNotification] = useState(null);
  const [formData, setFormData] = useState({ onesignalAppId: '', onesignalRestApiKey: '' });
  const [pushData, setPushData] = useState({ title: '', message: '', imageUrl: '', externalLink: '' });
+ const [template, setTemplate] = useState('custom');
+ const [sendingPush, setSendingPush] = useState(false);
 
  useEffect(() => { fetchSettings(); }, []);
  const fetchSettings = async () => {
   try {
    const res = await fetch(API_URL);
    const data = await res.json();
-   setFormData(data);
+   setFormData(prev => ({ ...prev, ...data }));
   } catch (err) { console.error(err); } finally { setLoading(false); }
  };
 
@@ -29,23 +31,81 @@ const AndroidNotification = () => {
   e.preventDefault();
   setSaving(true);
   try {
+   const saveData = { ...formData };
+   delete saveData._id;
+   delete saveData.__v;
+   delete saveData.createdAt;
+   delete saveData.updatedAt;
+
    const res = await fetch(API_URL, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(formData)
+    body: JSON.stringify(saveData)
    });
    if (res.ok) showNotification('Notification settings saved successfully');
    else showNotification('Error saving settings', 'error');
   } catch (err) { showNotification('Something went wrong', 'error'); } finally { setSaving(false); }
  };
 
- const handleSendPush = (e) => {
-  e.preventDefault();
-  showNotification('Push Notification Sent Successfully');
-  setPushData({ title: '', message: '', imageUrl: '', externalLink: '' });
+ const handleTemplateChange = (e) => {
+  const val = e.target.value;
+  setTemplate(val);
+  if (val === 'update') {
+   setPushData({
+    title: 'New Update Available! 🚀',
+    message: 'A new version of the app is available with improvements and new features. Update now!',
+    imageUrl: '',
+    externalLink: ''
+   });
+  } else if (val === 'latest') {
+   setPushData({
+    title: 'New Content Added! 🎬',
+    message: 'Exciting new movies and shows have just been added. Open the app and watch now!',
+    imageUrl: '',
+    externalLink: ''
+   });
+  } else if (val === 'live') {
+   setPushData({
+    title: 'Watch Live TV Now! 📺',
+    message: 'Catch the latest live broadcasts and sports events. Tap to tune in live!',
+    imageUrl: '',
+    externalLink: ''
+   });
+  } else if (val === 'maintenance') {
+   setPushData({
+    title: 'Site Under Maintenance! 🛠️',
+    message: 'Lemo OTT is currently undergoing scheduled maintenance. We apologize for the inconvenience and will be back online shortly!',
+    imageUrl: '',
+    externalLink: ''
+   });
+  } else {
+   setPushData({ title: '', message: '', imageUrl: '', externalLink: '' });
+  }
  };
 
- 
+ const handleSendPush = async (e) => {
+  e.preventDefault();
+  setSendingPush(true);
+  try {
+   const res = await fetch('/api/android-app/notification/send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(pushData)
+   });
+   const data = await res.json();
+   if (res.ok) {
+    showNotification('Push Notification Sent Successfully');
+    setPushData({ title: '', message: '', imageUrl: '', externalLink: '' });
+    setTemplate('custom');
+   } else {
+    showNotification(data.message || 'Failed to send notification', 'error');
+   }
+  } catch (err) {
+   showNotification('Something went wrong', 'error');
+  } finally {
+   setSendingPush(false);
+  }
+ };
 
  return (
   <div className="android-settings-page">
@@ -81,13 +141,23 @@ const AndroidNotification = () => {
        <Send size={18} className="section-icon-v" />
        <h2 className="section-title-v">Send Push Notification</h2>
       </div>
+      <div className="form-row-full-v">
+       <label>Notification Type</label>
+       <select value={template} onChange={handleTemplateChange}>
+        <option value="custom">Custom Notification</option>
+        <option value="update">App Update Notification</option>
+        <option value="latest">Latest Content Notification</option>
+        <option value="live">Live Content Notification</option>
+        <option value="maintenance">Maintenance Notification</option>
+       </select>
+      </div>
       <div className="form-row-full-v"><label>Title</label><input type="text" value={pushData.title} onChange={(e) => setPushData({...pushData, title: e.target.value})} required /></div>
       <div className="form-row-full-v align-start-v"><label className="mt-8">Message</label><textarea value={pushData.message} onChange={(e) => setPushData({...pushData, message: e.target.value})} required /></div>
       <div className="form-row-full-v"><label>Image URL</label><input type="text" value={pushData.imageUrl} onChange={(e) => setPushData({...pushData, imageUrl: e.target.value})} placeholder="Optional" /></div>
       <div className="form-row-full-v"><label>External Link</label><input type="text" value={pushData.externalLink} onChange={(e) => setPushData({...pushData, externalLink: e.target.value})} placeholder="Optional" /></div>
       <div className="form-actions-left-v mt-20">
-       <button type="submit" className="save-btn-v blue-btn-v">
-        <Send size={16} />
+       <button type="submit" className="save-btn-v blue-btn-v" disabled={sendingPush}>
+        {sendingPush ? <Loader size="small" inline={true} /> : <Send size={16} />}
         <span>Send Push Notification</span>
        </button>
       </div>
