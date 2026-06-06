@@ -12,7 +12,8 @@ import {
   Alert,
   Image,
   Animated,
-  Linking
+  Linking,
+  useWindowDimensions
 } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -264,6 +265,7 @@ export default function PlayerScreen({ route, navigation }) {
     videoFile480
   } = route.params;
   const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
 
   const videoRef = useRef(null);
   const hideTimer = useRef(null);
@@ -620,8 +622,10 @@ export default function PlayerScreen({ route, navigation }) {
           current === ScreenOrientation.Orientation.LANDSCAPE_RIGHT;
         if (isLandscape) {
           await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+          setResizeMode(ResizeMode.CONTAIN);
         } else {
           await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
+          setResizeMode(ResizeMode.COVER);
         }
       } catch (e) {
         console.warn(e);
@@ -629,22 +633,41 @@ export default function PlayerScreen({ route, navigation }) {
     }
   };
 
-  /* ── auto-hide controls after 4 s while playing ── */
+  /* ── auto-hide controls after 4 s while playing; stay visible when paused ── */
   const resetHideTimer = () => {
     clearTimeout(hideTimer.current);
+    // Only auto-hide when actively playing and no menu is open
     if (status.isPlaying && !showQualityMenu) {
       hideTimer.current = setTimeout(() => setShowControls(false), 4000);
     }
+    // When paused: cancel any pending timer so controls never auto-hide
   };
 
   useEffect(() => {
-    resetHideTimer();
+    if (!status.isPlaying) {
+      // Video is paused — cancel any pending hide timer and keep controls visible
+      clearTimeout(hideTimer.current);
+      setShowControls(true);
+    } else {
+      resetHideTimer();
+    }
     return () => clearTimeout(hideTimer.current);
-  }, [showControls, status.isPlaying, showQualityMenu]);
+  }, [status.isPlaying, showQualityMenu]);
+
+  useEffect(() => {
+    // Also reset timer whenever controls visibility is toggled while playing
+    if (status.isPlaying) resetHideTimer();
+    return () => clearTimeout(hideTimer.current);
+  }, [showControls]);
 
   const handleTap = () => {
     if (isAdPlaying) return;
-    setShowControls(v => !v);
+    if (!status.isPlaying) {
+      // When paused, tapping always shows controls (never hides them)
+      setShowControls(true);
+    } else {
+      setShowControls(v => !v);
+    }
   };
 
   /* ── resolve initial video URL ── */
@@ -803,10 +826,15 @@ export default function PlayerScreen({ route, navigation }) {
         setShouldPlayNextState(false);
         const res = await videoRef.current.pauseAsync();
         setStatus(res);
+        // Always show controls when pausing so user can see FIT/STRETCH/ZOOM etc.
+        clearTimeout(hideTimer.current);
+        setShowControls(true);
       } else {
         setShouldPlayNextState(true);
         const res = await videoRef.current.playAsync();
         setStatus(res);
+        // Start auto-hide when resuming
+        resetHideTimer();
       }
     } catch (e) {
       console.warn(e);
@@ -1039,11 +1067,11 @@ export default function PlayerScreen({ route, navigation }) {
       {isEmbed ? (
         renderEmbed()
       ) : resolvedUrl ? (
-        <View style={StyleSheet.absoluteFill}>
+        <View style={{ width, height, position: 'absolute', top: 0, left: 0 }}>
           <Video
             ref={videoRef}
             source={{ uri: resolvedUrl }}
-            style={StyleSheet.absoluteFill}
+            style={{ width: '100%', height: '100%' }}
             resizeMode={resizeMode}
             useNativeControls={false}
             shouldPlay={isAdPlaying ? false : shouldPlayNextState}
@@ -1076,21 +1104,23 @@ export default function PlayerScreen({ route, navigation }) {
             )}
           </View>
 
-          {/* Floating Aspect Ratio Button (Always Visible) */}
-          <TouchableOpacity 
-            onPress={() => {
-              setResizeMode(prev => {
-                if (prev === ResizeMode.CONTAIN) return ResizeMode.STRETCH;
-                if (prev === ResizeMode.STRETCH) return ResizeMode.COVER;
-                return ResizeMode.CONTAIN;
-              });
-            }}
-            style={[styles.aspectRatioBtn, { position: 'absolute', top: pt + 55, left: ph, zIndex: 30 }]}
-          >
-            <Text style={styles.aspectRatioText}>
-              {resizeMode === ResizeMode.CONTAIN ? 'FIT' : resizeMode === ResizeMode.STRETCH ? 'STRETCH' : 'ZOOM'}
-            </Text>
-          </TouchableOpacity>
+          {/* Floating Aspect Ratio Button */}
+          {showControls && !isAdPlaying && (
+            <TouchableOpacity 
+              onPress={() => {
+                setResizeMode(prev => {
+                  if (prev === ResizeMode.CONTAIN) return ResizeMode.STRETCH;
+                  if (prev === ResizeMode.STRETCH) return ResizeMode.COVER;
+                  return ResizeMode.CONTAIN;
+                });
+              }}
+              style={[styles.aspectRatioBtn, { position: 'absolute', top: pt + 55, left: ph, zIndex: 30 }]}
+            >
+              <Text style={styles.aspectRatioText}>
+                {resizeMode === ResizeMode.CONTAIN ? 'FIT' : resizeMode === ResizeMode.STRETCH ? 'STRETCH' : 'ZOOM'}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
       ) : null}
 
@@ -1316,7 +1346,7 @@ export default function PlayerScreen({ route, navigation }) {
 
       {/* Ads Overlay for Basic/Free users */}
       {isAdPlaying && adMediaUrl ? (
-        <View style={adStyles.adOverlay}>
+        <View style={[adStyles.adOverlay, { width, height }]}>
           <View style={adStyles.adHeader}>
             <View style={adStyles.adBadge}>
               <Text style={adStyles.adBadgeText}>Advertisement</Text>
@@ -1334,10 +1364,10 @@ export default function PlayerScreen({ route, navigation }) {
           
           {isVideoUrl(adMediaUrl) ? (
             <TouchableWithoutFeedback onPress={handleAdClick}>
-              <View style={StyleSheet.absoluteFill}>
+              <View style={{ width: '100%', height: '100%' }}>
                 <Video
                   source={{ uri: adMediaUrl }}
-                  style={adStyles.adVideo}
+                  style={{ width: '100%', height: '100%' }}
                   resizeMode={ResizeMode.CONTAIN}
                   shouldPlay={true}
                   useNativeControls={false}
@@ -1354,10 +1384,10 @@ export default function PlayerScreen({ route, navigation }) {
               </View>
             </TouchableWithoutFeedback>
           ) : (
-            <TouchableOpacity style={adStyles.adImageTouch} onPress={handleAdClick} activeOpacity={0.9}>
+            <TouchableOpacity style={[adStyles.adImageTouch, { width: '100%', height: '100%' }]} onPress={handleAdClick} activeOpacity={0.9}>
               <Image 
                 source={{ uri: adMediaUrl }} 
-                style={adStyles.adImage} 
+                style={{ width: '100%', height: '100%', resizeMode: 'contain' }} 
                 onError={(err) => {
                   console.warn('[AdPlayer-Mobile] Image error:', err);
                   skipAd();

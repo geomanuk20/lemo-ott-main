@@ -113,6 +113,7 @@ const SportsVideo = require('./models/SportsVideo');
 const TVCategory = require('./models/TVCategory');
 const Asset = require('./models/Asset');
 const Experience = require('./models/Experience');
+const Rating = require('./models/Rating');
 
 const isAdminRequest = async (req) => {
   try {
@@ -248,6 +249,14 @@ const getProxiedHlsUrlIfS3 = (url, req) => {
 const signVideoDocument = async (doc, req) => {
   if (!doc) return doc;
   const obj = doc.toObject ? doc.toObject() : doc;
+
+  try {
+    const ratingCount = await Rating.countDocuments({ contentId: obj._id });
+    obj.ratingsCount = ratingCount;
+  } catch (err) {
+    console.error('Error counting ratings for document:', err);
+  }
+
   const fields = ['videoFile', 'videoFile480', 'videoFile720', 'videoFile1080', 'trailerUrl', 'downloadUrl'];
   for (const field of fields) {
     if (obj[field]) {
@@ -615,6 +624,10 @@ app.post('/api/login', async (req, res) => {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
+    if ((user.status || 'Active') !== 'Active') {
+      return res.status(403).json({ message: 'User account is inactive/suspended' });
+    }
+
     // If logging in with admin format, ensure the user is actually an admin/sub-admin
     if (isAdminDomain && user.role !== 'admin' && user.role !== 'sub-admin') {
       return res.status(403).json({ message: 'Access denied. This format is reserved for admin login.' });
@@ -706,7 +719,7 @@ app.get('/api/auth/validate', async (req, res) => {
     if (!user) {
       return res.status(401).json({ message: 'User not found' });
     }
-    if (user.status !== 'Active') {
+    if ((user.status || 'Active') !== 'Active') {
       return res.status(401).json({ message: 'User account is suspended' });
     }
     const isStaff = ['admin', 'sub-admin'].includes(user.role);
@@ -835,7 +848,7 @@ app.post('/api/auth/google', async (req, res) => {
       });
       await user.save();
     } else {
-      if (user.status !== 'Active') {
+      if ((user.status || 'Active') !== 'Active') {
         return res.status(403).json({ message: 'User account is inactive/suspended' });
       }
       let updated = false;
@@ -933,7 +946,7 @@ app.post('/api/auth/social-login-mobile', async (req, res) => {
       });
       await user.save();
     } else {
-      if (user.status !== 'Active') {
+      if ((user.status || 'Active') !== 'Active') {
         return res.status(403).json({ message: 'User account is inactive/suspended' });
       }
     }
@@ -1014,7 +1027,7 @@ app.post('/api/auth/facebook', async (req, res) => {
       });
       await user.save();
     } else {
-      if (user.status !== 'Active') {
+      if ((user.status || 'Active') !== 'Active') {
         return res.status(403).json({ message: 'User account is inactive/suspended' });
       }
       let updated = false;
@@ -1211,6 +1224,84 @@ app.post('/api/watchlist/toggle', async (req, res) => {
       await user.save();
       res.json({ message: 'Removed from watchlist', status: 'removed' });
     }
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// --- Ratings API ---
+// Submit or update a user rating
+app.post('/api/ratings', async (req, res) => {
+  try {
+    const { userId, contentId, contentType, rating } = req.body;
+    if (!userId || !contentId || !contentType || !rating) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
+
+    const ratingVal = parseInt(rating, 10);
+    if (isNaN(ratingVal) || ratingVal < 1 || ratingVal > 5) {
+      return res.status(400).json({ message: 'Rating must be an integer between 1 and 5' });
+    }
+
+    // Upsert the rating
+    const updatedRating = await Rating.findOneAndUpdate(
+      { userId, contentId },
+      { contentType, rating: ratingVal },
+      { new: true, upsert: true }
+    );
+
+    // Recalculate average rating for this content
+    const allRatings = await Rating.find({ contentId });
+    const ratingsCount = allRatings.length;
+    const ratingsSum = allRatings.reduce((sum, r) => sum + r.rating, 0);
+    const averageRating = ratingsCount > 0 ? (ratingsSum / ratingsCount) : 0.0;
+
+    // Convert 5-star average rating to 10-point scale for IMDb circle display
+    const formattedRating = (averageRating * 2).toFixed(1);
+
+    // Update the rating in the content model
+    let model;
+    const type = contentType.toLowerCase().trim();
+    if (type === 'movie' || type === 'movies' || type === 'short-film') {
+      model = Movie;
+    } else if (type === 'show' || type === 'shows' || type === 'series' || type === 'short-web-series') {
+      model = Show;
+    } else if (type === 'sports' || type === 'sport') {
+      model = SportsVideo;
+    } else if (type === 'live' || type === 'channel' || type === 'tv-channel') {
+      model = TVChannel;
+    } else if (type === 'new-release') {
+      model = NewRelease;
+    }
+
+    if (model) {
+      await model.findByIdAndUpdate(contentId, { imdbRating: formattedRating });
+    }
+
+    res.json({
+      message: 'Rating submitted successfully',
+      rating: updatedRating,
+      averageRating: formattedRating,
+      ratingsCount
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Get user's rating for a content item
+app.get('/api/ratings/status', async (req, res) => {
+  try {
+    const { userId, contentId } = req.query;
+    if (!userId || !contentId) {
+      return res.status(400).json({ message: 'Missing userId or contentId' });
+    }
+
+    const ratingDoc = await Rating.findOne({ userId, contentId });
+    res.json({
+      rated: !!ratingDoc,
+      rating: ratingDoc ? ratingDoc.rating : 0
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -1715,6 +1806,137 @@ app.delete('/api/new-releases/:id', async (req, res) => {
     await NewRelease.findByIdAndDelete(req.params.id);
     res.json({ message: 'New Release deleted' });
   } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.post('/api/new-releases/copy-move', async (req, res) => {
+  try {
+    const { ids, targetSection, actionType } = req.body;
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ message: 'No release IDs provided' });
+    }
+    if (!targetSection || !['Movie', 'Short Film', 'TV Show', 'Short Web Series'].includes(targetSection)) {
+      return res.status(400).json({ message: 'Invalid target section' });
+    }
+    if (!actionType || !['copy', 'move'].includes(actionType)) {
+      return res.status(400).json({ message: 'Invalid action type' });
+    }
+
+    const items = await NewRelease.find({ _id: { $in: ids } });
+    if (items.length === 0) {
+      return res.status(404).json({ message: 'No matching new releases found' });
+    }
+
+    const copiedItems = [];
+    const isShowModel = ['TV Show', 'Short Web Series'].includes(targetSection);
+
+    for (const item of items) {
+      let newDoc;
+
+      if (isShowModel) {
+        const showData = {
+          title: item.title,
+          description: item.description,
+          sortInfo: item.sortInfo,
+          upcoming: item.upcoming,
+          seriesAccess: item.access,
+          language: item.language,
+          genres: item.genres,
+          actors: item.actors,
+          directors: item.directors,
+          imdbRating: item.imdbRating,
+          contentRating: item.contentRating,
+          poster: item.poster,
+          thumbnail: item.thumbnail,
+          status: item.status,
+          releaseYear: item.releaseYear,
+          videoQuality: item.videoQuality,
+          seoTitle: item.seoTitle,
+          metaDescription: item.metaDescription,
+          keywords: item.keywords,
+          imdbId: item.imdbId,
+          contentType: targetSection,
+          views: item.views
+        };
+        newDoc = new Show(showData);
+      } else {
+        const movieData = {
+          imdbId: item.imdbId,
+          title: item.title,
+          contentType: targetSection,
+          description: item.description,
+          sortInfo: item.sortInfo,
+          upcoming: item.upcoming,
+          access: item.access,
+          seriesAccess: item.access,
+          language: item.language,
+          genres: item.genres,
+          actors: item.actors,
+          directors: item.directors,
+          imdbRating: item.imdbRating,
+          contentRating: item.contentRating,
+          duration: item.duration,
+          status: item.status,
+          thumbnail: item.thumbnail,
+          poster: item.poster,
+          trailerUrl: item.trailerUrl,
+          videoType: item.videoType,
+          videoQuality: item.videoQuality,
+          videoFile: item.videoFile,
+          videoFile480: item.videoFile480,
+          videoFile720: item.videoFile720,
+          videoFile1080: item.videoFile1080,
+          subtitlesActive: item.subtitlesActive,
+          subtitles: item.subtitles,
+          seoTitle: item.seoTitle,
+          metaDescription: item.metaDescription,
+          keywords: item.keywords,
+          views: item.views,
+          releaseDate: item.releaseYear ? new Date(`${item.releaseYear}-01-01`) : undefined
+        };
+        newDoc = new Movie(movieData);
+      }
+
+      await newDoc.save();
+      copiedItems.push(newDoc);
+
+      if (actionType === 'move') {
+        const newPostType = targetSection;
+        const newUserContentType = isShowModel ? 'show' : 'movie';
+
+        // Update Sliders
+        await Slider.updateMany(
+          { contentId: String(item._id), postType: 'New Release' },
+          { $set: { contentId: String(newDoc._id), postType: newPostType } }
+        );
+
+        // Update User watchlists
+        await User.updateMany(
+          { "watchlist.contentId": item._id },
+          { $set: { "watchlist.$.contentId": newDoc._id, "watchlist.$.contentType": newUserContentType } }
+        );
+
+        // Update Ratings
+        await Rating.updateMany(
+          { contentId: item._id },
+          { $set: { contentId: newDoc._id } }
+        );
+      }
+    }
+
+    if (actionType === 'move') {
+      await NewRelease.deleteMany({ _id: { $in: ids } });
+    }
+
+    res.json({
+      message: `Successfully ${actionType}ed ${items.length} item(s) to ${targetSection}s`,
+      copiedCount: copiedItems.length
+    });
+
+  } catch (err) {
+    console.error('[SERVER ERROR] POST /api/new-releases/copy-move:', err);
     res.status(500).json({ message: err.message });
   }
 });
@@ -2840,6 +3062,20 @@ app.post('/api/payment/mock-success', async (req, res) => {
     const plan = await SubscriptionPlan.findById(req.body.planId);
     if (!plan) return res.status(404).json({ message: 'Plan not found' });
     
+    // Safety check: ensure they are not trying to purchase another plan while already subscribed
+    const todayStr = new Date().toISOString().split('T')[0];
+    const isExpired = user.expiryDate && user.expiryDate < todayStr;
+    if (user.subscriptionPlan && !isExpired && user.subscriptionPlan !== plan.planName) {
+      const activePlanObj = await SubscriptionPlan.findOne({ planName: user.subscriptionPlan });
+      if (activePlanObj) {
+        const activePriceStr = activePlanObj.price ? activePlanObj.price.toString().trim().toLowerCase().replace(/[^\d.]/g, '') : '';
+        const isActiveFree = activePriceStr === '0' || activePriceStr === '0.00' || activePriceStr === '' || activePriceStr === 'free' || parseFloat(activePriceStr) === 0;
+        if (!isActiveFree) {
+          return res.status(400).json({ message: 'You already have an active subscription plan.' });
+        }
+      }
+    }
+    
     // Update user subscription
     user.subscriptionPlan = plan.planName;
     user.role = 'subscriber';
@@ -2954,6 +3190,20 @@ app.post('/api/payment/free-success', async (req, res) => {
     const plan = await SubscriptionPlan.findById(req.body.planId);
     if (!plan) return res.status(404).json({ message: 'Plan not found' });
     
+    // Safety check: ensure they are not trying to purchase another plan while already subscribed
+    const todayStr = new Date().toISOString().split('T')[0];
+    const isExpired = user.expiryDate && user.expiryDate < todayStr;
+    if (user.subscriptionPlan && !isExpired && user.subscriptionPlan !== plan.planName) {
+      const activePlanObj = await SubscriptionPlan.findOne({ planName: user.subscriptionPlan });
+      if (activePlanObj) {
+        const activePriceStr = activePlanObj.price ? activePlanObj.price.toString().trim().toLowerCase().replace(/[^\d.]/g, '') : '';
+        const isActiveFree = activePriceStr === '0' || activePriceStr === '0.00' || activePriceStr === '' || activePriceStr === 'free' || parseFloat(activePriceStr) === 0;
+        if (!isActiveFree) {
+          return res.status(400).json({ message: 'You already have an active subscription plan.' });
+        }
+      }
+    }
+    
     // Safety check: ensure the plan price is actually zero/free
     const priceStr = plan.price ? plan.price.toString().trim().toLowerCase().replace(/[^\d.]/g, '') : '';
     const isFree = priceStr === '0' || priceStr === '0.00' || priceStr === '' || priceStr === 'free' || parseFloat(priceStr) === 0;
@@ -3042,6 +3292,20 @@ app.post('/api/payment/phonepe/initiate', async (req, res) => {
     
     const plan = await SubscriptionPlan.findById(req.body.planId);
     if (!plan) return res.status(404).json({ message: 'Plan not found' });
+    
+    // Safety check: ensure they are not trying to purchase another plan while already subscribed
+    const todayStr = new Date().toISOString().split('T')[0];
+    const isExpired = user.expiryDate && user.expiryDate < todayStr;
+    if (user.subscriptionPlan && !isExpired && user.subscriptionPlan !== plan.planName) {
+      const activePlanObj = await SubscriptionPlan.findOne({ planName: user.subscriptionPlan });
+      if (activePlanObj) {
+        const activePriceStr = activePlanObj.price ? activePlanObj.price.toString().trim().toLowerCase().replace(/[^\d.]/g, '') : '';
+        const isActiveFree = activePriceStr === '0' || activePriceStr === '0.00' || activePriceStr === '' || activePriceStr === 'free' || parseFloat(activePriceStr) === 0;
+        if (!isActiveFree) {
+          return res.status(400).json({ message: 'You already have an active subscription plan.' });
+        }
+      }
+    }
 
     const PaymentGateway = require('./models/PaymentGateway');
     const gw = await PaymentGateway.findOne({ name: 'PhonePe' });
@@ -3334,7 +3598,11 @@ app.get('/api/shows/:id', async (req, res) => {
       }
     }
 
-    res.json(show);
+    const ratingCount = await Rating.countDocuments({ contentId: show._id });
+    const showObj = show.toObject();
+    showObj.ratingsCount = ratingCount;
+
+    res.json(showObj);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -3702,7 +3970,12 @@ app.get('/api/tv-channels/:id', async (req, res) => {
     }
     const channel = await TVChannel.findById(req.params.id).populate('category');
     if (!channel) return res.status(404).json({ message: 'Channel not found' });
-    res.json(channel);
+
+    const ratingCount = await Rating.countDocuments({ contentId: channel._id });
+    const channelObj = channel.toObject();
+    channelObj.ratingsCount = ratingCount;
+
+    res.json(channelObj);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -4216,6 +4489,1019 @@ app.post('/api/users/check-email', async (req, res) => {
   }
 });
 
+app.post('/api/users/import', async (req, res) => {
+  try {
+    const { users } = req.body;
+    if (!users || !Array.isArray(users)) {
+      return res.status(400).json({ message: 'Users array is required' });
+    }
+
+    let importedCount = 0;
+    let updatedCount = 0;
+    let errorCount = 0;
+
+    for (const item of users) {
+      try {
+        if (!item.Email && !item.email) {
+          errorCount++;
+          continue;
+        }
+        const email = (item.Email || item.email).trim().toLowerCase();
+        
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+          errorCount++;
+          continue;
+        }
+
+        const name = item.Name || item.name || email.split('@')[0];
+        const phone = item.Phone || item.phone || '';
+        const rawStatus = item.Status || item.status || 'Active';
+        const status = (rawStatus === 'Blocked' || rawStatus === 'Inactive') ? 'Inactive' : 'Active';
+        const subscriptionPlan = item['Subscription Plan'] || item.subscriptionPlan || 'Basic Plan';
+        const expiryDate = item['Expiry Date'] || item.expiryDate || '2099-12-31';
+        const role = (item.Role || item.role || 'customer').toLowerCase();
+        const providedPassword = item.Password || item.password;
+        const authProvider = item['Auth Provider'] || item.authProvider || 'Email';
+
+        let user = await User.findOne({ email });
+        if (user) {
+          user.name = name;
+          user.phone = phone;
+          user.status = status;
+          user.subscriptionPlan = subscriptionPlan;
+          user.expiryDate = expiryDate;
+          user.authProvider = authProvider;
+          if (role) user.role = role;
+          if (providedPassword && providedPassword !== user.password) {
+            user.password = providedPassword;
+          }
+          await user.save();
+          updatedCount++;
+        } else {
+          const passwordToUse = providedPassword || crypto.randomBytes(8).toString('hex');
+          user = new User({
+            email,
+            name,
+            password: passwordToUse,
+            phone,
+            status,
+            subscriptionPlan,
+            expiryDate,
+            role,
+            authProvider,
+            isDeleted: false
+          });
+          await user.save();
+          importedCount++;
+        }
+      } catch (err) {
+        console.error('Import error for user item:', item, err);
+        errorCount++;
+      }
+    }
+
+    res.json({
+      message: 'Bulk import completed',
+      importedCount,
+      updatedCount,
+      errorCount
+    });
+  } catch (err) {
+    console.error('[SERVER ERROR] POST /api/users/import:', err);
+    res.status(500).json({ message: 'Server error during import' });
+  }
+});
+
+// ==========================================
+// CONTENT IMPORT & EXPORT SYSTEM ENDPOINTS
+// ==========================================
+
+// Helper function to process comma-separated names of Actors/Directors
+async function processCastNames(castString, ModelClass) {
+  if (!castString) return [];
+  const names = castString.split(',').map(n => n.trim()).filter(Boolean);
+  const ids = [];
+  for (const name of names) {
+    let doc = await ModelClass.findOne({ name: { $regex: new RegExp('^' + name.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') } });
+    if (!doc) {
+      doc = new ModelClass({ name, status: 'Active' });
+      await doc.save();
+    }
+    ids.push(doc._id);
+  }
+  return ids;
+}
+
+// GET /api/export/:type - Populates relations and returns clean json for export
+app.get('/api/export/:type', async (req, res) => {
+  try {
+    const { type } = req.params;
+    let data = [];
+
+    if (type === 'movies') {
+      const docs = await Movie.find({ contentType: { $ne: 'Short Film' } })
+        .populate('actors', 'name')
+        .populate('directors', 'name')
+        .sort({ createdAt: -1 });
+      data = docs.map(doc => ({
+        ...doc.toObject(),
+        actors: (doc.actors || []).map(a => a.name).join(', '),
+        directors: (doc.directors || []).map(d => d.name).join(', ')
+      }));
+    } else if (type === 'short-films') {
+      const docs = await Movie.find({ contentType: 'Short Film' })
+        .populate('actors', 'name')
+        .populate('directors', 'name')
+        .sort({ createdAt: -1 });
+      data = docs.map(doc => ({
+        ...doc.toObject(),
+        actors: (doc.actors || []).map(a => a.name).join(', '),
+        directors: (doc.directors || []).map(d => d.name).join(', ')
+      }));
+    } else if (type === 'shows') {
+      const docs = await Show.find({ contentType: { $ne: 'Short Web Series' } })
+        .populate('actors', 'name')
+        .populate('directors', 'name')
+        .sort({ createdAt: -1 });
+      data = docs.map(doc => ({
+        ...doc.toObject(),
+        actors: (doc.actors || []).map(a => a.name).join(', '),
+        directors: (doc.directors || []).map(d => d.name).join(', ')
+      }));
+    } else if (type === 'short-web-series') {
+      const docs = await Show.find({ contentType: 'Short Web Series' })
+        .populate('actors', 'name')
+        .populate('directors', 'name')
+        .sort({ createdAt: -1 });
+      data = docs.map(doc => ({
+        ...doc.toObject(),
+        actors: (doc.actors || []).map(a => a.name).join(', '),
+        directors: (doc.directors || []).map(d => d.name).join(', ')
+      }));
+    } else if (type === 'new-releases') {
+      const docs = await NewRelease.find()
+        .populate('actors', 'name')
+        .populate('directors', 'name')
+        .sort({ createdAt: -1 });
+      data = docs.map(doc => ({
+        ...doc.toObject(),
+        actors: (doc.actors || []).map(a => a.name).join(', '),
+        directors: (doc.directors || []).map(d => d.name).join(', ')
+      }));
+    } else if (type === 'sports-videos') {
+      const docs = await SportsVideo.find().populate('category', 'name').sort({ createdAt: -1 });
+      data = docs.map(doc => ({
+        ...doc.toObject(),
+        category: doc.category ? doc.category.name : ''
+      }));
+    } else if (type === 'tv-channels') {
+      const docs = await TVChannel.find().populate('category', 'name').sort({ createdAt: -1 });
+      data = docs.map(doc => ({
+        ...doc.toObject(),
+        category: doc.category ? doc.category.name : ''
+      }));
+    } else if (type === 'seasons') {
+      const docs = await Season.find().populate('showId', 'title').sort({ createdAt: -1 });
+      data = docs.map(doc => ({
+        ...doc.toObject(),
+        showTitle: doc.showId ? doc.showId.title : doc.showName || ''
+      }));
+    } else if (type === 'episodes') {
+      const docs = await Episode.find()
+        .populate('showId', 'title')
+        .populate('seasonId', 'title')
+        .sort({ createdAt: -1 });
+      data = docs.map(doc => ({
+        ...doc.toObject(),
+        showTitle: doc.showId ? doc.showId.title : '',
+        seasonTitle: doc.seasonId ? doc.seasonId.title : ''
+      }));
+    } else if (type === 'actors') {
+      const docs = await Actor.find().sort({ createdAt: -1 });
+      data = docs.map(doc => doc.toObject());
+    } else if (type === 'directors') {
+      const docs = await Director.find().sort({ createdAt: -1 });
+      data = docs.map(doc => doc.toObject());
+    } else {
+      return res.status(400).json({ message: 'Invalid export type' });
+    }
+
+    // Clean up unnecessary fields for a clean export
+    const cleanData = data.map(item => {
+      const clean = { ...item };
+      delete clean._id;
+      delete clean.__v;
+      delete clean.createdAt;
+      delete clean.updatedAt;
+      delete clean.showId;
+      delete clean.seasonId;
+      return clean;
+    });
+
+    res.json(cleanData);
+  } catch (err) {
+    console.error(`[SERVER ERROR] GET /api/export/${req.params.type}:`, err);
+    res.status(500).json({ message: 'Server error during export' });
+  }
+});
+
+// POST /api/movies/import - Import Movies or Short Films
+app.post('/api/movies/import', async (req, res) => {
+  try {
+    const { movies, defaultContentType } = req.body;
+    if (!movies || !Array.isArray(movies)) {
+      return res.status(400).json({ message: 'Movies array is required' });
+    }
+
+    let importedCount = 0;
+    let updatedCount = 0;
+    let errorCount = 0;
+    const errors = [];
+
+    for (let i = 0; i < movies.length; i++) {
+      const item = movies[i];
+      try {
+        const title = item.title || item.Title;
+        const language = item.language || item.Language;
+        if (!title || !language) {
+          errorCount++;
+          errors.push(`Row ${i + 1}: Title and Language are required.`);
+          continue;
+        }
+
+        const genresRaw = item.genres || item.Genres || item.genre || item.Genre || '';
+        const genres = Array.isArray(genresRaw) 
+          ? genresRaw 
+          : genresRaw.split(',').map(g => g.trim()).filter(Boolean);
+
+        const contentType = item.contentType || item.ContentType || defaultContentType || 'Movie';
+
+        const actorNames = item.actors || item.Actors || '';
+        const directorNames = item.directors || item.Directors || '';
+        const actors = await processCastNames(actorNames, Actor);
+        const directors = await processCastNames(directorNames, Director);
+
+        // Find existing movie by title, language and contentType
+        let movie = await Movie.findOne({ 
+          title: { $regex: new RegExp('^' + title.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') },
+          language: { $regex: new RegExp('^' + language.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') },
+          contentType 
+        });
+
+        const movieData = {
+          title,
+          language,
+          contentType,
+          genres,
+          actors,
+          directors,
+          imdbId: item.imdbId || item.ImdbId || item.imdbID || '',
+          description: item.description || item.Description || '',
+          sortInfo: item.sortInfo || item.SortInfo || '',
+          upcoming: item.upcoming || item.Upcoming || 'No',
+          seriesAccess: item.seriesAccess || item.SeriesAccess || item.access || item.Access || 'Paid',
+          access: item.access || item.Access || item.seriesAccess || item.SeriesAccess || 'Paid',
+          imdbRating: item.imdbRating || item.ImdbRating || '',
+          contentRating: item.contentRating || item.ContentRating || '16+',
+          releaseDate: item.releaseDate || item.ReleaseDate ? new Date(item.releaseDate || item.ReleaseDate) : undefined,
+          duration: item.duration || item.Duration || '',
+          status: item.status || item.Status || 'Active',
+          thumbnail: item.thumbnail || item.Thumbnail || '',
+          poster: item.poster || item.Poster || '',
+          trailerUrl: item.trailerUrl || item.TrailerUrl || '',
+          videoType: item.videoType || item.VideoType || 'Local',
+          videoQuality: item.videoQuality || item.VideoQuality || '8K Ultra HD',
+          videoFile: item.videoFile || item.VideoFile || '',
+          videoFile480: item.videoFile480 || item.VideoFile480 || '',
+          videoFile720: item.videoFile720 || item.VideoFile720 || '',
+          videoFile1080: item.videoFile1080 || item.VideoFile1080 || '',
+          downloadable: item.downloadable || item.Downloadable || 'Inactive',
+          downloadUrl: item.downloadUrl || item.DownloadUrl || '',
+          seoTitle: item.seoTitle || item.SeoTitle || '',
+          metaDescription: item.metaDescription || item.MetaDescription || '',
+          keywords: item.keywords || item.Keywords || ''
+        };
+
+        if (movie) {
+          Object.assign(movie, movieData);
+          await movie.save();
+          updatedCount++;
+        } else {
+          movie = new Movie(movieData);
+          await movie.save();
+          importedCount++;
+        }
+      } catch (err) {
+        console.error('Error importing movie item:', item, err);
+        errorCount++;
+        errors.push(`Row ${i + 1}: ${err.message}`);
+      }
+    }
+
+    res.json({
+      message: 'Movie import completed',
+      importedCount,
+      updatedCount,
+      errorCount,
+      errors
+    });
+  } catch (err) {
+    console.error('[SERVER ERROR] POST /api/movies/import:', err);
+    res.status(500).json({ message: 'Server error during import' });
+  }
+});
+
+// POST /api/shows/import - Import Shows or Web Series
+app.post('/api/shows/import', async (req, res) => {
+  try {
+    const { shows, defaultContentType } = req.body;
+    if (!shows || !Array.isArray(shows)) {
+      return res.status(400).json({ message: 'Shows array is required' });
+    }
+
+    let importedCount = 0;
+    let updatedCount = 0;
+    let errorCount = 0;
+    const errors = [];
+
+    for (let i = 0; i < shows.length; i++) {
+      const item = shows[i];
+      try {
+        const title = item.title || item.Title;
+        const language = item.language || item.Language;
+        if (!title || !language) {
+          errorCount++;
+          errors.push(`Row ${i + 1}: Title and Language are required.`);
+          continue;
+        }
+
+        const genresRaw = item.genres || item.Genres || item.genre || item.Genre || '';
+        const genres = Array.isArray(genresRaw) 
+          ? genresRaw 
+          : genresRaw.split(',').map(g => g.trim()).filter(Boolean);
+
+        const contentType = item.contentType || item.ContentType || defaultContentType || 'TV Show';
+
+        const actorNames = item.actors || item.Actors || '';
+        const directorNames = item.directors || item.Directors || '';
+        const actors = await processCastNames(actorNames, Actor);
+        const directors = await processCastNames(directorNames, Director);
+
+        // Find existing show by title, language and contentType
+        let show = await Show.findOne({ 
+          title: { $regex: new RegExp('^' + title.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') },
+          language: { $regex: new RegExp('^' + language.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') },
+          contentType 
+        });
+
+        const showData = {
+          title,
+          language,
+          contentType,
+          genres,
+          actors,
+          directors,
+          imdbId: item.imdbId || item.ImdbId || item.imdbID || '',
+          description: item.description || item.Description || '',
+          sortInfo: item.sortInfo || item.SortInfo || '',
+          upcoming: item.upcoming || item.Upcoming || 'No',
+          seriesAccess: item.seriesAccess || item.SeriesAccess || 'Paid',
+          imdbRating: item.imdbRating || item.ImdbRating || '',
+          contentRating: item.contentRating || item.ContentRating || '16+',
+          releaseYear: item.releaseYear || item.ReleaseYear ? parseInt(item.releaseYear || item.ReleaseYear) : undefined,
+          rating: item.rating || item.Rating || '4.8',
+          status: item.status || item.Status || 'Active',
+          thumbnail: item.thumbnail || item.Thumbnail || '',
+          poster: item.poster || item.Poster || '',
+          videoQuality: item.videoQuality || item.VideoQuality || '4K Ultra HD',
+          seoTitle: item.seoTitle || item.SeoTitle || '',
+          metaDescription: item.metaDescription || item.MetaDescription || '',
+          keywords: item.keywords || item.Keywords || ''
+        };
+
+        if (show) {
+          Object.assign(show, showData);
+          await show.save();
+          updatedCount++;
+        } else {
+          show = new Show(showData);
+          await show.save();
+          importedCount++;
+        }
+      } catch (err) {
+        console.error('Error importing show item:', item, err);
+        errorCount++;
+        errors.push(`Row ${i + 1}: ${err.message}`);
+      }
+    }
+
+    res.json({
+      message: 'Show import completed',
+      importedCount,
+      updatedCount,
+      errorCount,
+      errors
+    });
+  } catch (err) {
+    console.error('[SERVER ERROR] POST /api/shows/import:', err);
+    res.status(500).json({ message: 'Server error during import' });
+  }
+});
+
+// POST /api/sports-videos/import - Import Sports Videos
+app.post('/api/sports-videos/import', async (req, res) => {
+  try {
+    const { videos } = req.body;
+    if (!videos || !Array.isArray(videos)) {
+      return res.status(400).json({ message: 'Videos array is required' });
+    }
+
+    let importedCount = 0;
+    let updatedCount = 0;
+    let errorCount = 0;
+    const errors = [];
+
+    for (let i = 0; i < videos.length; i++) {
+      const item = videos[i];
+      try {
+        const title = item.title || item.Title;
+        const categoryName = item.category || item.Category || item.categoryName || item.CategoryName;
+        if (!title || !categoryName) {
+          errorCount++;
+          errors.push(`Row ${i + 1}: Title and Category are required.`);
+          continue;
+        }
+
+        // Find or create category
+        let categoryDoc = await SportsCategory.findOne({ name: { $regex: new RegExp('^' + categoryName.trim().replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') } });
+        if (!categoryDoc) {
+          categoryDoc = new SportsCategory({ name: categoryName.trim(), status: true });
+          await categoryDoc.save();
+        }
+
+        let video = await SportsVideo.findOne({ 
+          title: { $regex: new RegExp('^' + title.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') },
+          category: categoryDoc._id
+        });
+
+        const videoData = {
+          title,
+          category: categoryDoc._id,
+          poster: item.poster || item.Poster || '',
+          landscapePoster: item.landscapePoster || item.LandscapePoster || '',
+          description: item.description || item.Description || '',
+          access: item.access || item.Access || 'Paid',
+          date: item.date || item.Date || '',
+          duration: item.duration || item.Duration || '',
+          status: item.status || item.Status || 'Active',
+          videoType: item.videoType || item.VideoType || 'Local',
+          videoQuality: item.videoQuality || item.VideoQuality || 'Active',
+          videoFile: item.videoFile || item.VideoFile || '',
+          videoFile480: item.videoFile480 || item.VideoFile480 || '',
+          videoFile720: item.videoFile720 || item.VideoFile720 || '',
+          videoFile1080: item.videoFile1080 || item.VideoFile1080 || '',
+          downloadable: item.downloadable || item.Downloadable || 'Inactive',
+          downloadUrl: item.downloadUrl || item.DownloadUrl || '',
+          subtitlesActive: item.subtitlesActive || item.SubtitlesActive || 'Inactive',
+          seoTitle: item.seoTitle || item.SeoTitle || '',
+          metaDescription: item.metaDescription || item.MetaDescription || '',
+          keywords: item.keywords || item.Keywords || ''
+        };
+
+        if (video) {
+          Object.assign(video, videoData);
+          await video.save();
+          updatedCount++;
+        } else {
+          video = new SportsVideo(videoData);
+          await video.save();
+          importedCount++;
+        }
+      } catch (err) {
+        console.error('Error importing sports video:', item, err);
+        errorCount++;
+        errors.push(`Row ${i + 1}: ${err.message}`);
+      }
+    }
+
+    res.json({
+      message: 'Sports video import completed',
+      importedCount,
+      updatedCount,
+      errorCount,
+      errors
+    });
+  } catch (err) {
+    console.error('[SERVER ERROR] POST /api/sports-videos/import:', err);
+    res.status(500).json({ message: 'Server error during import' });
+  }
+});
+
+// POST /api/new-releases/import - Import New Releases
+app.post('/api/new-releases/import', async (req, res) => {
+  try {
+    const { releases } = req.body;
+    if (!releases || !Array.isArray(releases)) {
+      return res.status(400).json({ message: 'Releases array is required' });
+    }
+
+    let importedCount = 0;
+    let updatedCount = 0;
+    let errorCount = 0;
+    const errors = [];
+
+    for (let i = 0; i < releases.length; i++) {
+      const item = releases[i];
+      try {
+        const title = item.title || item.Title;
+        const language = item.language || item.Language;
+        if (!title || !language) {
+          errorCount++;
+          errors.push(`Row ${i + 1}: Title and Language are required.`);
+          continue;
+        }
+
+        const genresRaw = item.genres || item.Genres || item.genre || item.Genre || '';
+        const genres = Array.isArray(genresRaw) 
+          ? genresRaw 
+          : genresRaw.split(',').map(g => g.trim()).filter(Boolean);
+
+        const actorNames = item.actors || item.Actors || '';
+        const directorNames = item.directors || item.Directors || '';
+        const actors = await processCastNames(actorNames, Actor);
+        const directors = await processCastNames(directorNames, Director);
+
+        let release = await NewRelease.findOne({ 
+          title: { $regex: new RegExp('^' + title.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') },
+          language: { $regex: new RegExp('^' + language.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') }
+        });
+
+        const releaseData = {
+          title,
+          language,
+          genres,
+          actors,
+          directors,
+          description: item.description || item.Description || '',
+          sortInfo: item.sortInfo || item.SortInfo || '',
+          upcoming: item.upcoming || item.Upcoming || 'No',
+          access: item.access || item.Access || 'Paid',
+          imdbRating: item.imdbRating || item.ImdbRating || '',
+          contentRating: item.contentRating || item.ContentRating || '16+',
+          releaseYear: item.releaseYear || item.ReleaseYear ? parseInt(item.releaseYear || item.ReleaseYear) : undefined,
+          duration: item.duration || item.Duration || '',
+          poster: item.poster || item.Poster || '',
+          thumbnail: item.thumbnail || item.Thumbnail || '',
+          banner: item.banner || item.Banner || '',
+          trailerUrl: item.trailerUrl || item.TrailerUrl || '',
+          videoType: item.videoType || item.VideoType || 'Local',
+          videoQuality: item.videoQuality || item.VideoQuality || '8K Ultra HD',
+          videoFile: item.videoFile || item.VideoFile || '',
+          videoFile480: item.videoFile480 || item.VideoFile480 || '',
+          videoFile720: item.videoFile720 || item.VideoFile720 || '',
+          videoFile1080: item.videoFile1080 || item.VideoFile1080 || '',
+          subtitlesActive: item.subtitlesActive || item.SubtitlesActive || 'Inactive',
+          status: item.status || item.Status || 'Active',
+          seoTitle: item.seoTitle || item.SeoTitle || '',
+          metaDescription: item.metaDescription || item.MetaDescription || '',
+          keywords: item.keywords || item.Keywords || '',
+          imdbId: item.imdbId || item.ImdbId || ''
+        };
+
+        if (release) {
+          Object.assign(release, releaseData);
+          await release.save();
+          updatedCount++;
+        } else {
+          release = new NewRelease(releaseData);
+          await release.save();
+          importedCount++;
+        }
+      } catch (err) {
+        console.error('Error importing new release:', item, err);
+        errorCount++;
+        errors.push(`Row ${i + 1}: ${err.message}`);
+      }
+    }
+
+    res.json({
+      message: 'New release import completed',
+      importedCount,
+      updatedCount,
+      errorCount,
+      errors
+    });
+  } catch (err) {
+    console.error('[SERVER ERROR] POST /api/new-releases/import:', err);
+    res.status(500).json({ message: 'Server error during import' });
+  }
+});
+
+// POST /api/tv-channels/import - Import TV Channels
+app.post('/api/tv-channels/import', async (req, res) => {
+  try {
+    const { channels } = req.body;
+    if (!channels || !Array.isArray(channels)) {
+      return res.status(400).json({ message: 'Channels array is required' });
+    }
+
+    let importedCount = 0;
+    let updatedCount = 0;
+    let errorCount = 0;
+    const errors = [];
+
+    for (let i = 0; i < channels.length; i++) {
+      const item = channels[i];
+      try {
+        const name = item.name || item.Name;
+        const categoryName = item.category || item.Category || item.categoryName || item.CategoryName;
+        if (!name || !categoryName) {
+          errorCount++;
+          errors.push(`Row ${i + 1}: Name and Category are required.`);
+          continue;
+        }
+
+        // Find or create category
+        let categoryDoc = await TVCategory.findOne({ name: { $regex: new RegExp('^' + categoryName.trim().replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') } });
+        if (!categoryDoc) {
+          categoryDoc = new TVCategory({ name: categoryName.trim(), status: true });
+          await categoryDoc.save();
+        }
+
+        let channel = await TVChannel.findOne({ 
+          name: { $regex: new RegExp('^' + name.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') },
+          category: categoryDoc._id
+        });
+
+        const channelData = {
+          name,
+          category: categoryDoc._id,
+          description: item.description || item.Description || '',
+          tvAccess: item.tvAccess || item.TvAccess || item.access || item.Access || 'Paid',
+          status: item.status || item.Status || 'Active',
+          streamType: item.streamType || item.StreamType || 'HLS/m3u8 / MPEG-DASH / YouTube / Vimeo',
+          server1Url: item.server1Url || item.Server1Url || '',
+          server2Url: item.server2Url || item.Server2Url || '',
+          server3Url: item.server3Url || item.Server3Url || '',
+          embedCode: item.embedCode || item.EmbedCode || '',
+          logo: item.logo || item.Logo || '',
+          seoTitle: item.seoTitle || item.SeoTitle || '',
+          metaDescription: item.metaDescription || item.MetaDescription || '',
+          keywords: item.keywords || item.Keywords || ''
+        };
+
+        if (channel) {
+          Object.assign(channel, channelData);
+          await channel.save();
+          updatedCount++;
+        } else {
+          channel = new TVChannel(channelData);
+          await channel.save();
+          importedCount++;
+        }
+      } catch (err) {
+        console.error('Error importing TV channel:', item, err);
+        errorCount++;
+        errors.push(`Row ${i + 1}: ${err.message}`);
+      }
+    }
+
+    res.json({
+      message: 'TV channel import completed',
+      importedCount,
+      updatedCount,
+      errorCount,
+      errors
+    });
+  } catch (err) {
+    console.error('[SERVER ERROR] POST /api/tv-channels/import:', err);
+    res.status(500).json({ message: 'Server error during import' });
+  }
+});
+
+// POST /api/seasons/import - Import Seasons
+app.post('/api/seasons/import', async (req, res) => {
+  try {
+    const { seasons } = req.body;
+    if (!seasons || !Array.isArray(seasons)) {
+      return res.status(400).json({ message: 'Seasons array is required' });
+    }
+
+    let importedCount = 0;
+    let updatedCount = 0;
+    let errorCount = 0;
+    const errors = [];
+
+    for (let i = 0; i < seasons.length; i++) {
+      const item = seasons[i];
+      try {
+        const title = item.title || item.Title;
+        const showTitle = item.showTitle || item.ShowTitle || item.showName || item.ShowName;
+        if (!title || !showTitle) {
+          errorCount++;
+          errors.push(`Row ${i + 1}: Title and Show Title are required.`);
+          continue;
+        }
+
+        // Find show
+        let showDoc = await Show.findOne({ title: { $regex: new RegExp('^' + showTitle.trim().replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') } });
+        if (!showDoc) {
+          errorCount++;
+          errors.push(`Row ${i + 1}: Show "${showTitle}" not found. Please create the show first.`);
+          continue;
+        }
+
+        let season = await Season.findOne({ 
+          title: { $regex: new RegExp('^' + title.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') },
+          showId: showDoc._id
+        });
+
+        const seasonData = {
+          title,
+          showId: showDoc._id,
+          showName: showDoc.title,
+          status: item.status || item.Status || 'Active',
+          poster: item.poster || item.Poster || '',
+          thumbnail: item.thumbnail || item.Thumbnail || ''
+        };
+
+        if (season) {
+          Object.assign(season, seasonData);
+          await season.save();
+          updatedCount++;
+        } else {
+          season = new Season(seasonData);
+          await season.save();
+          importedCount++;
+        }
+      } catch (err) {
+        console.error('Error importing season:', item, err);
+        errorCount++;
+        errors.push(`Row ${i + 1}: ${err.message}`);
+      }
+    }
+
+    res.json({
+      message: 'Season import completed',
+      importedCount,
+      updatedCount,
+      errorCount,
+      errors
+    });
+  } catch (err) {
+    console.error('[SERVER ERROR] POST /api/seasons/import:', err);
+    res.status(500).json({ message: 'Server error during import' });
+  }
+});
+
+// POST /api/episodes/import - Import Episodes
+app.post('/api/episodes/import', async (req, res) => {
+  try {
+    const { episodes } = req.body;
+    if (!episodes || !Array.isArray(episodes)) {
+      return res.status(400).json({ message: 'Episodes array is required' });
+    }
+
+    let importedCount = 0;
+    let updatedCount = 0;
+    let errorCount = 0;
+    const errors = [];
+
+    for (let i = 0; i < episodes.length; i++) {
+      const item = episodes[i];
+      try {
+        const title = item.title || item.Title;
+        const showTitle = item.showTitle || item.ShowTitle || item.showName || item.ShowName;
+        const seasonTitle = item.seasonTitle || item.SeasonTitle;
+        if (!title || !showTitle) {
+          errorCount++;
+          errors.push(`Row ${i + 1}: Title and Show Title are required.`);
+          continue;
+        }
+
+        // Find show
+        let showDoc = await Show.findOne({ title: { $regex: new RegExp('^' + showTitle.trim().replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') } });
+        if (!showDoc) {
+          errorCount++;
+          errors.push(`Row ${i + 1}: Show "${showTitle}" not found. Please create the show first.`);
+          continue;
+        }
+
+        // Find or create season if seasonTitle is provided
+        let seasonDoc = null;
+        if (seasonTitle) {
+          seasonDoc = await Season.findOne({ 
+            title: { $regex: new RegExp('^' + seasonTitle.trim().replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') },
+            showId: showDoc._id
+          });
+          if (!seasonDoc) {
+            // Create a new season automatically if not found
+            seasonDoc = new Season({
+              title: seasonTitle.trim(),
+              showId: showDoc._id,
+              showName: showDoc.title,
+              status: 'Active'
+            });
+            await seasonDoc.save();
+          }
+        }
+
+        let query = { 
+          title: { $regex: new RegExp('^' + title.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') },
+          showId: showDoc._id
+        };
+        if (seasonDoc) {
+          query.seasonId = seasonDoc._id;
+        }
+
+        let episode = await Episode.findOne(query);
+
+        const episodeData = {
+          title,
+          showId: showDoc._id,
+          seasonId: seasonDoc ? seasonDoc._id : undefined,
+          imdbId: item.imdbId || item.ImdbId || '',
+          description: item.description || item.Description || '',
+          access: item.access || item.Access || 'Paid',
+          imdbRating: item.imdbRating || item.ImdbRating || '',
+          releaseDate: item.releaseDate || item.ReleaseDate ? new Date(item.releaseDate || item.ReleaseDate) : undefined,
+          duration: item.duration || item.Duration || '',
+          status: item.status || item.Status || 'Active',
+          poster: item.poster || item.Poster || '',
+          videoType: item.videoType || item.VideoType || 'Local',
+          videoQuality: item.videoQuality || item.VideoQuality || 'Active',
+          videoFile: item.videoFile || item.VideoFile || '',
+          videoFile480: item.videoFile480 || item.VideoFile480 || '',
+          videoFile720: item.videoFile720 || item.VideoFile720 || '',
+          videoFile1080: item.videoFile1080 || item.VideoFile1080 || '',
+          downloadable: item.downloadable || item.Downloadable || 'Inactive',
+          downloadUrl: item.downloadUrl || item.DownloadUrl || '',
+          subtitlesActive: item.subtitlesActive || item.SubtitlesActive || 'Inactive',
+          seoTitle: item.seoTitle || item.SeoTitle || '',
+          metaDescription: item.metaDescription || item.MetaDescription || '',
+          keywords: item.keywords || item.Keywords || ''
+        };
+
+        if (episode) {
+          Object.assign(episode, episodeData);
+          await episode.save();
+          updatedCount++;
+        } else {
+          episode = new Episode(episodeData);
+          await episode.save();
+          importedCount++;
+        }
+      } catch (err) {
+        console.error('Error importing episode:', item, err);
+        errorCount++;
+        errors.push(`Row ${i + 1}: ${err.message}`);
+      }
+    }
+
+    res.json({
+      message: 'Episode import completed',
+      importedCount,
+      updatedCount,
+      errorCount,
+      errors
+    });
+  } catch (err) {
+    console.error('[SERVER ERROR] POST /api/episodes/import:', err);
+    res.status(500).json({ message: 'Server error during import' });
+  }
+});
+
+// POST /api/actors/import - Import Actors
+app.post('/api/actors/import', async (req, res) => {
+  try {
+    const { actors } = req.body;
+    if (!actors || !Array.isArray(actors)) {
+      return res.status(400).json({ message: 'Actors array is required' });
+    }
+
+    let importedCount = 0;
+    let updatedCount = 0;
+    let errorCount = 0;
+    const errors = [];
+
+    for (let i = 0; i < actors.length; i++) {
+      const item = actors[i];
+      try {
+        const name = item.name || item.Name;
+        if (!name) {
+          errorCount++;
+          errors.push(`Row ${i + 1}: Name is required.`);
+          continue;
+        }
+
+        let actor = await Actor.findOne({ 
+          name: { $regex: new RegExp('^' + name.trim().replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') }
+        });
+
+        const actorData = {
+          name: name.trim(),
+          bio: item.bio || item.Bio || '',
+          placeOfBirth: item.placeOfBirth || item.PlaceOfBirth || item.place_of_birth || '',
+          birthday: item.birthday || item.Birthday || '',
+          image: item.image || item.Image || '',
+          status: item.status || item.Status || 'Active'
+        };
+
+        if (actor) {
+          Object.assign(actor, actorData);
+          await actor.save();
+          updatedCount++;
+        } else {
+          actor = new Actor(actorData);
+          await actor.save();
+          importedCount++;
+        }
+      } catch (err) {
+        console.error('Error importing actor:', item, err);
+        errorCount++;
+        errors.push(`Row ${i + 1}: ${err.message}`);
+      }
+    }
+
+    res.json({
+      message: 'Actors import completed',
+      importedCount,
+      updatedCount,
+      errorCount,
+      errors
+    });
+  } catch (err) {
+    console.error('[SERVER ERROR] POST /api/actors/import:', err);
+    res.status(500).json({ message: 'Server error during import' });
+  }
+});
+
+// POST /api/directors/import - Import Directors
+app.post('/api/directors/import', async (req, res) => {
+  try {
+    const { directors } = req.body;
+    if (!directors || !Array.isArray(directors)) {
+      return res.status(400).json({ message: 'Directors array is required' });
+    }
+
+    let importedCount = 0;
+    let updatedCount = 0;
+    let errorCount = 0;
+    const errors = [];
+
+    for (let i = 0; i < directors.length; i++) {
+      const item = directors[i];
+      try {
+        const name = item.name || item.Name;
+        if (!name) {
+          errorCount++;
+          errors.push(`Row ${i + 1}: Name is required.`);
+          continue;
+        }
+
+        let director = await Director.findOne({ 
+          name: { $regex: new RegExp('^' + name.trim().replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') }
+        });
+
+        const directorData = {
+          name: name.trim(),
+          bio: item.bio || item.Bio || '',
+          placeOfBirth: item.placeOfBirth || item.PlaceOfBirth || item.place_of_birth || '',
+          birthday: item.birthday || item.Birthday || '',
+          image: item.image || item.Image || '',
+          status: item.status || item.Status || 'Active'
+        };
+
+        if (director) {
+          Object.assign(director, directorData);
+          await director.save();
+          updatedCount++;
+        } else {
+          director = new Director(directorData);
+          await director.save();
+          importedCount++;
+        }
+      } catch (err) {
+        console.error('Error importing director:', item, err);
+        errorCount++;
+        errors.push(`Row ${i + 1}: ${err.message}`);
+      }
+    }
+
+    res.json({
+      message: 'Directors import completed',
+      importedCount,
+      updatedCount,
+      errorCount,
+      errors
+    });
+  } catch (err) {
+    console.error('[SERVER ERROR] POST /api/directors/import:', err);
+    res.status(500).json({ message: 'Server error during import' });
+  }
+});
+
 app.post('/api/users', upload.single('profileImage'), async (req, res) => {
   try {
     const { name, email, password, phone, role, status } = req.body;
@@ -4265,6 +5551,11 @@ app.put('/api/users/:id', upload.single('profileImage'), async (req, res) => {
 
     const updateData = { ...req.body };
     
+    // Clear active sessions if user is blocked
+    if (updateData.status === 'Inactive') {
+      updateData.activeSessions = [];
+    }
+    
     // Handle password hashing manually since findByIdAndUpdate doesn't trigger pre('save') hooks easily
     if (password && password.trim() !== '') {
       const bcrypt = require('bcryptjs');
@@ -4292,6 +5583,19 @@ app.put('/api/users/:id', upload.single('profileImage'), async (req, res) => {
   } catch (err) {
     console.error('[SERVER ERROR] PUT /api/users/:id:', err);
     res.status(500).json({ message: err.message || 'Internal Server Error' });
+  }
+});
+
+app.post('/api/users/bulk-delete', async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ message: 'No user IDs provided' });
+    }
+    await User.updateMany({ _id: { $in: ids } }, { isDeleted: true });
+    res.json({ message: 'Users deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 });
 

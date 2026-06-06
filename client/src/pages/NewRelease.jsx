@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Edit, X, Search, ChevronDown, CheckCircle2, AlertTriangle, Loader2, Film } from 'lucide-react';
+import { Plus, Edit, X, Search, ChevronDown, CheckCircle2, AlertTriangle, Loader2, Film, ArrowUpDown, XCircle, Copy } from 'lucide-react';
 import Loader from '../components/Loader';
+import ImportExportModal from '../components/ImportExportModal';
 import { formatImageUrl } from '../utils/image';
 
 const API_URL = '/api/new-releases';
@@ -9,6 +10,7 @@ const API_URL = '/api/new-releases';
 const NewRelease = () => {
  const navigate = useNavigate();
  const [movies, setMovies] = useState([]);
+ const [isImportExportOpen, setIsImportExportOpen] = useState(false);
  const [loading, setLoading] = useState(false);
  const [searchTerm, setSearchTerm] = useState('');
  
@@ -17,6 +19,13 @@ const NewRelease = () => {
  const [genres, setGenres] = useState([]);
  const [selectedLanguage, setSelectedLanguage] = useState('');
  const [selectedGenre, setSelectedGenre] = useState('');
+
+ // Copy / Move states
+ const [isCopyMoveModalOpen, setIsCopyMoveModalOpen] = useState(false);
+ const [copyMoveMode, setCopyMoveMode] = useState('single'); // 'single' or 'bulk'
+ const [copyMoveTargetId, setCopyMoveTargetId] = useState(null);
+ const [targetSection, setTargetSection] = useState('Movie');
+ const [actionType, setActionType] = useState('copy');
  
  // Bulk selection states
  const [selectedMovies, setSelectedMovies] = useState([]);
@@ -173,6 +182,47 @@ const NewRelease = () => {
   }
  };
 
+ const executeCopyMove = async () => {
+  const ids = copyMoveMode === 'single' ? [copyMoveTargetId] : selectedMovies;
+  if (ids.length === 0) {
+   showNotification('No items selected', 'error');
+   return;
+  }
+
+  try {
+   setLoading(true);
+   setIsCopyMoveModalOpen(false);
+
+   const response = await fetch('/api/new-releases/copy-move', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+     ids,
+     targetSection,
+     actionType
+    })
+   });
+
+   const data = await response.json();
+
+   if (response.ok) {
+    if (actionType === 'move') {
+     setMovies(prev => prev.filter(m => !ids.includes(m._id)));
+     setSelectedMovies([]);
+    }
+    showNotification(data.message || `Items ${actionType}ed successfully`);
+   } else {
+    showNotification(data.message || `Failed to ${actionType} items`, 'error');
+   }
+  } catch (err) {
+   console.error('Error during copy/move:', err);
+   showNotification('An error occurred during operation', 'error');
+  } finally {
+   setLoading(false);
+   setCopyMoveTargetId(null);
+  }
+ };
+
  return (
   <div className="movies-page">
    {notification && (
@@ -200,10 +250,16 @@ const NewRelease = () => {
       <Search size={20} className="search-icon" />
      </div>
     </div>
-    <button className="add-btn" onClick={() => navigate('/admin/new-release/add')}>
-     <Plus size={20} strokeWidth={3} />
-     <span>Add New Release</span>
-    </button>
+     <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+      <button className="import-export-btn" onClick={() => setIsImportExportOpen(true)}>
+       <ArrowUpDown size={18} />
+       <span>Import / Export</span>
+      </button>
+      <button className="add-btn" onClick={() => navigate('/admin/new-release/add')}>
+       <Plus size={20} strokeWidth={3} />
+       <span>Add New Release</span>
+      </button>
+     </div>
    </div>
 
    <div className="filters-bar">
@@ -298,6 +354,11 @@ const NewRelease = () => {
        <div className="action-dropdown-menu">
         <button onClick={() => handleBulkAction('active')}>Active</button>
         <button onClick={() => handleBulkAction('inactive')}>Inactive</button>
+        <button onClick={() => {
+          setIsActionMenuOpen(false);
+          setCopyMoveMode('bulk');
+          setIsCopyMoveModalOpen(true);
+        }}>Copy / Move Section</button>
         <button className="delete-option" onClick={() => handleBulkAction('delete')}>Delete</button>
        </div>
       )}
@@ -327,6 +388,18 @@ const NewRelease = () => {
         <div className="card-controls">
          <div className="action-icons">
           <button className="circle-icon edit" onClick={() => navigate(`/admin/new-release/edit/${movie._id}`)}><Edit size={16} /></button>
+          <button 
+           className="circle-icon duplicate" 
+           style={{ backgroundColor: '#0088ff' }} 
+           onClick={() => {
+             setCopyMoveTargetId(movie._id);
+             setCopyMoveMode('single');
+             setIsCopyMoveModalOpen(true);
+           }}
+           title="Copy / Move to other section"
+          >
+           <Copy size={15} />
+          </button>
           <button className="circle-icon delete" onClick={() => confirmDelete(movie._id)}><X size={18} strokeWidth={3} /></button>
          </div>
          <label className="switch">
@@ -341,6 +414,83 @@ const NewRelease = () => {
        </div>
       </div>
      ))}
+    </div>
+   )}
+
+   {isCopyMoveModalOpen && (
+    <div className="modal-overlay">
+     <div className="delete-modal-content" style={{ maxWidth: '500px' }}>
+      <h2 style={{ marginBottom: '20px' }}>Copy or Move Content</h2>
+      <p style={{ color: '#ccc', marginBottom: '25px' }}>
+       {copyMoveMode === 'bulk' 
+         ? `Choose action and target section for the ${selectedMovies.length} selected items:` 
+         : `Choose action and target section for this item:`
+       }
+      </p>
+      
+      <div style={{ display: 'flex', gap: '20px', marginBottom: '20px', justifyContent: 'center' }}>
+       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', flex: 1 }}>
+        <label style={{ color: '#888', marginBottom: '8px', fontSize: '0.9rem', fontWeight: 'bold' }}>Action Type</label>
+        <select 
+         value={actionType} 
+         onChange={(e) => setActionType(e.target.value)}
+         style={{
+          width: '100%',
+          background: '#2c2c2c',
+          border: '1px solid #444',
+          padding: '10px 15px',
+          borderRadius: '6px',
+          color: '#fff',
+          outline: 'none'
+         }}
+        >
+         <option value="copy">Copy (Duplicate to target)</option>
+         <option value="move">Move (Transfer to target & delete here)</option>
+        </select>
+       </div>
+       
+       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', flex: 1 }}>
+        <label style={{ color: '#888', marginBottom: '8px', fontSize: '0.9rem', fontWeight: 'bold' }}>Target Section</label>
+        <select 
+         value={targetSection} 
+         onChange={(e) => setTargetSection(e.target.value)}
+         style={{
+          width: '100%',
+          background: '#2c2c2c',
+          border: '1px solid #444',
+          padding: '10px 15px',
+          borderRadius: '6px',
+          color: '#fff',
+          outline: 'none'
+         }}
+        >
+          <option value="Movie">Movies</option>
+          <option value="Short Film">Short Films</option>
+          <option value="TV Show">TV Shows</option>
+          <option value="Short Web Series">Short Web Series</option>
+         </select>
+       </div>
+      </div>
+
+      <div className="delete-modal-footer" style={{ marginTop: '30px' }}>
+       <button 
+        className="cancel-btn" 
+        onClick={() => {
+         setIsCopyMoveModalOpen(false);
+         setCopyMoveTargetId(null);
+        }}
+       >
+        Cancel
+       </button>
+       <button 
+        className="confirm-btn" 
+        style={{ background: 'linear-gradient(135deg, #b3d332 0%, #00a86b 100%)', color: '#fff' }}
+        onClick={executeCopyMove}
+       >
+        Confirm
+       </button>
+      </div>
+     </div>
     </div>
    )}
 
@@ -367,6 +517,8 @@ const NewRelease = () => {
     .search-bar input { width: 100%; background: #1a1a1a; border: 1px solid #333; padding: 12px 20px 12px 48px; color: #fff; border-radius: 50px; outline: none; }
     .search-icon { position: absolute; left: 18px; top: 50%; transform: translateY(-50%); color: #666; }
     .add-btn { background: linear-gradient(135deg, #b3d332 0%, #00a86b 100%); color: white; border: none; padding: 10px 22px; border-radius: 8px; display: flex; align-items: center; gap: 8px; font-weight: 700; cursor: pointer; }
+    .import-export-btn { background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 10px 20px; border-radius: 8px; display: flex; align-items: center; gap: 8px; font-weight: 700; cursor: pointer; transition: all 0.2s ease; }
+    .import-export-btn:hover { background: #2a2a2a; border-color: #b3d332; color: #b3d332; }
     .filters-bar { background: #111; padding: 15px 20px; border-radius: 10px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #222; }
     .filter-group { display: flex; align-items: center; gap: 15px; }
     
@@ -434,6 +586,12 @@ const NewRelease = () => {
     .spinner { animation: spin 1s linear infinite; color: #b3d332; }
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
    ` }} />
+   <ImportExportModal 
+    isOpen={isImportExportOpen} 
+    onClose={() => setIsImportExportOpen(false)} 
+    type="new-releases" 
+    onImportSuccess={fetchMovies} 
+   />
   </div>
  );
 };
