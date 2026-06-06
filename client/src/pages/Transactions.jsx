@@ -10,6 +10,7 @@ import {
  AlertTriangle
 } from 'lucide-react';
 import Loader from '../components/Loader';
+import * as XLSX from 'xlsx';
 
 const API_URL = '/api/transactions';
 
@@ -86,6 +87,23 @@ const Transactions = () => {
   return matchesSearch && matchesGateway;
  });
 
+ const handleExport = () => {
+  const dataToExport = filteredTransactions.map(tx => ({
+   Name: tx.name || 'N/A',
+   Email: tx.email || 'N/A',
+   Plan: tx.plan || 'N/A',
+   Amount: tx.amount !== undefined ? tx.amount : 'N/A',
+   'Payment Gateway': tx.gateway || 'N/A',
+   'Payment ID': tx.paymentId || 'N/A',
+   'Payment Date': tx.paymentDate || 'N/A',
+  }));
+
+  const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Transactions');
+  XLSX.writeFile(workbook, 'transactions.xlsx');
+ };
+
  const indexOfLastItem = currentPage * itemsPerPage;
  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
  const currentItems = filteredTransactions.slice(indexOfFirstItem, indexOfLastItem);
@@ -149,7 +167,7 @@ const Transactions = () => {
        <span>Delete Selected ({selectedIds.length})</span>
       </button>
      )}
-     <button className="export-btn-v">
+     <button className="export-btn-v" onClick={handleExport}>
       <Download size={18} />
       <span>Export Transactions</span>
      </button>

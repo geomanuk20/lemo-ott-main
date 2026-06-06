@@ -52,6 +52,10 @@ const Sidebar = () => {
     fetchSettings();
   }, []);
 
+  useEffect(() => {
+    document.body.classList.remove('sidebar-active');
+  }, [location.pathname]);
+
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isSubAdmin = user.role === 'sub-admin';
 
@@ -293,6 +297,7 @@ const Sidebar = () => {
         @keyframes slideDownGlobal { from { transform: translate(-50%, -150%); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
       ` }} />
     </div>
+    <div className="sidebar-overlay" onClick={() => document.body.classList.remove('sidebar-active')} />
   </>
   );
 };

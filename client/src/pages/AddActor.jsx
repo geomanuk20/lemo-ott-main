@@ -35,7 +35,7 @@ const AddActor = () => {
   setFormData(prev => ({ ...prev, bio: content }));
  };
 
- const handleFileChange = async (e, field = 'logo') => {
+ const handleFileChange = async (e, field = 'image') => {
   const file = e.target.files[0];
   if (!file) return;
   try {

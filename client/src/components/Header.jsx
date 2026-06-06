@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { RefreshCcw, Monitor, User, LogOut, UserCircle, CheckCircle2, Film } from 'lucide-react';
+import { RefreshCcw, Monitor, User, LogOut, UserCircle, CheckCircle2, Film, Menu } from 'lucide-react';
 
 const Header = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -80,7 +80,17 @@ const Header = () => {
         </div>
       )}
 
-      <h1>{getPageTitle()}</h1>
+      <div className="header-title-section">
+        <button 
+          type="button"
+          className="sidebar-toggle-btn"
+          onClick={() => document.body.classList.toggle('sidebar-active')}
+          title="Toggle Sidebar"
+        >
+          <Menu size={22} />
+        </button>
+        <h1>{getPageTitle()}</h1>
+      </div>
       <div className="header-actions">
         {location.pathname === '/admin/dashboard' && (
           <RefreshCcw 

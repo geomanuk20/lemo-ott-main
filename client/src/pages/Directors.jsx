@@ -11,9 +11,11 @@ import {
  Loader2, 
  ChevronDown,
  RotateCw,
- LayoutGrid
+ LayoutGrid,
+ ArrowUpDown
 } from 'lucide-react';
 import Loader from '../components/Loader';
+import ImportExportModal from '../components/ImportExportModal';
 
 const API_URL = '/api/directors';
 const ITEMS_PER_PAGE = 12;
@@ -27,6 +29,7 @@ const Directors = () => {
  
  // Modal states
  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+ const [isImportExportOpen, setIsImportExportOpen] = useState(false);
  const [deletingId, setDeletingId] = useState(null);
  const [deleteMode, setDeleteMode] = useState('single'); // 'single' or 'bulk'
  
@@ -176,6 +179,10 @@ const Directors = () => {
       )}
      </div>
 
+     <button className="import-export-btn-alt" onClick={() => setIsImportExportOpen(true)}>
+      <ArrowUpDown size={18} />
+      <span>Import / Export</span>
+     </button>
      <button className="add-actor-btn" onClick={() => navigate('/admin/cast-crew/directors/add')}>
       <Plus size={18} strokeWidth={3} />
       <span>Add Director</span>
@@ -333,11 +340,18 @@ const Directors = () => {
     .alert-content { display: flex; flex-direction: column; align-items: center; gap: 15px; }
     .alert-text { color: #fff; font-size: 1.1rem; font-weight: 700; text-align: center; }
     @keyframes slideDown { from { transform: translate(-50%, -100%); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
-    
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     .spinner { animation: spin 1s linear infinite; color: #b3d332; }
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .import-export-btn-alt { background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 8px 18px; border-radius: 4px; display: flex; align-items: center; gap: 8px; font-weight: 700; cursor: pointer; transition: all 0.2s ease; margin-right: 10px; }
+    .import-export-btn-alt:hover { background: #222; border-color: #b3d332; color: #b3d332; }
    ` }} />
+   <ImportExportModal 
+    isOpen={isImportExportOpen} 
+    onClose={() => setIsImportExportOpen(false)} 
+    type="directors" 
+    onImportSuccess={fetchDirectors} 
+   />
   </div>
  );
 };

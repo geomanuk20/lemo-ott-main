@@ -13,13 +13,20 @@ const FrontendSubscription = () => {
  const navigate = useNavigate();
  const location = useLocation();
  const user = JSON.parse(localStorage.getItem('user') || '{}');
- const currentUserPlan = user.subscriptionPlan;
+ const todayStr = new Date().toISOString().split('T')[0];
+ const isExpired = user.expiryDate && user.expiryDate < todayStr;
+ const currentUserPlan = isExpired ? null : user.subscriptionPlan;
 
   const isPlanFree = (plan) => {
     if (!plan || plan.price === undefined || plan.price === null) return false;
     const p = plan.price.toString().trim().toLowerCase().replace(/[^\d.]/g, '');
     return p === '0' || p === '0.00' || p === '' || p === 'free' || parseFloat(p) === 0;
   };
+
+  const activePlanIsPaid = plans.some(p => {
+    if (p.planName !== currentUserPlan) return false;
+    return !isPlanFree(p);
+  });
 
   const showNotification = (message, type = 'success') => {
     setNotification({ message, type });
@@ -192,9 +199,9 @@ const FrontendSubscription = () => {
           </div>
 
           <button 
-           className={`fe-plan-btn-v ${isCurrentPlan ? 'current-plan-btn-v' : ''} ${(!isCurrentPlan && isPlanFree(plan) && plan.getStarted === 'OFF') ? 'disabled-plan-btn-v' : ''}`}
-           onClick={() => !isCurrentPlan && !(isPlanFree(plan) && plan.getStarted === 'OFF') && handleSelectPlan(plan)}
-           disabled={isCurrentPlan || (!isCurrentPlan && isPlanFree(plan) && plan.getStarted === 'OFF')}
+           className={`fe-plan-btn-v ${isCurrentPlan ? 'current-plan-btn-v' : ''} ${((!isCurrentPlan && isPlanFree(plan) && plan.getStarted === 'OFF') || (activePlanIsPaid && !isCurrentPlan)) ? 'disabled-plan-btn-v' : ''}`}
+           onClick={() => !isCurrentPlan && !(isPlanFree(plan) && plan.getStarted === 'OFF') && !(activePlanIsPaid && !isCurrentPlan) && handleSelectPlan(plan)}
+           disabled={isCurrentPlan || (!isCurrentPlan && isPlanFree(plan) && plan.getStarted === 'OFF') || (activePlanIsPaid && !isCurrentPlan)}
           >
            {isCurrentPlan ? 'CURRENT PLAN' : ((isPlanFree(plan) && plan.getStarted === 'OFF') ? 'UNAVAILABLE' : <>GET STARTED <ArrowRight size={16} /></>)}
           </button>

@@ -11,6 +11,7 @@ import {
   RefreshControl,
   useWindowDimensions
 } from 'react-native';
+import Svg, { Circle } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, Play, Tv, Film, Trophy, CreditCard, Clapperboard, Crown, Globe, MonitorPlay, Shield } from 'lucide-react-native';
 import client from '../api/client';
@@ -53,6 +54,48 @@ const isSliderActive = (slide, menuSettings) => {
   if (contentType === 'Sports' && menuSettings.sports?.toUpperCase() === 'OFF') return false;
   if (contentType === 'Live TV' && menuSettings.liveTv?.toUpperCase() === 'OFF') return false;
   return true;
+};
+
+const IMDBRatingCircle = ({ rating }) => {
+  const ratingVal = parseFloat(rating || '7.5');
+  const normalizedRating = Math.min(Math.max(ratingVal, 0), 10);
+  const size = 36;
+  const strokeWidth = 3;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (circumference * normalizedRating) / 10;
+
+  return (
+    <View style={styles.ratingCircleContainer}>
+      <Svg width={size} height={size}>
+        {/* Background Track Circle with Solid Black Fill */}
+        <Circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="rgba(255, 255, 255, 0.15)"
+          strokeWidth={strokeWidth}
+          fill="#000000"
+        />
+        {/* Active Progress Circle */}
+        <Circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="#b3d332"
+          strokeWidth={strokeWidth}
+          fill="transparent"
+          strokeDasharray={circumference}
+          strokeDashoffset={strokeDashoffset}
+          strokeLinecap="round"
+          transform={`rotate(-90 ${size / 2} ${size / 2})`}
+        />
+      </Svg>
+      <View style={styles.ratingCircleTextContainer}>
+        <Text style={styles.ratingCircleText}>{normalizedRating.toFixed(1)}</Text>
+      </View>
+    </View>
+  );
 };
 
 export default function HomeScreen({ navigation }) {
@@ -193,7 +236,7 @@ export default function HomeScreen({ navigation }) {
           {/* Metadata Row */}
           {(item.imdbRating || item.releaseYear || item.duration || isValidQuality(item.videoQuality)) ? (
             <View style={styles.sliderMetaRow}>
-              {item.imdbRating ? <Text style={styles.sliderMetaText}>⭐ {item.imdbRating}</Text> : null}
+              {item.imdbRating ? <IMDBRatingCircle rating={item.imdbRating} /> : null}
               {item.releaseYear ? <Text style={styles.sliderMetaText}>{item.releaseYear}</Text> : null}
               {item.duration ? <Text style={styles.sliderMetaText}>{item.duration}</Text> : null}
               {isValidQuality(item.videoQuality) ? (
@@ -1246,5 +1289,23 @@ const styles = StyleSheet.create({
   experienceLandscapeRight: {
     flex: 1,
     justifyContent: 'center',
+  },
+  ratingCircleContainer: {
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+    marginRight: 4,
+  },
+  ratingCircleTextContainer: {
+    position: 'absolute',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  ratingCircleText: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: '900',
   },
 });

@@ -86,19 +86,25 @@ const FrontendWebSeries = () => {
              <Crown size={14} fill="currentColor" />
             </div>
            )}
-           <div className="card-overlay-hover">
-            <div className="fe-premium-badge-v">
-             <span className="badge-prefix-v">{prefix}</span>
-             <span className="badge-suffix-v">{suffix}</span>
-            </div>
-            <div 
-             className="fe-badge-rating-v" 
-             style={{ background: `conic-gradient(#b3d332 ${percentage}%, rgba(255,255,255,0.1) ${percentage}%)` }}
-            >
-             <div className="rating-inner-v">{ratingVal.toFixed(1)}</div>
-            </div>
-            <div className="play-icon-v"><Play fill="white" size={24} /></div>
-           </div>
+           {show.upcoming === 'Yes' ? (
+             <div className="card-overlay-hover" style={{ opacity: 1 }}>
+               <div style={{ color: '#b3d332', fontWeight: 900, fontSize: '0.9rem', letterSpacing: '1px' }}>COMING SOON</div>
+             </div>
+           ) : (
+             <div className="card-overlay-hover">
+              <div className="fe-premium-badge-v">
+               <span className="badge-prefix-v">{prefix}</span>
+               <span className="badge-suffix-v">{suffix}</span>
+              </div>
+              <div 
+               className="fe-badge-rating-v" 
+               style={{ background: `conic-gradient(#b3d332 ${percentage}%, rgba(255,255,255,0.1) ${percentage}%)` }}
+              >
+               <div className="rating-inner-v">{ratingVal.toFixed(1)}</div>
+              </div>
+              <div className="play-icon-v"><Play fill="white" size={24} /></div>
+             </div>
+           )}
           </div>
           <div className="card-info-new">
            <div className="card-meta-top">

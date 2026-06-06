@@ -86,7 +86,7 @@ function AppContent() {
         if (res.data) {
           const serverVersion = res.data.appVersion;
           const updateStatus = res.data.appUpdateStatus; // 'ON' / 'OFF'
-          const localVersion = Constants.expoConfig?.version || '1.2.0';
+          const localVersion = Constants.expoConfig?.version || '1.0.5';
           console.log('[AppUpdateCheck] Server Version:', serverVersion, 'Local Version:', localVersion, 'Status:', updateStatus);
 
           if (updateStatus?.toUpperCase() === 'ON' && serverVersion !== localVersion) {

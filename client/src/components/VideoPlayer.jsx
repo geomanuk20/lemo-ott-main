@@ -866,6 +866,7 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
         autoPlay
         playsInline
         controls={false}
+        onContextMenu={(e) => e.preventDefault()}
         onEnded={onEnded}
         onError={onEnded} // Skip ad if video source fails to load
         style={{
@@ -1207,7 +1208,7 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
 
   if (isHtmlEmbed) {
     return (
-      <div className="premium-player-wrapper" style={containerStyle}>
+      <div className="premium-player-wrapper" style={containerStyle} onContextMenu={(e) => e.preventDefault()}>
         {embedInfo.type === 'html' ? (
           <HtmlScriptExecutor html={embedInfo.src} />
         ) : (
@@ -1240,7 +1241,7 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
   // 1. Render Mux Player if playback ID is present and activePlayer is MUX_PLAYER
   if (activePlayer === 'MUX_PLAYER' && playbackId) {
     return (
-      <div style={containerStyle}>
+      <div style={containerStyle} onContextMenu={(e) => e.preventDefault()}>
         <MuxPlayer
           ref={playerRef}
           playbackId={playbackId}
@@ -1335,6 +1336,7 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
         poster={poster}
         className={className}
         style={containerStyle}
+        onContextMenu={(e) => e.preventDefault()}
         {...rest}
       >
         <HlsVideo 

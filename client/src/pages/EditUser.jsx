@@ -23,6 +23,7 @@ const EditUser = () => {
   role: 'customer'
  });
  const [imagePreview, setImagePreview] = useState(null);
+ const [currentBcrypt, setCurrentBcrypt] = useState('');
 
  useEffect(() => {
   const fetchUser = async () => {
@@ -40,6 +41,7 @@ const EditUser = () => {
       status: user.status || 'Active',
       role: user.role || 'customer'
      });
+     setCurrentBcrypt(user.password || '');
      if (user.profileImage) {
       const previewUrl = user.profileImage.startsWith('data:') || user.profileImage.startsWith('http') 
        ? user.profileImage 
@@ -169,8 +171,20 @@ const EditUser = () => {
         type="password" 
         name="password" 
         placeholder="Leave blank to keep current password"
-        value={formData.password} 
+        value={formData.password || ''} 
         onChange={handleChange} 
+       />
+      </div>
+     </div>
+
+     <div className="form-row-premium">
+      <label>Current Password (Bcrypt)</label>
+      <div className="input-group-premium">
+       <input 
+        type="text" 
+        value={currentBcrypt} 
+        readOnly
+        style={{ color: '#888', background: '#111', cursor: 'not-allowed' }}
        />
       </div>
      </div>

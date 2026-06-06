@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Check, Sparkles } from 'lucide-react-native';
 import { AuthContext } from '../context/AuthContext';
 import client from '../api/client';
+import CustomAlert from '../components/CustomAlert';
 
 const stripHtml = (html) => {
   if (!html) return '';
@@ -32,6 +33,22 @@ export default function SubscriptionScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [plans, setPlans] = useState([]);
+
+  const [alertConfig, setAlertConfig] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    buttons: []
+  });
+
+  const showAlert = (title, message, buttons = []) => {
+    setAlertConfig({
+      visible: true,
+      title,
+      message,
+      buttons
+    });
+  };
 
   const fetchPlans = async () => {
     try {
@@ -58,8 +75,12 @@ export default function SubscriptionScreen({ navigation }) {
 
   const handleSubscribe = async (plan) => {
     if (!user || !user.id) {
-      alert('Please sign in to subscribe.');
-      navigation.navigate('Login');
+      showAlert('Sign In Required', 'Please sign in to subscribe.', [
+        {
+          text: 'OK',
+          onPress: () => navigation.navigate('Login')
+        }
+      ]);
       return;
     }
     const cleanPriceStr = plan.price ? plan.price.toString().replace(/[^\d.]/g, '') : '0';
@@ -81,12 +102,16 @@ export default function SubscriptionScreen({ navigation }) {
             expiryDate: response.data.user.expiryDate 
           };
           setUser(updatedUser);
-          alert('Subscribed successfully to the Free plan!');
-          navigation.navigate('HomeTab');
+          showAlert('Success', 'Subscribed successfully to the Free plan!', [
+            {
+              text: 'OK',
+              onPress: () => navigation.navigate('HomeTab')
+            }
+          ]);
         }
       } catch (error) {
         console.error('Error subscribing to free plan:', error);
-        alert(error.response?.data?.message || 'Free subscription failed');
+        showAlert('Subscription Failed', error.response?.data?.message || 'Free subscription failed');
       } finally {
         setLoading(false);
       }
@@ -100,6 +125,16 @@ export default function SubscriptionScreen({ navigation }) {
       });
     }
   };
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const isExpired = user?.expiryDate && user.expiryDate < todayStr;
+  const userActivePlanName = !isExpired ? user?.subscriptionPlan : null;
+
+  const activePlanIsPaid = plans.some(p => {
+    if (p.planName !== userActivePlanName) return false;
+    const cleanPriceStr = p.price ? p.price.toString().replace(/[^\d.]/g, '') : '0';
+    return (parseFloat(cleanPriceStr) || 0) > 0;
+  });
 
   if (loading) {
     return (
@@ -137,7 +172,9 @@ export default function SubscriptionScreen({ navigation }) {
             const cleanPriceStr = plan.price ? plan.price.toString().replace(/[^\d.]/g, '') : '0';
             const priceVal = parseFloat(cleanPriceStr) || 0;
             const isFree = priceVal === 0;
-            const isUserActivePlan = user?.subscriptionPlan === plan.planName;
+            const todayStr = new Date().toISOString().split('T')[0];
+            const isExpired = user?.expiryDate && user.expiryDate < todayStr;
+            const isUserActivePlan = !isExpired && user?.subscriptionPlan === plan.planName;
 
             return (
               <View key={plan._id} style={[styles.planCard, isUserActivePlan ? styles.activePlanCard : null]}>
@@ -166,11 +203,13 @@ export default function SubscriptionScreen({ navigation }) {
                 <View style={styles.featuresList}>
                   <View style={styles.featureRow}>
                     <Check color="#b3d332" size={16} strokeWidth={3} />
-                    <Text style={styles.featureText}>Ad-free streaming content</Text>
+                    <Text style={styles.featureText}>
+                      {plan.ads === 'ON' ? 'Contains advertisements' : 'Ad-free streaming content'}
+                    </Text>
                   </View>
                   <View style={styles.featureRow}>
                     <Check color="#b3d332" size={16} strokeWidth={3} />
-                    <Text style={styles.featureText}>Full HD 1080p video quality</Text>
+                    <Text style={styles.featureText}>{plan.streamingQuality || 'HD'} video quality</Text>
                   </View>
                   <View style={styles.featureRow}>
                     <Check color="#b3d332" size={16} strokeWidth={3} />
@@ -189,10 +228,10 @@ export default function SubscriptionScreen({ navigation }) {
                   style={[
                     styles.subscribeBtn,
                     isFree ? styles.freeBtn : styles.paidBtn,
-                    isUserActivePlan ? styles.disabledBtn : null
+                    (isUserActivePlan || (activePlanIsPaid && !isUserActivePlan)) ? styles.disabledBtn : null
                   ]}
                   onPress={() => handleSubscribe(plan)}
-                  disabled={isUserActivePlan}
+                  disabled={isUserActivePlan || (activePlanIsPaid && !isUserActivePlan)}
                 >
                   <Text style={[styles.subscribeBtnText, isFree ? styles.freeText : styles.paidText]}>
                     {isUserActivePlan ? 'Current Plan' : isFree ? 'Select Free Plan' : 'Subscribe Now'}
@@ -203,6 +242,13 @@ export default function SubscriptionScreen({ navigation }) {
           })
         )}
       </ScrollView>
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        buttons={alertConfig.buttons}
+        onClose={() => setAlertConfig(prev => ({ ...prev, visible: false }))}
+      />
     </SafeAreaView>
   );
 }

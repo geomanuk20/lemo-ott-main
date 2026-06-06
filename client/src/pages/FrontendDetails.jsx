@@ -170,7 +170,13 @@ const FrontendDetails = () => {
      }
    };
 
-  useEffect(() => {
+    const handlePlayTrailer = () => {
+      if (data && data.trailerUrl) {
+        setActiveVideoUrl(data.trailerUrl);
+      }
+    };
+
+   useEffect(() => {
     setShowNextBtn(false);
   }, [activeVideoUrl]);
 
@@ -594,27 +600,33 @@ const FrontendDetails = () => {
          return <img src={imgUrl} alt={getTitle(data)} />;
         })()}
         <div className="fe-poster-overlay-v">
-          <div className="fe-big-play-btn-v" onClick={() => {
-           const filteredEpisodes = episodes.filter(ep => {
-            if (data.contentType === 'Short Web Series') return true;
-            if (!ep.seasonId) return false;
-            const epSeasonIdStr = typeof ep.seasonId === 'object' ? (ep.seasonId._id || ep.seasonId.id || '').toString() : ep.seasonId.toString();
-            const currentSeasonIdStr = selectedSeasonId ? selectedSeasonId.toString() : '';
-            return epSeasonIdStr && currentSeasonIdStr && epSeasonIdStr === currentSeasonIdStr;
-           });
-           const firstEp = data.contentType === 'Short Web Series' ? episodes[0] : filteredEpisodes[0];
-           const url = data.videoFile || data.videoUrl || data.streamUrl || data.videoFile1080 || data.videoFile720 || data.videoFile480 || 
-                       data.server1Url || data.server2Url || data.server3Url || data.embedCode ||
-                       (firstEp && (firstEp.videoFile || firstEp.videoUrl || firstEp.videoFile1080 || firstEp.videoFile720 || firstEp.videoFile480));
-           if (url) {
-            handlePlayVideo(url, firstEp);
-           } else {
-            alert('Video not available for this content.');
-           }
-          }}>
-          <div className="pulse-ring-v"></div>
-          <Play size={40} fill="white" />
-         </div>
+         {data.upcoming === 'Yes' ? (
+           <div className="fe-upcoming-badge-overlay-v">
+             COMING SOON
+           </div>
+         ) : (
+           <div className="fe-big-play-btn-v" onClick={() => {
+            const filteredEpisodes = episodes.filter(ep => {
+             if (data.contentType === 'Short Web Series') return true;
+             if (!ep.seasonId) return false;
+             const epSeasonIdStr = typeof ep.seasonId === 'object' ? (ep.seasonId._id || ep.seasonId.id || '').toString() : ep.seasonId.toString();
+             const currentSeasonIdStr = selectedSeasonId ? selectedSeasonId.toString() : '';
+             return epSeasonIdStr && currentSeasonIdStr && epSeasonIdStr === currentSeasonIdStr;
+            });
+            const firstEp = data.contentType === 'Short Web Series' ? episodes[0] : filteredEpisodes[0];
+            const url = data.videoFile || data.videoUrl || data.streamUrl || data.videoFile1080 || data.videoFile720 || data.videoFile480 || 
+                        data.server1Url || data.server2Url || data.server3Url || data.embedCode ||
+                        (firstEp && (firstEp.videoFile || firstEp.videoUrl || firstEp.videoFile1080 || firstEp.videoFile720 || firstEp.videoFile480));
+            if (url) {
+             handlePlayVideo(url, firstEp);
+            } else {
+             alert('Video not available for this content.');
+            }
+           }}>
+            <div className="pulse-ring-v"></div>
+            <Play size={40} fill="white" />
+           </div>
+         )}
         </div>
        </div>
        
@@ -677,7 +689,7 @@ const FrontendDetails = () => {
        </div>
 
         {data.trailerUrl && data.trailerUrl.trim() !== "" && (
-         <button className="fe-trailer-btn-v" onClick={() => window.open(data.trailerUrl, '_blank')}>
+         <button className="fe-trailer-btn-v" onClick={handlePlayTrailer}>
           <Play size={18} fill="currentColor" /> WATCH TRAILER
          </button>
         )}
@@ -792,7 +804,12 @@ const FrontendDetails = () => {
     </div>
 
     {/* TV Show Seasons & Episodes Section */}
-    {(seasons.length > 0 || data.contentType === 'Short Web Series') && (
+    {data.upcoming === 'Yes' ? (
+     <div className="fe-upcoming-episodes-message-v" style={{ textAlign: 'center', padding: '60px 20px', background: '#0a0a0a', borderTop: '1px solid rgba(255,255,255,0.05)', marginTop: '40px' }}>
+       <h3 style={{ color: '#fff', fontSize: '1.5rem', fontWeight: 800, marginBottom: '10px' }}>Episodes Coming Soon</h3>
+       <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '1rem' }}>Stay tuned! Episodes for this series will be available soon.</p>
+     </div>
+    ) : (seasons.length > 0 || data.contentType === 'Short Web Series') && (
      <section className="fe-episodes-section-v">
       
       {/* Seasons Gallery Section */}
@@ -950,13 +967,13 @@ const FrontendDetails = () => {
           <div className="fe-cinema-main-v">
            <VideoPlayer 
             src={activeVideoUrl} 
-            videoTitle={data?.title}
+            videoTitle={activeVideoUrl === data?.trailerUrl ? `${getTitle(data)} - Trailer` : getTitle(data)}
             playerSettings={playerSettings}
             videoId={data?._id}
-             subtitles={currentSubs.list}
-             subtitlesActive={currentSubs.active}
+             subtitles={activeVideoUrl === data?.trailerUrl ? [] : currentSubs.list}
+             subtitlesActive={activeVideoUrl === data?.trailerUrl ? 'Inactive' : currentSubs.active}
              onEnded={() => {
-               if (nextEpisode) {
+               if (activeVideoUrl !== data?.trailerUrl && nextEpisode) {
                  const nextUrl = nextEpisode.videoFile || nextEpisode.videoUrl || nextEpisode.videoFile1080 || nextEpisode.videoFile720 || nextEpisode.videoFile480;
                  if (nextUrl) {
                    handlePlayVideo(nextUrl, nextEpisode);
@@ -1185,6 +1202,18 @@ const FrontendDetails = () => {
     .fe-big-play-btn-v { width: 80px; height: 80px; background: #b3d332; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); color: #fff; position: relative; box-shadow: 0 0 30px rgba(22,196,127,0.5); z-index: 2; }
     .fe-big-play-btn-v:hover { transform: scale(1.1); background: #fff; color: #000; }
     .fe-big-play-btn-v:hover .pulse-ring-v { border-color: #fff; }
+
+    .fe-upcoming-badge-overlay-v {
+      background: #b3d332;
+      color: #000;
+      padding: 12px 28px;
+      border-radius: 6px;
+      font-weight: 900;
+      font-size: 0.95rem;
+      letter-spacing: 2px;
+      box-shadow: 0 10px 20px rgba(179,211,50,0.3);
+      z-index: 2;
+    }
 
     .pulse-ring-v {
      position: absolute; width: 100%; height: 100%; border: 4px solid #b3d332; border-radius: 50%;

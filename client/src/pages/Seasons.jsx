@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Edit, X, Search, ChevronDown, CheckCircle2, AlertTriangle, Loader2, Film, Copy } from 'lucide-react';
+import { Plus, Edit, X, Search, ChevronDown, CheckCircle2, AlertTriangle, Loader2, Film, Copy, ArrowUpDown } from 'lucide-react';
 import Loader from '../components/Loader';
+import ImportExportModal from '../components/ImportExportModal';
 import { formatImageUrl } from '../utils/image';
 
 const Seasons = () => {
  const navigate = useNavigate();
  const [seasons, setSeasons] = useState([]);
+ const [isImportExportOpen, setIsImportExportOpen] = useState(false);
  const [loading, setLoading] = useState(false);
  const [searchTerm, setSearchTerm] = useState('');
  const [selectedShow, setSelectedShow] = useState('');
@@ -21,24 +23,25 @@ const Seasons = () => {
 
  const [shows, setShows] = useState([]);
 
+ const fetchData = async () => {
+  setLoading(true);
+  try {
+   const [seasonsRes, showsRes] = await Promise.all([
+    fetch(API_URL),
+    fetch('/api/shows')
+   ]);
+   const seasonsData = await seasonsRes.json();
+   const showsData = await showsRes.json();
+   setSeasons(seasonsData);
+   setShows(showsData);
+  } catch (err) {
+   console.error('Error fetching data:', err);
+  } finally {
+   setLoading(false);
+  }
+ };
+
  useEffect(() => {
-  const fetchData = async () => {
-   setLoading(true);
-   try {
-    const [seasonsRes, showsRes] = await Promise.all([
-     fetch(API_URL),
-     fetch('/api/shows')
-    ]);
-    const seasonsData = await seasonsRes.json();
-    const showsData = await showsRes.json();
-    setSeasons(seasonsData);
-    setShows(showsData);
-   } catch (err) {
-    console.error('Error fetching data:', err);
-   } finally {
-    setLoading(false);
-   }
-  };
   fetchData();
  }, []);
 
@@ -216,10 +219,16 @@ const Seasons = () => {
        <Search size={20} className="search-icon" />
       </div>
      </div>
-     <button className="add-btn" onClick={() => navigate(isShortPath ? '/admin/short-web-series/seasons/add' : '/admin/tv-shows/seasons/add')}>
-      <Plus size={20} strokeWidth={3} />
-      <span>Add Season</span>
-     </button>
+     <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+      <button className="import-export-btn" onClick={() => setIsImportExportOpen(true)}>
+       <ArrowUpDown size={18} />
+       <span>Import / Export</span>
+      </button>
+      <button className="add-btn" onClick={() => navigate(isShortPath ? '/admin/short-web-series/seasons/add' : '/admin/tv-shows/seasons/add')}>
+       <Plus size={20} strokeWidth={3} />
+       <span>Add Season</span>
+      </button>
+     </div>
     </div>
 
     <div className="filters-bar">
@@ -339,6 +348,8 @@ const Seasons = () => {
      color: white; border: none; padding: 10px 22px; border-radius: 8px;
      display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 0.95rem; cursor: pointer;
     }
+    .import-export-btn { background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 10px 20px; border-radius: 8px; display: flex; align-items: center; gap: 8px; font-weight: 700; cursor: pointer; transition: all 0.2s ease; }
+    .import-export-btn:hover { background: #2a2a2a; border-color: #b3d332; color: #b3d332; }
 
     .filters-bar { background: #111; padding: 15px 20px; border-radius: 10px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #222; }
     .custom-select-box { background: #222; border: 1px solid #333; padding: 12px 18px; border-radius: 6px; color: #fff; min-width: 250px; cursor: pointer; outline: none; appearance: none; background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpath d='m6 9 6 6 6-6'/%3e%3c/svg%3e"); background-repeat: no-repeat; background-position: right 12px center; background-size: 16px; }
@@ -404,6 +415,12 @@ const Seasons = () => {
     .spinner { animation: spin 1s linear infinite; color: #b3d332; }
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
    ` }} />
+   <ImportExportModal 
+    isOpen={isImportExportOpen} 
+    onClose={() => setIsImportExportOpen(false)} 
+    type="seasons" 
+    onImportSuccess={fetchData} 
+   />
   </div>
  );
 };

@@ -7,7 +7,10 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
-  Image
+  Image,
+  Share,
+  Linking,
+  Platform
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { User, Mail, CreditCard, LogOut, Calendar } from 'lucide-react-native';
@@ -15,6 +18,7 @@ import { AuthContext } from '../context/AuthContext';
 import client from '../api/client';
 import { formatImageUrl } from '../config/api';
 import { useFocusEffect } from '@react-navigation/native';
+import Constants from 'expo-constants';
 
 export default function ProfileScreen({ navigation }) {
   const { user, isAuthenticated, logout } = useContext(AuthContext);
@@ -23,6 +27,7 @@ export default function ProfileScreen({ navigation }) {
   const [transactions, setTransactions] = useState([]);
   const [userDetails, setUserDetails] = useState(user);
   const [showAllTransactions, setShowAllTransactions] = useState(false);
+  const [settings, setSettings] = useState(null);
 
   const fetchProfileData = useCallback(async () => {
     if (!user) {
@@ -64,6 +69,53 @@ export default function ProfileScreen({ navigation }) {
   const onRefresh = () => {
     setRefreshing(true);
     fetchProfileData();
+  };
+
+  useEffect(() => {
+    const fetchGeneralSettings = async () => {
+      try {
+        const res = await client.get('/general-settings');
+        setSettings(res.data);
+      } catch (err) {
+        console.warn('Error fetching general settings on ProfileScreen:', err);
+      }
+    };
+    fetchGeneralSettings();
+  }, []);
+
+  const handleShareApp = async () => {
+    try {
+      const shareUrl = Platform.OS === 'ios'
+        ? (settings?.appleStoreUrl || 'https://apps.apple.com/in/developer/vishal-pamar/id1')
+        : (settings?.googlePlayUrl || 'https://play.google.com/store/apps/dev?id=71574785');
+      
+      const message = `Check out Lemo OTT! Watch your favorite TV shows, movies, live channels, and sports on the go.\n\nDownload now: ${shareUrl}`;
+      
+      await Share.share({
+        message,
+        url: shareUrl,
+        title: 'Share Lemo OTT'
+      });
+    } catch (error) {
+      console.warn('Error sharing app:', error);
+    }
+  };
+
+  const handleRateApp = async () => {
+    try {
+      const rateUrl = Platform.OS === 'ios'
+        ? (settings?.appleStoreUrl || 'https://apps.apple.com/in/developer/vishal-pamar/id1')
+        : (settings?.googlePlayUrl || 'https://play.google.com/store/apps/dev?id=71574785');
+      
+      const supported = await Linking.canOpenURL(rateUrl);
+      if (supported) {
+        await Linking.openURL(rateUrl);
+      } else {
+        console.warn("Don't know how to open URI: " + rateUrl);
+      }
+    } catch (error) {
+      console.warn('Error opening store link:', error);
+    }
   };
 
   const getInitials = (name) => {
@@ -243,6 +295,8 @@ export default function ProfileScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
+
+
         {/* SUPPORT & PAGES Card */}
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>SUPPORT & PAGES</Text>
@@ -273,7 +327,14 @@ export default function ProfileScreen({ navigation }) {
             <Text style={styles.logoutBtnText}>Sign Out</Text>
           </TouchableOpacity>
         )}
-        
+
+        {/* App Version Badge */}
+        <View style={styles.versionBadge}>
+          <Text style={styles.versionText}>
+            Lemo OTT  v{Constants.expoConfig?.version || '1.0.5'}
+          </Text>
+        </View>
+
         {/* Padding Bottom */}
         <View style={{ height: 20 }} />
       </ScrollView>
@@ -529,5 +590,16 @@ const styles = StyleSheet.create({
     color: '#b3d332',
     fontWeight: '700',
     fontSize: 12,
+  },
+  versionBadge: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    marginTop: 10,
+  },
+  versionText: {
+    color: '#444',
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.5,
   },
 });

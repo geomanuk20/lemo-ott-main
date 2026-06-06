@@ -13,6 +13,7 @@ import { WebView } from 'react-native-webview';
 import { ArrowLeft, Ticket, Check, CreditCard, ShieldCheck } from 'lucide-react-native';
 import { AuthContext } from '../context/AuthContext';
 import client from '../api/client';
+import CustomAlert from '../components/CustomAlert';
 
 export default function CheckoutScreen({ route, navigation }) {
   const { planId, planName, price, duration } = route.params;
@@ -40,6 +41,22 @@ export default function CheckoutScreen({ route, navigation }) {
   const [paymentUrl, setPaymentUrl] = useState(null);
   const [paymentProcessing, setPaymentProcessing] = useState(false);
 
+  const [alertConfig, setAlertConfig] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    buttons: []
+  });
+
+  const showAlert = (title, message, buttons = []) => {
+    setAlertConfig({
+      visible: true,
+      title,
+      message,
+      buttons
+    });
+  };
+
   useEffect(() => {
     const initData = async () => {
       try {
@@ -56,10 +73,12 @@ export default function CheckoutScreen({ route, navigation }) {
         }
 
         // Filter active coupons for the frontend display
+        const todayStr = new Date().toISOString().split('T')[0];
         const activeCoupons = (couponsRes.data || []).filter(c => 
           c.status === 'Active' && 
-          c.showOnFrontend === 'ON' &&
-          (c.usersAllow > c.couponUsed)
+          c.showOnFrontend !== 'OFF' &&
+          (!c.expiryDate || c.expiryDate >= todayStr) &&
+          (c.couponUsed === undefined || c.usersAllow === undefined || c.couponUsed < c.usersAllow)
         );
         setAvailableCoupons(activeCoupons);
       } catch (error) {
@@ -111,7 +130,7 @@ export default function CheckoutScreen({ route, navigation }) {
 
   const handleCheckout = async () => {
     if (!selectedGateway) {
-      alert('Please select a payment gateway.');
+      showAlert('Payment Option', 'Please select a payment gateway.');
       return;
     }
 
@@ -131,17 +150,23 @@ export default function CheckoutScreen({ route, navigation }) {
           // Open WebView URL to process PhonePe checkout
           setPaymentUrl(response.data.redirectUrl);
         } else {
-          alert('Could not initiate PhonePe gateway. Please try again.');
+          showAlert('Payment Error', 'Could not initiate PhonePe gateway. Please try again.');
           setPaymentProcessing(false);
         }
       } catch (error) {
         console.error('PhonePe initiation error:', error);
         if (error.response && error.response.status === 401) {
-          alert('Your session has expired. Please sign in again.');
-          await logout();
-          navigation.navigate('Login');
+          showAlert('Session Expired', 'Your session has expired. Please sign in again.', [
+            {
+              text: 'OK',
+              onPress: async () => {
+                await logout();
+                navigation.navigate('Login');
+              }
+            }
+          ]);
         } else {
-          alert(error.response?.data?.message || 'Gateway initiation failed.');
+          showAlert('Payment Error', error.response?.data?.message || 'Gateway initiation failed.');
         }
         setPaymentProcessing(false);
       }
@@ -162,17 +187,27 @@ export default function CheckoutScreen({ route, navigation }) {
             subscriptionPlan: response.data.user.subscriptionPlan,
             expiryDate: response.data.user.expiryDate
           });
-          alert(`Subscription updated successfully to ${planName}!`);
-          navigation.navigate('HomeTab');
+          showAlert('Success', `Subscription updated successfully to ${planName}!`, [
+            {
+              text: 'OK',
+              onPress: () => navigation.navigate('HomeTab')
+            }
+          ]);
         }
       } catch (error) {
         console.error('Mock Checkout failed:', error);
         if (error.response && error.response.status === 401) {
-          alert('Your session has expired. Please sign in again.');
-          await logout();
-          navigation.navigate('Login');
+          showAlert('Session Expired', 'Your session has expired. Please sign in again.', [
+            {
+              text: 'OK',
+              onPress: async () => {
+                await logout();
+                navigation.navigate('Login');
+              }
+            }
+          ]);
         } else {
-          alert('Payment processing failed. Please try again.');
+          showAlert('Payment Error', 'Payment processing failed. Please try again.');
         }
       } finally {
         setPaymentProcessing(false);
@@ -185,8 +220,15 @@ export default function CheckoutScreen({ route, navigation }) {
     const { url } = navState;
     console.log('Payment WebView Navigated:', url);
 
+    const lowercaseUrl = url.toLowerCase();
+
     // If url contains success redirect keywords, capture it
-    if (url.includes('/success') || url.includes('/callback/status') || url.includes('payment/success')) {
+    if (
+      lowercaseUrl.includes('payment_status=success') || 
+      lowercaseUrl.includes('/success') || 
+      lowercaseUrl.includes('/callback/status') || 
+      lowercaseUrl.includes('payment/success')
+    ) {
       setPaymentUrl(null);
       setPaymentProcessing(true); // Keep loading active while fetching updated user
       
@@ -196,18 +238,31 @@ export default function CheckoutScreen({ route, navigation }) {
           await updateUser(res.data);
         }
         setPaymentProcessing(false);
-        alert(`Subscription purchased successfully!`);
-        navigation.navigate('HomeTab');
+        showAlert('Success', 'Subscription purchased successfully!', [
+          {
+            text: 'OK',
+            onPress: () => navigation.navigate('HomeTab')
+          }
+        ]);
       }).catch(err => {
         console.error('Error refreshing user details:', err);
         setPaymentProcessing(false);
-        alert(`Subscription purchased successfully!`);
-        navigation.navigate('HomeTab');
+        showAlert('Success', 'Subscription purchased successfully!', [
+          {
+            text: 'OK',
+            onPress: () => navigation.navigate('HomeTab')
+          }
+        ]);
       });
-    } else if (url.includes('/failure') || url.includes('payment/fail')) {
+    } else if (
+      lowercaseUrl.includes('payment_status=failed') || 
+      lowercaseUrl.includes('payment_status=error') || 
+      lowercaseUrl.includes('/failure') || 
+      lowercaseUrl.includes('payment/fail')
+    ) {
       setPaymentUrl(null);
       setPaymentProcessing(false);
-      alert('Payment failed or cancelled.');
+      showAlert('Payment Failed', 'Payment failed or cancelled.');
     }
   };
 
@@ -228,10 +283,17 @@ export default function CheckoutScreen({ route, navigation }) {
           onError={(syntheticEvent) => {
             const { nativeEvent } = syntheticEvent;
             console.warn('WebView error: ', nativeEvent.description);
-            alert('Could not connect to payment gateway. Please check your network or try again.');
+            showAlert('Connection Error', 'Could not connect to payment gateway. Please check your network or try again.');
             setPaymentUrl(null);
             setPaymentProcessing(false);
           }}
+        />
+        <CustomAlert
+          visible={alertConfig.visible}
+          title={alertConfig.title}
+          message={alertConfig.message}
+          buttons={alertConfig.buttons}
+          onClose={() => setAlertConfig(prev => ({ ...prev, visible: false }))}
         />
       </SafeAreaView>
     );
@@ -407,6 +469,13 @@ export default function CheckoutScreen({ route, navigation }) {
         
         <View style={{ height: 20 }} />
       </ScrollView>
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        buttons={alertConfig.buttons}
+        onClose={() => setAlertConfig(prev => ({ ...prev, visible: false }))}
+      />
     </SafeAreaView>
   );
 }

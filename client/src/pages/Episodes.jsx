@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Edit, X, Search, ChevronDown, CheckCircle2, AlertTriangle, Loader2, PlayCircle, Copy } from 'lucide-react';
+import { Plus, Edit, X, Search, ChevronDown, CheckCircle2, AlertTriangle, Loader2, PlayCircle, Copy, ArrowUpDown, XCircle } from 'lucide-react';
 import Loader from '../components/Loader';
+import ImportExportModal from '../components/ImportExportModal';
 import { formatImageUrl } from '../utils/image';
 
 const Episodes = () => {
  const navigate = useNavigate();
  const [episodes, setEpisodes] = useState([]);
+ const [isImportExportOpen, setIsImportExportOpen] = useState(false);
  const [loading, setLoading] = useState(false);
  const [searchTerm, setSearchTerm] = useState('');
  const [notification, setNotification] = useState(null);
@@ -20,31 +22,33 @@ const Episodes = () => {
 
  const API_URL = '/api/episodes';
 
- useEffect(() => {
-  const fetchData = async () => {
-   try {
-    const [episodesRes, showsRes] = await Promise.all([
-     fetch(API_URL),
-     fetch('/api/shows')
-    ]);
-    const episodesData = await episodesRes.json();
-    const showsData = await showsRes.json();
-    
-    setEpisodes(Array.isArray(episodesData) ? episodesData : []);
-    setShows(Array.isArray(showsData) ? showsData : []);
+ const fetchData = async () => {
+  setLoading(true);
+  try {
+   const [episodesRes, showsRes] = await Promise.all([
+    fetch(API_URL),
+    fetch('/api/shows')
+   ]);
+   const episodesData = await episodesRes.json();
+   const showsData = await showsRes.json();
+   
+   setEpisodes(Array.isArray(episodesData) ? episodesData : []);
+   setShows(Array.isArray(showsData) ? showsData : []);
 
-    // Pre-filter by show if query param is present
-    const params = new URLSearchParams(window.location.search);
-    const showParam = params.get('show');
-    if (showParam) {
-     setSelectedShow(showParam);
-    }
-   } catch (err) {
-    console.error('Error fetching data:', err);
-   } finally {
-    setLoading(false);
+   // Pre-filter by show if query param is present
+   const params = new URLSearchParams(window.location.search);
+   const showParam = params.get('show');
+   if (showParam) {
+    setSelectedShow(showParam);
    }
-  };
+  } catch (err) {
+   console.error('Error fetching data:', err);
+  } finally {
+   setLoading(false);
+  }
+ };
+
+ useEffect(() => {
   fetchData();
  }, []);
 
@@ -188,10 +192,16 @@ const Episodes = () => {
        <Search size={20} className="search-icon" />
       </div>
      </div>
-     <button className="add-btn" onClick={() => navigate(isShortPath ? '/admin/short-web-series/episodes/add' : '/admin/tv-shows/episodes/add')}>
-      <Plus size={20} strokeWidth={3} />
-      <span>Add Episode</span>
-     </button>
+     <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+      <button className="import-export-btn" onClick={() => setIsImportExportOpen(true)}>
+       <ArrowUpDown size={18} />
+       <span>Import / Export</span>
+      </button>
+      <button className="add-btn" onClick={() => navigate(isShortPath ? '/admin/short-web-series/episodes/add' : '/admin/tv-shows/episodes/add')}>
+       <Plus size={20} strokeWidth={3} />
+       <span>Add Episode</span>
+      </button>
+     </div>
     </div>
 
     <div className="filters-bar">
@@ -310,6 +320,8 @@ const Episodes = () => {
     .search-bar input { width: 100%; background: #1a1a1a; border: 1px solid #333; padding: 12px 20px 12px 48px; color: #fff; border-radius: 50px; outline: none; }
     .search-icon { position: absolute; left: 18px; top: 50%; transform: translateY(-50%); color: #666; }
     .add-btn { background: linear-gradient(135deg, #b3d332 0%, #00a86b 100%); color: white; border: none; padding: 10px 22px; border-radius: 8px; display: flex; align-items: center; gap: 8px; font-weight: 700; cursor: pointer; }
+    .import-export-btn { background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 10px 20px; border-radius: 8px; display: flex; align-items: center; gap: 8px; font-weight: 700; cursor: pointer; transition: all 0.2s ease; }
+    .import-export-btn:hover { background: #2a2a2a; border-color: #b3d332; color: #b3d332; }
     .filters-bar { background: #111; padding: 15px 20px; border-radius: 10px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #222; }
     .custom-select-box { background: #222; border: 1px solid #333; padding: 12px 18px; border-radius: 6px; color: #fff; min-width: 220px; cursor: pointer; outline: none; appearance: none; background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpath d='m6 9 6 6 6-6'/%3e%3c/svg%3e"); background-repeat: no-repeat; background-position: right 12px center; background-size: 16px; }
     .right-controls { display: flex; align-items: center; gap: 20px; }
@@ -372,6 +384,12 @@ const Episodes = () => {
     .alert-text { color: #fff; font-size: 1.1rem; font-weight: 700; text-align: center; }
     @keyframes slideDown { from { transform: translate(-50%, -100%); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
    ` }} />
+   <ImportExportModal 
+    isOpen={isImportExportOpen} 
+    onClose={() => setIsImportExportOpen(false)} 
+    type="episodes" 
+    onImportSuccess={fetchData} 
+   />
   </div>
  );
 };

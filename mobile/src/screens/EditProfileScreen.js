@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, User, Mail, Phone, Lock, Save } from 'lucide-react-native';
 import { AuthContext } from '../context/AuthContext';
 import client from '../api/client';
+import CustomAlert from '../components/CustomAlert';
 
 export default function EditProfileScreen({ navigation, route }) {
   const { user, setUser } = useContext(AuthContext);
@@ -23,13 +24,29 @@ export default function EditProfileScreen({ navigation, route }) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const [alertConfig, setAlertConfig] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    buttons: []
+  });
+
+  const showAlert = (title, message, buttons = []) => {
+    setAlertConfig({
+      visible: true,
+      title,
+      message,
+      buttons
+    });
+  };
+
   const handleSave = async () => {
     if (!name.trim()) {
-      alert('Name cannot be empty.');
+      showAlert('Validation Error', 'Name cannot be empty.');
       return;
     }
     if (!email.trim()) {
-      alert('Email cannot be empty.');
+      showAlert('Validation Error', 'Email cannot be empty.');
       return;
     }
 
@@ -53,12 +70,16 @@ export default function EditProfileScreen({ navigation, route }) {
           email: res.data.email,
           phone: res.data.phone,
         });
-        alert('Profile updated successfully!');
-        navigation.goBack();
+        showAlert('Success', 'Profile updated successfully!', [
+          {
+            text: 'OK',
+            onPress: () => navigation.goBack()
+          }
+        ]);
       }
     } catch (error) {
       console.error('Error updating user profile:', error);
-      alert(error.response?.data?.message || 'Failed to update profile.');
+      showAlert('Error', error.response?.data?.message || 'Failed to update profile.');
     } finally {
       setLoading(false);
     }
@@ -153,6 +174,13 @@ export default function EditProfileScreen({ navigation, route }) {
           )}
         </TouchableOpacity>
       </ScrollView>
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        buttons={alertConfig.buttons}
+        onClose={() => setAlertConfig(prev => ({ ...prev, visible: false }))}
+      />
     </SafeAreaView>
   );
 }

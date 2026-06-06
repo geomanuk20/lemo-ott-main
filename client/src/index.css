@@ -923,3 +923,211 @@ select option,
   color: #ffffff !important;
   padding: 10px !important;
 }
+
+/* If user is subscribed, display premium crown indicators in black and white */
+body.user-subscribed .fe-premium-indicator-v {
+  background: #ffffff !important;
+  color: #000000 !important;
+  box-shadow: 0 4px 10px rgba(255, 255, 255, 0.15) !important;
+  border: 1px solid rgba(255, 255, 255, 0.6) !important;
+}
+
+/* ==========================================================================
+   Responsive Admin Dashboard Styles
+   ========================================================================== */
+
+/* Toggle Button Styling (hidden by default on desktop) */
+.sidebar-toggle-btn {
+  display: none;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+}
+
+.sidebar-toggle-btn:hover {
+  background-color: var(--bg-hover);
+}
+
+.header-title-section {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+/* Sidebar Overlay */
+.sidebar-overlay {
+  display: none;
+}
+
+/* Base Responsive Overrides (max-width: 1199px) */
+@media (max-width: 1199px) {
+  /* Toggle Button visibility */
+  .sidebar-toggle-btn {
+    display: flex;
+  }
+
+  /* Sidebar transition off-screen */
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: none;
+  }
+
+  body.sidebar-active .sidebar {
+    transform: translateX(0);
+    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
+  }
+
+  /* Main content layout adjustment */
+  .main-content {
+    margin-left: 0 !important;
+  }
+
+  /* Sidebar backdrop overlay click to dismiss */
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(4px);
+    z-index: 99;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+  }
+
+  body.sidebar-active .sidebar-overlay {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  /* Headers, tables and filter wrappers stacking */
+  .header {
+    padding: 0 15px;
+  }
+
+  .content-body {
+    padding: 20px 15px;
+  }
+
+  /* General elements stacking */
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .filters-bar,
+  .users-filter-bar {
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 15px;
+  }
+
+  .left-filters,
+  .filter-group {
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 12px !important;
+    width: 100%;
+  }
+
+  .custom-dropdown-container,
+  .search-wrapper-premium,
+  .search-bar {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .right-actions {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    width: 100%;
+    gap: 10px;
+    margin-left: 0 !important;
+  }
+
+  .right-actions button {
+    flex: 1;
+    min-width: 120px;
+  }
+
+  /* Generic Table auto-scrolling container rules */
+  .table-container,
+  .table-container-p,
+  .table-responsive,
+  .users-table-wrapper,
+  .users-table-container {
+    width: 100%;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    border: 1px solid var(--border-color);
+  }
+
+  .premium-table-v,
+  .users-data-table,
+  .history-table-p {
+    min-width: 750px; /* Ensure table remains properly structured when scrolled */
+  }
+
+  /* Stats grid column adjustments */
+  .stats-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+  }
+}
+
+/* Extra small responsive adjustments for forms (max-width: 991px) */
+@media (max-width: 991px) {
+  /* Forms input columns */
+  .form-columns,
+  .form-sections-wrapper {
+    grid-template-columns: 1fr !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 15px;
+  }
+
+  .form-row {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 8px;
+  }
+
+  .form-row label {
+    width: 100% !important;
+    margin-bottom: 2px;
+  }
+
+  .input-wrapper {
+    width: 100% !important;
+  }
+
+  /* Movie/Show Add form fields */
+  .form-group-half,
+  .form-group-third {
+    width: 100% !important;
+  }
+
+  .imdb-import-section {
+    padding: 15px !important;
+  }
+
+  .imdb-input-group {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .imdb-input-group button {
+    width: 100% !important;
+  }
+}

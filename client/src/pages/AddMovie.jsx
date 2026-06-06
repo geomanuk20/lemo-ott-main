@@ -12,6 +12,7 @@ const AddMovie = () => {
  const video480InputRef = useRef(null);
  const video720InputRef = useRef(null);
  const video1080InputRef = useRef(null);
+ const trailerInputRef = useRef(null);
  const [loading, setLoading] = useState(false);
  const [availableGenres, setAvailableGenres] = useState([]);
  const [availableActors, setAvailableActors] = useState([]);
@@ -404,8 +405,12 @@ const AddMovie = () => {
      <div className="form-columns">
       <div className="form-column">
        <div className="form-group">
-        <label>Trailer URL</label>
-        <input type="text" name="trailerUrl" value={formData.trailerUrl} onChange={handleChange} />
+        <label>Trailer URL / File</label>
+        <div className="file-input-group">
+         <input type="text" name="trailerUrl" value={formData.trailerUrl} onChange={handleChange} />
+         <button type="button" className="select-btn" onClick={() => trailerInputRef.current.click()}>Select</button>
+         <input type="file" ref={trailerInputRef} style={{ display: 'none' }} accept="video/*" onChange={(e) => handleVideoFileChange(e, 'trailerUrl')} />
+        </div>
        </div>
        <div className="video-source-row">
         <div className="video-source-label">Video Upload Type</div>

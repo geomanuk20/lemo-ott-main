@@ -163,6 +163,34 @@ const FrontendLayout = ({ children, isTransparent = true, showFooter = true, sho
     fetchMenuSettings();
   }, []);
 
+  useEffect(() => {
+    const updateSubscriptionClass = () => {
+      try {
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        const todayStr = new Date().toISOString().split('T')[0];
+        const isExpired = user.expiryDate && user.expiryDate < todayStr;
+        const isSubscribed = user.subscriptionPlan && user.subscriptionPlan !== 'Basic Plan' && !isExpired;
+        
+        if (isSubscribed) {
+          document.body.classList.add('user-subscribed');
+        } else {
+          document.body.classList.remove('user-subscribed');
+        }
+      } catch (e) {
+        console.error('Error updating subscription body class:', e);
+      }
+    };
+
+    updateSubscriptionClass();
+
+    // Listen for custom events when profile/user updates
+    window.addEventListener('profileUpdate', updateSubscriptionClass);
+    return () => {
+      window.removeEventListener('profileUpdate', updateSubscriptionClass);
+      document.body.classList.remove('user-subscribed');
+    };
+  }, []);
+
   return (
     <div className="frontend-wrapper">
       {showHeader && (

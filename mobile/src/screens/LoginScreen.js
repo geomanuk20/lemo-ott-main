@@ -10,9 +10,10 @@ import {
   Platform,
   ScrollView,
   Image,
-  Modal
+  Modal,
+  StatusBar
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import { Eye, EyeOff, Shield } from 'lucide-react-native';
 import Svg, { Path } from 'react-native-svg';
@@ -37,6 +38,7 @@ const FacebookIcon = () => (
 
 export default function LoginScreen({ navigation }) {
   const { login, socialLoginMobile, socialLoginReal } = useContext(AuthContext);
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -78,7 +80,7 @@ export default function LoginScreen({ navigation }) {
         return;
       }
       const redirectUri = 'https://lemoott.com';
-      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=email%20profile%20openid`;
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=email%20profile%20openid&prompt=select_account`;
       
       setSocialProvider('Google');
       setSocialAuthUrl(authUrl);
@@ -298,7 +300,7 @@ export default function LoginScreen({ navigation }) {
         animationType="slide"
         onRequestClose={() => setShowSocialWebView(false)}
       >
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#121212' }}>
+        <View style={{ flex: 1, backgroundColor: '#121212', paddingTop: insets.top || (Platform.OS === 'android' ? StatusBar.currentHeight : 0) }}>
           {/* Header Row to Close */}
           <View style={{
             height: 50,
@@ -327,6 +329,7 @@ export default function LoginScreen({ navigation }) {
             javaScriptEnabled={true}
             domStorageEnabled={true}
             startInLoadingState={true}
+            incognito={true}
             setSupportMultipleWindows={false}
             userAgent={Platform.OS === 'android' 
               ? 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36'
@@ -345,7 +348,7 @@ export default function LoginScreen({ navigation }) {
               />
             )}
           />
-        </SafeAreaView>
+        </View>
       </Modal>
 
     </SafeAreaView>

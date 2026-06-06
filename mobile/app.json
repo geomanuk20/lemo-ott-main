@@ -2,7 +2,7 @@
   "expo": {
     "name": "Lemo OTT",
     "slug": "lemo-ott-mobile",
-    "version": "1.0.3",
+    "version": "1.0.5",
     "orientation": "default",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#000000",
@@ -24,7 +24,10 @@
       [
         "onesignal-expo-plugin",
         {
-          "mode": "production"
+          "mode": "production",
+          "smallIcons": ["./assets/ic_stat_onesignal_default.png"],
+          "largeIcons": ["./assets/ic_onesignal_large_icon_default.png"],
+          "smallIconAccentColor": "#b3d332"
         }
       ]
     ]

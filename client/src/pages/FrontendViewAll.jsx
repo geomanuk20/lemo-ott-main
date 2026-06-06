@@ -159,9 +159,13 @@ const FrontendViewAll = () => {
             <Crown size={12} fill="currentColor" />
            </div>
           )}
-         <div className="card-overlay-v">
-          <div className="play-icon-v"><Play size={24} fill="white" /></div>
-         </div>
+          <div className="card-overlay-v">
+           {item.upcoming === 'Yes' ? (
+             <div style={{ color: '#b3d332', fontWeight: 900, fontSize: '0.85rem', letterSpacing: '1px' }}>COMING SOON</div>
+           ) : (
+             <div className="play-icon-v"><Play size={24} fill="white" /></div>
+           )}
+          </div>
         </div>
         <div className="card-info-v">
          {type !== 'live' && (

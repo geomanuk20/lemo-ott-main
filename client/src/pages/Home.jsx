@@ -402,10 +402,6 @@ const Home = () => {
            </div>
           );
          })()}
-         <div className="meta-imdb-box-v">
-          <div className="imdb-label-v">IMDb</div>
-          <div className="imdb-score-text-v">{slide.imdbRating || '4.8'}</div>
-         </div>
          <div className="meta-item-v">{slide.year || '2024'}</div>
          <div className="meta-cc-v">CC</div>
          <div className="meta-item-v">{slide.duration || '2h 15m'}</div>
@@ -506,7 +502,11 @@ const Home = () => {
                       )}
                       <div className="fe-card-hover-v">
                         <div className="fe-hover-content-v">
-                          <div className="fe-play-btn-v"><Play size={20} fill="white" /></div>
+                          {m.upcoming === 'Yes' ? (
+                            <div style={{ color: '#b3d332', fontWeight: 900, fontSize: '0.9rem', letterSpacing: '1px', marginBottom: '15px' }}>COMING SOON</div>
+                          ) : (
+                            <div className="fe-play-btn-v"><Play size={20} fill="white" /></div>
+                          )}
                           <div className="fe-card-badges-v">
                             {(() => {
                               const quality = m.videoQuality || '4K Ultra HD';
@@ -578,8 +578,12 @@ const Home = () => {
                           </div>
                         )}
                         <div className="online-card-overlay-v">
-                          {(() => {
-                            const quality = show.videoQuality || '4K Ultra HD';
+                          {show.upcoming === 'Yes' ? (
+                            <div style={{ color: '#b3d332', fontWeight: 900, fontSize: '0.9rem', letterSpacing: '1px', alignSelf: 'center', marginTop: '45%' }}>COMING SOON</div>
+                          ) : (
+                            <>
+                              {(() => {
+                                const quality = show.videoQuality || '4K Ultra HD';
                             const parts = quality.split(' ');
                             const prefix = parts[0] || '4K';
                             const suffix = parts.slice(1).join(' ') || 'Ultra HD';
@@ -602,6 +606,8 @@ const Home = () => {
                               </div>
                             );
                           })()}
+                          </>
+                          )}
                         </div>
                       </div>
                       <div className="online-movie-meta-v">
@@ -740,7 +746,11 @@ const Home = () => {
                       )}
                       <div className="fe-card-hover-v">
                         <div className="fe-hover-content-v">
-                          <div className="fe-play-btn-v"><Play size={20} fill="white" /></div>
+                          {m.upcoming === 'Yes' ? (
+                            <div style={{ color: '#b3d332', fontWeight: 900, fontSize: '0.9rem', letterSpacing: '1px', marginBottom: '15px' }}>COMING SOON</div>
+                          ) : (
+                            <div className="fe-play-btn-v"><Play size={20} fill="white" /></div>
+                          )}
                           <div className="fe-card-badges-v">
                             {(() => {
                               const quality = m.videoQuality || '4K Ultra HD';
@@ -808,7 +818,11 @@ const Home = () => {
                       )}
                       <div className="fe-card-hover-v">
                         <div className="fe-hover-content-v">
-                          <div className="fe-play-btn-v"><Play size={20} fill="white" /></div>
+                          {m.upcoming === 'Yes' ? (
+                            <div style={{ color: '#b3d332', fontWeight: 900, fontSize: '0.9rem', letterSpacing: '1px', marginBottom: '15px' }}>COMING SOON</div>
+                          ) : (
+                            <div className="fe-play-btn-v"><Play size={20} fill="white" /></div>
+                          )}
                           <div className="fe-card-badges-v">
                             {(() => {
                               const quality = m.videoQuality || '4K Ultra HD';
@@ -880,8 +894,12 @@ const Home = () => {
                           </div>
                         )}
                         <div className="online-card-overlay-v">
-                          {(() => {
-                            const quality = show.videoQuality || '4K Ultra HD';
+                          {show.upcoming === 'Yes' ? (
+                            <div style={{ color: '#b3d332', fontWeight: 900, fontSize: '0.9rem', letterSpacing: '1px', alignSelf: 'center', marginTop: '45%' }}>COMING SOON</div>
+                          ) : (
+                            <>
+                              {(() => {
+                                const quality = show.videoQuality || '4K Ultra HD';
                             const parts = quality.split(' ');
                             const prefix = parts[0] || '4K';
                             const suffix = parts.slice(1).join(' ') || 'Ultra HD';
@@ -904,6 +922,8 @@ const Home = () => {
                               </div>
                             );
                           })()}
+                          </>
+                          )}
                         </div>
                       </div>
                       <div className="online-movie-meta-v">
@@ -1135,7 +1155,7 @@ const Home = () => {
         <div className="modal-desc-v" dangerouslySetInnerHTML={{ __html: selectedContent.description || "Experience the thrill of this cinematic masterpiece. Full details, cast, and high-quality streaming options available now." }} />
         <div className="modal-actions-v">
          <Link to={`/details/${selectedContent.type}/${selectedContent._id}`} className="modal-btn-primary-v">
-          <Play size={20} fill="white" /> WATCH NOW
+          <Play size={20} fill="white" /> {selectedContent.upcoming === 'Yes' ? 'COMING SOON' : 'WATCH NOW'}
          </Link>
          <button className="modal-btn-secondary-v" onClick={() => setShowModal(false)}>CLOSE</button>
         </div>

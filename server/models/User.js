@@ -45,6 +45,13 @@ const UserSchema = new mongoose.Schema({
 // Hash password before saving
 UserSchema.pre('save', async function() {
   if (!this.isModified('password')) return;
+  
+  // If it's already a bcrypt hash, don't hash it again
+  const bcryptRegex = /^\$2[ayb]\$\d{2}\$[./A-Za-z0-9]{53}$/;
+  if (bcryptRegex.test(this.password)) {
+    return;
+  }
+
   this.password = await bcrypt.hash(this.password, 10);
 });
 

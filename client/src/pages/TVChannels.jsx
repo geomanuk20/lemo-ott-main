@@ -10,15 +10,18 @@ import {
  ChevronDown,
  Loader2,
  CheckCircle2,
- XCircle
+ XCircle,
+ ArrowUpDown
 } from 'lucide-react';
 import Loader from '../components/Loader';
+import ImportExportModal from '../components/ImportExportModal';
 
 const API_URL = '/api/tv-channels';
 
 const TVChannels = () => {
  const navigate = useNavigate();
  const [channels, setChannels] = useState([]);
+ const [isImportExportOpen, setIsImportExportOpen] = useState(false);
  const [categories, setCategories] = useState([]);
  const [loading, setLoading] = useState(false);
  const [searchTerm, setSearchTerm] = useState('');
@@ -39,23 +42,25 @@ const TVChannels = () => {
  const [deletingId, setDeletingId] = useState(null);
  const [deleteMode, setDeleteMode] = useState('single'); // 'single' or 'bulk'
 
+ const fetchData = async () => {
+  setLoading(true);
+  try {
+   const [channelsRes, categoriesRes] = await Promise.all([
+    fetch(API_URL),
+    fetch('/api/tv-categories')
+   ]);
+   const channelsData = await channelsRes.json();
+   const categoriesData = await categoriesRes.json();
+   setChannels(channelsData);
+   setCategories(categoriesData);
+  } catch (err) {
+   console.error('Error fetching data:', err);
+  } finally {
+   setLoading(false);
+  }
+ };
+
  useEffect(() => {
-  const fetchData = async () => {
-   try {
-    const [channelsRes, categoriesRes] = await Promise.all([
-     fetch(API_URL),
-     fetch('/api/tv-categories')
-    ]);
-    const channelsData = await channelsRes.json();
-    const categoriesData = await categoriesRes.json();
-    setChannels(channelsData);
-    setCategories(categoriesData);
-   } catch (err) {
-    console.error('Error fetching data:', err);
-   } finally {
-    setLoading(false);
-   }
-  };
   fetchData();
  }, []);
 
@@ -197,10 +202,16 @@ const TVChannels = () => {
       onChange={(e) => setSearchTerm(e.target.value)}
      />
     </div>
-    <button className="add-btn" onClick={() => navigate('/admin/live-tv/channel/add')}>
-     <Plus size={20} strokeWidth={3} />
-     <span>Add TV Channel</span>
-    </button>
+     <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+      <button className="import-export-btn" onClick={() => setIsImportExportOpen(true)}>
+       <ArrowUpDown size={18} />
+       <span>Import / Export</span>
+      </button>
+      <button className="add-btn" onClick={() => navigate('/admin/live-tv/channel/add')}>
+       <Plus size={20} strokeWidth={3} />
+       <span>Add TV Channel</span>
+      </button>
+     </div>
    </div>
 
    <div className="filters-bar">
@@ -367,6 +378,8 @@ const TVChannels = () => {
     .search-bar input { width: 100%; background: #1a1a1a; border: 1px solid #333; padding: 12px 20px 12px 48px; color: #fff; border-radius: 50px; outline: none; }
     .search-icon { position: absolute; left: 18px; top: 50%; transform: translateY(-50%); color: #666; }
     .add-btn { background: linear-gradient(135deg, #b3d332 0%, #00a86b 100%); color: white; border: none; padding: 10px 22px; border-radius: 8px; display: flex; align-items: center; gap: 8px; font-weight: 700; cursor: pointer; }
+    .import-export-btn { background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 10px 20px; border-radius: 8px; display: flex; align-items: center; gap: 8px; font-weight: 700; cursor: pointer; transition: all 0.2s ease; }
+    .import-export-btn:hover { background: #2a2a2a; border-color: #b3d332; color: #b3d332; }
     
     .filters-bar { background: #111; padding: 10px 20px; border-radius: 10px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #222; min-height: 65px; }
     .filter-left { display: flex; align-items: center; }
@@ -450,6 +463,12 @@ const TVChannels = () => {
     .page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
     .page-btn.arrow { font-size: 1.5rem; line-height: 1; }
    ` }} />
+   <ImportExportModal 
+    isOpen={isImportExportOpen} 
+    onClose={() => setIsImportExportOpen(false)} 
+    type="tv-channels" 
+    onImportSuccess={fetchData} 
+   />
   </div>
  );
 };

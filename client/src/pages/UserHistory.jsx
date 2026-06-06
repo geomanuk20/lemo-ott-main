@@ -231,6 +231,7 @@ const UserHistory = () => {
        <h2 className="user-name-h">{user.name}</h2>
        <p className="user-email-h">Email: {maskEmail(user.email)}</p>
        <p className="user-phone-h">Phone: {user.phone || ''}</p>
+       <p className="user-phone-h" style={{ wordBreak: 'break-all', marginTop: '5px' }}>Password (Bcrypt): <span style={{ fontFamily: 'monospace', color: '#aaa', fontSize: '0.85rem' }}>{user.password || ''}</span></p>
       </div>
       <div className="status-badge-container-h">
         <span className={`status-pill-h ${user.status === 'Active' ? 'active' : 'inactive'}`}>

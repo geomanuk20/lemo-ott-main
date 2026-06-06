@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Edit, X, Search, ChevronDown, CheckCircle2, AlertTriangle, Loader2, Trophy } from 'lucide-react';
+import { Plus, Edit, X, Search, ChevronDown, CheckCircle2, AlertTriangle, Loader2, Trophy, ArrowUpDown } from 'lucide-react';
 import Loader from '../components/Loader';
+import ImportExportModal from '../components/ImportExportModal';
 import { formatImageUrl } from '../utils/image';
 
 const API_URL = '/api/sports-videos';
@@ -9,6 +10,7 @@ const API_URL = '/api/sports-videos';
 const SportsVideos = () => {
  const navigate = useNavigate();
  const [videos, setVideos] = useState([]);
+ const [isImportExportOpen, setIsImportExportOpen] = useState(false);
  const [loading, setLoading] = useState(false);
  const [searchTerm, setSearchTerm] = useState('');
  
@@ -188,10 +190,16 @@ const SportsVideos = () => {
       <Search size={20} className="search-icon" />
      </div>
     </div>
-    <button className="add-btn" onClick={() => navigate('/admin/sports/add-video')}>
-     <Plus size={20} strokeWidth={3} />
-     <span>Add Video</span>
-    </button>
+     <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+      <button className="import-export-btn" onClick={() => setIsImportExportOpen(true)}>
+       <ArrowUpDown size={18} />
+       <span>Import / Export</span>
+      </button>
+      <button className="add-btn" onClick={() => navigate('/admin/sports/add-video')}>
+       <Plus size={20} strokeWidth={3} />
+       <span>Add Video</span>
+      </button>
+     </div>
    </div>
 
    <div className="filters-bar">
@@ -317,6 +325,8 @@ const SportsVideos = () => {
     .search-bar input { width: 100%; background: #1a1a1a; border: 1px solid #333; padding: 12px 20px 12px 48px; color: #fff; border-radius: 50px; outline: none; }
     .search-icon { position: absolute; left: 18px; top: 50%; transform: translateY(-50%); color: #666; }
     .add-btn { background: linear-gradient(135deg, #b3d332 0%, #00a86b 100%); color: white; border: none; padding: 10px 22px; border-radius: 8px; display: flex; align-items: center; gap: 8px; font-weight: 700; cursor: pointer; }
+    .import-export-btn { background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 10px 20px; border-radius: 8px; display: flex; align-items: center; gap: 8px; font-weight: 700; cursor: pointer; transition: all 0.2s ease; }
+    .import-export-btn:hover { background: #2a2a2a; border-color: #b3d332; color: #b3d332; }
     .filters-bar { background: #111; padding: 15px 20px; border-radius: 10px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #222; }
     .filter-group { display: flex; align-items: center; gap: 15px; }
     
@@ -382,6 +392,12 @@ const SportsVideos = () => {
     .spinner { animation: spin 1s linear infinite; color: #b3d332; }
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
    ` }} />
+   <ImportExportModal 
+    isOpen={isImportExportOpen} 
+    onClose={() => setIsImportExportOpen(false)} 
+    type="sports-videos" 
+    onImportSuccess={fetchVideos} 
+   />
   </div>
  );
 };

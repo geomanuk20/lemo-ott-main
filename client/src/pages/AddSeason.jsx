@@ -6,6 +6,7 @@ import { ChevronLeft, Save } from 'lucide-react';
 const AddSeason = () => {
  const navigate = useNavigate();
  const posterInputRef = useRef(null);
+ const trailerInputRef = useRef(null);
 
  const [formData, setFormData] = useState({
   showId: '',
@@ -131,11 +132,15 @@ const AddSeason = () => {
        <p className="hint">(Recommended resolution : 800x450)</p>
       </div>
 
-      <div className="form-group">
-       <label>Trailer URL</label>
-       <input type="text" name="trailerUrl" value={formData.trailerUrl} onChange={handleChange} />
-       <p className="hint">(Supported : MP4, YouTube, Vimeo, HLS / m3u8 URL. If you are using external files then those files have to be CORS enabled otherwise they will not work.)</p>
-      </div>
+       <div className="form-group">
+        <label>Trailer URL / File</label>
+        <div className="file-input-group">
+         <input type="text" name="trailerUrl" value={formData.trailerUrl} onChange={handleChange} />
+         <button type="button" className="select-btn" onClick={() => trailerInputRef.current.click()}>Select</button>
+         <input type="file" ref={trailerInputRef} style={{ display: 'none' }} accept="video/*" onChange={(e) => handleFileChange(e, 'trailerUrl')} />
+        </div>
+        <p className="hint">(Supported : MP4, YouTube, Vimeo, HLS / m3u8 URL. If you are using external files then those files have to be CORS enabled otherwise they will not work.)</p>
+       </div>
 
       <div className="form-group">
        <label>Status</label>
