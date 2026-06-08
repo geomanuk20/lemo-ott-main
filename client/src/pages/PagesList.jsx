@@ -7,9 +7,11 @@ import {
  Eye,
  Loader2, 
  CheckCircle2, 
- XCircle
+ XCircle,
+ Upload
 } from 'lucide-react';
 import Loader from '../components/Loader';
+import ImportExportModal from '../components/ImportExportModal';
 
 const API_URL = '/api/pages';
 
@@ -19,6 +21,7 @@ const PagesList = () => {
  const [loading, setLoading] = useState(false);
  const [notification, setNotification] = useState(null);
  const [deleteModal, setDeleteModal] = useState({ show: false, id: null });
+ const [isImportExportOpen, setIsImportExportOpen] = useState(false);
 
  useEffect(() => {
   fetchPages();
@@ -94,10 +97,16 @@ const PagesList = () => {
    )}
 
    <div className="content-area-p">
-    <button className="add-plan-btn" onClick={() => navigate('/admin/pages/add')}>
-     <Plus size={18} strokeWidth={3} />
-     <span>Add Page</span>
-    </button>
+    <div className="action-bar-p" style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
+     <button className="add-plan-btn" style={{ marginBottom: 0 }} onClick={() => navigate('/admin/pages/add')}>
+      <Plus size={18} strokeWidth={3} />
+      <span>Add Page</span>
+     </button>
+     <button className="import-export-btn" onClick={() => setIsImportExportOpen(true)}>
+      <Upload size={18} />
+      <span>Import / Export</span>
+     </button>
+    </div>
 
     <div className="table-container-p">
      <table className="premium-table-v">
@@ -200,7 +209,17 @@ const PagesList = () => {
     .custom-alert-box-p { position: fixed; top: 30px; left: 50%; transform: translateX(-50%); background: #111; border-radius: 12px; padding: 20px 40px; z-index: 9999; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
     .alert-content-p { display: flex; flex-direction: column; align-items: center; gap: 10px; }
     .alert-text-p { color: #fff; font-weight: 700; }
+
+    .import-export-btn { background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 8px 16px; border-radius: 4px; display: flex; align-items: center; gap: 8px; font-weight: 700; cursor: pointer; transition: all 0.2s ease; font-size: 0.9rem; }
+    .import-export-btn:hover { background: #2a2a2a; border-color: #b3d332; color: #b3d332; }
    ` }} />
+
+   <ImportExportModal 
+    isOpen={isImportExportOpen}
+    onClose={() => setIsImportExportOpen(false)}
+    type="pages"
+    onImportSuccess={fetchPages}
+   />
   </div>
  );
 };

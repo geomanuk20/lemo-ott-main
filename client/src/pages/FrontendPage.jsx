@@ -33,6 +33,36 @@ const FrontendPage = ({ fixedSlug = null }) => {
   }
  }, [slug]);
 
+ const handleBodyClick = (e) => {
+  const anchor = e.target.closest('a');
+  if (!anchor) return;
+
+  const href = anchor.getAttribute('href');
+  if (!href) return;
+
+  // 1. If it starts with mailto:, it is correct
+  if (href.startsWith('mailto:')) return;
+
+  // 2. If it is a raw email address (e.g. support@lemoott.com)
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (emailRegex.test(href.trim())) {
+    e.preventDefault();
+    window.location.href = `mailto:${href.trim()}`;
+    return;
+  }
+
+  // 3. If it is a web link but doesn't start with http/https and is not relative/internal route
+  if (
+    href.startsWith('www.') || 
+    (!href.startsWith('http://') && !href.startsWith('https://') && !href.startsWith('/') && !href.startsWith('#') && href.includes('.'))
+  ) {
+    e.preventDefault();
+    const targetUrl = href.startsWith('www.') ? `https://${href}` : `https://${href}`;
+    window.open(targetUrl, '_blank');
+    return;
+  }
+ };
+
  return (
   <FrontendLayout isTransparent={false} showHeader={true} showFooter={true}>
    <div className="fe-page-container-v">
@@ -45,6 +75,7 @@ const FrontendPage = ({ fixedSlug = null }) => {
       <h1 className="fe-page-title-v">{pageData.title}</h1>
       <div 
        className="fe-page-body-v" 
+       onClick={handleBodyClick}
        dangerouslySetInnerHTML={{ __html: pageData.content || '<p>No content available for this page yet.</p>' }} 
       />
      </div>

@@ -308,7 +308,11 @@ export default function DetailsScreen({ route, navigation }) {
   }, [id, type, user]);
 
   const handleWatchlistToggle = async () => {
-    if (!user || !user.id || watchlistLoading) return;
+    if (!user || !user.id) {
+      navigation.navigate('Login');
+      return;
+    }
+    if (watchlistLoading) return;
     setWatchlistLoading(true);
     try {
       const response = await client.post('/watchlist/toggle', {
@@ -316,9 +320,8 @@ export default function DetailsScreen({ route, navigation }) {
         contentId: id,
         contentType: type
       });
-      if (response.data) {
-        setInWatchlist(response.data.status === 'added');
-      }
+      setInWatchlist(response.data.status === 'added');
+      showNotification(response.data.message);
     } catch (error) {
       console.error('Error toggling watchlist:', error);
     } finally {
@@ -397,6 +400,12 @@ export default function DetailsScreen({ route, navigation }) {
   const handlePlayTrailer = () => {
     if (!detail || !detail.trailerUrl) return;
 
+    // Only signed-in users can play trailers
+    if (!user) {
+      navigation.navigate('Login');
+      return;
+    }
+
     console.log('[DetailsScreen] Playing Trailer URL:', detail.trailerUrl);
 
     const isEmbed = detail.trailerUrl.trim().startsWith('<') ||
@@ -420,14 +429,7 @@ export default function DetailsScreen({ route, navigation }) {
 
     // Only signed-in users can play videos
     if (!user) {
-      showAlert(
-        'Sign In Required',
-        'Please sign in to watch videos.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Sign In', onPress: () => navigation.navigate('Login') }
-        ]
-      );
+      navigation.navigate('Login');
       return;
     }
 
@@ -477,14 +479,7 @@ export default function DetailsScreen({ route, navigation }) {
 
     // Only signed-in users can play videos
     if (!user) {
-      showAlert(
-        'Sign In Required',
-        'Please sign in to watch videos.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Sign In', onPress: () => navigation.navigate('Login') }
-        ]
-      );
+      navigation.navigate('Login');
       return;
     }
 

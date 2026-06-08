@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, X, AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, AlertTriangle, CheckCircle2, Loader2, Upload } from 'lucide-react';
 import Loader from '../components/Loader';
+import ImportExportModal from '../components/ImportExportModal';
 
 const API_URL = '/api/genres';
 const ITEMS_PER_PAGE = 8;
@@ -16,6 +17,7 @@ const Genres = () => {
  const [nameValue, setNameValue] = useState('');
  const [statusValue, setStatusValue] = useState(true);
  const [notification, setNotification] = useState(null);
+ const [isImportExportOpen, setIsImportExportOpen] = useState(false);
 
  // Fetch genres from DB
  const fetchGenres = async () => {
@@ -159,6 +161,10 @@ const Genres = () => {
       <Plus size={16} strokeWidth={3} />
       <span>Add Genre</span>
      </button>
+     <button className="import-export-btn" onClick={() => setIsImportExportOpen(true)}>
+      <Upload size={16} />
+      <span>Import / Export</span>
+     </button>
     </div>
 
     {loading ? (
@@ -261,11 +267,21 @@ const Genres = () => {
     </div>
    )}
 
+   <ImportExportModal
+    isOpen={isImportExportOpen}
+    onClose={() => setIsImportExportOpen(false)}
+    type="genres"
+    onImportSuccess={fetchGenres}
+   />
+
    <style dangerouslySetInnerHTML={{ __html: `
     .session-container { padding: 10px; animation: fadeIn 0.3s ease-in; }
     .session-inner-box { background-color: #111; border-radius: 8px; padding: 25px; min-height: 500px; border: 1px solid #222; }
-    .action-bar { margin-bottom: 30px; }
+    .action-bar { display: flex; gap: 15px; margin-bottom: 30px; }
     
+    .import-export-btn { background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 6px 16px; border-radius: 6px; display: flex; align-items: center; gap: 8px; font-weight: 700; cursor: pointer; transition: all 0.2s ease; font-size: 0.9rem; }
+    .import-export-btn:hover { background: #2a2a2a; border-color: #b3d332; color: #b3d332; }
+
     .add-btn-green {
      background-color: #b3d332; color: white; border: none; padding: 6px 12px; border-radius: 6px;
      display: flex; align-items: center; gap: 6px; font-weight: 800; font-size: 0.9rem; cursor: pointer;

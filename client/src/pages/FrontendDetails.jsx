@@ -120,7 +120,6 @@ const FrontendDetails = () => {
   const handlePlayVideo = (url, targetEpisode = null) => {
     // Ensure user is signed in to play ANY video
     if (!user || !user.id) {
-      alert('Please login to watch videos.');
       navigate('/login', { state: { from: window.location.pathname } });
       return;
     }
@@ -170,11 +169,15 @@ const FrontendDetails = () => {
      }
    };
 
-    const handlePlayTrailer = () => {
-      if (data && data.trailerUrl) {
-        setActiveVideoUrl(data.trailerUrl);
-      }
-    };
+     const handlePlayTrailer = () => {
+       if (!user || !user.id) {
+         navigate('/login', { state: { from: window.location.pathname } });
+         return;
+       }
+       if (data && data.trailerUrl) {
+         setActiveVideoUrl(data.trailerUrl);
+       }
+     };
 
    useEffect(() => {
     setShowNextBtn(false);
@@ -405,20 +408,8 @@ const FrontendDetails = () => {
  }, []);
 
  const handleWatchlist = async () => {
-  if (!user.id) {
-   // Fallback to local storage for guest
-   const watchlist = JSON.parse(localStorage.getItem('watchlist') || '[]');
-   if (isWatchlisted) {
-    const updated = watchlist.filter(item => item.id !== id);
-    localStorage.setItem('watchlist', JSON.stringify(updated));
-    setIsWatchlisted(false);
-    showNotification('Removed from guest watchlist');
-   } else {
-    watchlist.push({ id, type, title: data.title, poster: data.poster });
-    localStorage.setItem('watchlist', JSON.stringify(watchlist));
-    setIsWatchlisted(true);
-    showNotification('Added to guest watchlist');
-   }
+  if (!user || !user.id) {
+   navigate('/login', { state: { from: window.location.pathname } });
    return;
   }
 

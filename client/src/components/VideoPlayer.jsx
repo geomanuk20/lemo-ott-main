@@ -1204,11 +1204,177 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
     return style;
   };
 
+  const [isWindowBlurred, setIsWindowBlurred] = useState(false);
+
+  const getWatermarkText = () => {
+    try {
+      const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+      const identifier = storedUser.email || storedUser.username || '';
+      if (identifier) {
+        return `Lemo OTT Secure Stream • ${identifier}`;
+      }
+    } catch (e) {}
+    return 'Lemo OTT Secure Stream';
+  };
+
+  const renderUserWatermark = () => (
+    <div style={{
+      position: 'absolute',
+      bottom: '15px',
+      left: '50%',
+      transform: 'translateX(-50%)',
+      color: 'rgba(255,255,255,0.18)',
+      fontSize: '11px',
+      fontWeight: 500,
+      letterSpacing: '1px',
+      zIndex: 8,
+      pointerEvents: 'none',
+      userSelect: 'none',
+      fontFamily: 'sans-serif'
+    }}>
+      {getWatermarkText()}
+    </div>
+  );
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Intercept PrintScreen key
+      if (e.key === 'PrintScreen' || e.keyCode === 44) {
+        e.preventDefault();
+        try {
+          navigator.clipboard.writeText(''); // Clear clipboard to prevent pasting screenshot
+        } catch (err) {}
+        alert('Screenshots are disabled for security reasons.');
+        return false;
+      }
+
+      const isCmdOrCtrl = e.metaKey || e.ctrlKey;
+      const isOptionOrShift = e.altKey || e.shiftKey;
+
+      // Intercept Print shortcut (Ctrl+P / Cmd+P)
+      if (isCmdOrCtrl && (e.key === 'P' || e.key === 'p')) {
+        e.preventDefault();
+        alert('Printing is disabled.');
+        return false;
+      }
+
+      // Intercept Save shortcut (Ctrl+S / Cmd+S)
+      if (isCmdOrCtrl && (e.key === 'S' || e.key === 's')) {
+        e.preventDefault();
+        return false;
+      }
+
+      // Intercept DevTools shortcuts
+      if (
+        e.key === 'F12' ||
+        (isCmdOrCtrl && isOptionOrShift && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j' || e.key === 'C' || e.key === 'c')) ||
+        (isCmdOrCtrl && (e.key === 'U' || e.key === 'u'))
+      ) {
+        e.preventDefault();
+        return false;
+      }
+    };
+
+    const handleBlur = () => {
+      setIsWindowBlurred(true);
+      // Pause Mux Player
+      if (activePlayer === 'MUX_PLAYER' && playerRef.current) {
+        try {
+          playerRef.current.pause();
+        } catch (e) {}
+      }
+      // Pause any HTML5 video elements inside the player container (including VideoJS)
+      if (containerRef.current) {
+        try {
+          const videos = containerRef.current.querySelectorAll('video');
+          videos.forEach(v => {
+            if (typeof v.pause === 'function') {
+              v.pause();
+            }
+          });
+        } catch (e) {}
+      }
+    };
+
+    const handleFocus = () => {
+      setIsWindowBlurred(false);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        handleBlur();
+      }
+    };
+
+    // Override navigator.mediaDevices.getDisplayMedia to block browser-level screen recording/sharing
+    let originalGetDisplayMedia = null;
+    if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
+      originalGetDisplayMedia = navigator.mediaDevices.getDisplayMedia;
+      navigator.mediaDevices.getDisplayMedia = function() {
+        alert('Screen recording/sharing is disabled on this platform.');
+        return Promise.reject(new DOMException('Permission denied by security policy', 'NotAllowedError'));
+      };
+    }
+
+    window.addEventListener('keydown', handleKeyDown, true);
+    window.addEventListener('blur', handleBlur);
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown, true);
+      window.removeEventListener('blur', handleBlur);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (originalGetDisplayMedia && navigator.mediaDevices) {
+        navigator.mediaDevices.getDisplayMedia = originalGetDisplayMedia;
+      }
+    };
+  }, [activePlayer]);
+
+  const renderSecurityOverlay = () => (
+    <div style={{
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: 'rgba(0,0,0,0.98)',
+      zIndex: 999999,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      color: '#fff',
+      fontFamily: 'sans-serif',
+      pointerEvents: 'auto'
+    }}>
+      <svg viewBox="0 0 24 24" width="48" height="48" fill="#ff4d4d" style={{ marginBottom: '16px' }}>
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+      </svg>
+      <h3 style={{ fontSize: '1.2rem', fontWeight: 'bold', marginBottom: '8px' }}>Security Protected Content</h3>
+      <p style={{ color: '#aaa', fontSize: '0.9rem' }}>Screen sharing, recording, or screenshots are disabled.</p>
+    </div>
+  );
+
+  const securityStyles = `
+    @media print {
+      body {
+        display: none !important;
+      }
+      iframe, video, mux-player, .premium-player-wrapper, #lemo-premium-player-container {
+        display: none !important;
+        visibility: hidden !important;
+      }
+    }
+  `;
+
   // --- RENDERING PIPELINE ---
 
   if (isHtmlEmbed) {
     return (
-      <div className="premium-player-wrapper" style={containerStyle} onContextMenu={(e) => e.preventDefault()}>
+      <div ref={containerRef} className="premium-player-wrapper" style={containerStyle} onContextMenu={(e) => e.preventDefault()}>
+        <style dangerouslySetInnerHTML={{ __html: securityStyles }} />
         {embedInfo.type === 'html' ? (
           <HtmlScriptExecutor html={embedInfo.src} />
         ) : (
@@ -1220,6 +1386,8 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
             style={{ width: '100%', height: '100%', minHeight: '450px', border: 'none', borderRadius: '12px' }}
           />
         )}
+        {renderUserWatermark()}
+        {isWindowBlurred && renderSecurityOverlay()}
       </div>
     );
   }
@@ -1241,7 +1409,8 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
   // 1. Render Mux Player if playback ID is present and activePlayer is MUX_PLAYER
   if (activePlayer === 'MUX_PLAYER' && playbackId) {
     return (
-      <div style={containerStyle} onContextMenu={(e) => e.preventDefault()}>
+      <div ref={containerRef} style={containerStyle} onContextMenu={(e) => e.preventDefault()}>
+        <style dangerouslySetInnerHTML={{ __html: securityStyles }} />
         <MuxPlayer
           ref={playerRef}
           playbackId={playbackId}
@@ -1325,6 +1494,8 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
         )}
         {/* Ad Overlay */}
         {isAdPlaying && adMediaUrl && renderAdOverlay()}
+        {renderUserWatermark()}
+        {isWindowBlurred && renderSecurityOverlay()}
       </div>
     );
   }
@@ -1332,111 +1503,119 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
   // 2. Render V10 @videojs/react Player (HLS, DASH, MP4, etc.)
   return (
     <Player.Provider>
-      <VideoSkin
-        poster={poster}
-        className={className}
-        style={containerStyle}
+      <div 
+        ref={containerRef} 
+        style={containerStyle} 
         onContextMenu={(e) => e.preventDefault()}
-        {...rest}
       >
-        <HlsVideo 
-          src={getStreamSrc()} 
-          playsInline 
-          crossOrigin="anonymous"
-          autoPlay={isAutoplayEnabled}
-          onEnded={onEnded}
-          onTimeUpdate={(e) => {
-            if (onTimeUpdate) {
-              onTimeUpdate(e.target.currentTime, e.target.duration);
-            }
-          }}
-          style={playerStyle}
+        <VideoSkin
+          poster={poster}
+          className={className}
+          style={{ width: '100%', height: '100%', background: 'transparent' }}
+          {...rest}
         >
-          {subtitlesActive === 'Active' && activeSubs.map((sub, idx) => (
-            <track
-              key={idx}
-              kind="subtitles"
-              src={sub.url}
-              srcLang={sub.language ? sub.language.toLowerCase().substring(0, 2) : 'en'}
-              label={sub.language || 'English'}
-              default={idx === 0}
-            />
-          ))}
-        </HlsVideo>
-
-        {/* Central controls overlay (Big play/pause, backward/forward skip) */}
-        <CentralControlsOverlay />
-
-        {/* AdsController */}
-        {userShouldSeeAds && adsConfig && (
-          <AdsController 
-            isAdPlaying={isAdPlaying} 
-            adsConfig={adsConfig} 
-            playedAdsRef={playedAdsRef} 
-            triggerAd={triggerAd} 
-            vastPreRoll={vastPreRoll} 
-          />
-        )}
-
-        {/* Aspect Ratio Toggle Button */}
-        <button 
-          onClick={(e) => {
-            e.stopPropagation();
-            setAspectRatioMode(prev => {
-              if (prev === 'contain') return 'fill';
-              if (prev === 'fill') return 'cover';
-              return 'contain';
-            });
-          }}
-          className="premium-aspect-ratio-btn"
-          style={{
-            position: 'absolute',
-            top: '20px',
-            left: '20px',
-            zIndex: 10,
-            background: 'rgba(0,0,0,0.6)',
-            border: '1px solid rgba(255,255,255,0.2)',
-            color: '#fff',
-            padding: '6px 12px',
-            borderRadius: '20px',
-            fontSize: '0.75rem',
-            fontWeight: 800,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            backdropFilter: 'blur(8px)',
-            transition: 'all 0.3s'
-          }}
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-            <rect width="18" height="18" x="3" y="3" rx="2" />
-            {aspectRatioMode === 'fill' && <path d="M7 7h10v10H7z" fill="currentColor"/>}
-            {aspectRatioMode === 'cover' && <path d="M3 12h18M12 3v18"/>}
-          </svg>
-          {aspectRatioMode === 'contain' ? 'FIT' : aspectRatioMode === 'fill' ? 'STRETCH' : 'ZOOM'}
-        </button>
-
-        {/* Floating Watermark Layer */}
-        {playerSettings?.watermark === 'YES' && playerSettings?.watermarkLogo && (
-          <a 
-            href={playerSettings.watermarkUrl && playerSettings.watermarkUrl !== '#' ? playerSettings.watermarkUrl : undefined}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={`premium-player-watermark position-${(playerSettings.watermarkPosition || 'Top Right').toLowerCase().replace(' ', '-')}`}
-            style={getWatermarkStyle(playerSettings.watermarkPosition)}
+          <style dangerouslySetInnerHTML={{ __html: securityStyles }} />
+          <HlsVideo 
+            src={getStreamSrc()} 
+            playsInline 
+            crossOrigin="anonymous"
+            autoPlay={isAutoplayEnabled}
+            onEnded={onEnded}
+            onTimeUpdate={(e) => {
+              if (onTimeUpdate) {
+                onTimeUpdate(e.target.currentTime, e.target.duration);
+              }
+            }}
+            style={playerStyle}
           >
-            <img 
-              src={getWatermarkUrl(playerSettings.watermarkLogo)} 
-              alt="Watermark" 
-              style={{ maxHeight: '35px', opacity: 0.7 }}
-            />
-          </a>
-        )}
+            {subtitlesActive === 'Active' && activeSubs.map((sub, idx) => (
+              <track
+                key={idx}
+                kind="subtitles"
+                src={sub.url}
+                srcLang={sub.language ? sub.language.toLowerCase().substring(0, 2) : 'en'}
+                label={sub.language || 'English'}
+                default={idx === 0}
+              />
+            ))}
+          </HlsVideo>
 
-        {/* Ad Overlay */}
-        {isAdPlaying && adMediaUrl && renderAdOverlay()}
-      </VideoSkin>
+          {/* Central controls overlay (Big play/pause, backward/forward skip) */}
+          <CentralControlsOverlay />
+
+          {/* AdsController */}
+          {userShouldSeeAds && adsConfig && (
+            <AdsController 
+              isAdPlaying={isAdPlaying} 
+              adsConfig={adsConfig} 
+              playedAdsRef={playedAdsRef} 
+              triggerAd={triggerAd} 
+              vastPreRoll={vastPreRoll} 
+            />
+          )}
+
+          {/* Aspect Ratio Toggle Button */}
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              setAspectRatioMode(prev => {
+                if (prev === 'contain') return 'fill';
+                if (prev === 'fill') return 'cover';
+                return 'contain';
+              });
+            }}
+            className="premium-aspect-ratio-btn"
+            style={{
+              position: 'absolute',
+              top: '20px',
+              left: '20px',
+              zIndex: 10,
+              background: 'rgba(0,0,0,0.6)',
+              border: '1px solid rgba(255,255,255,0.2)',
+              color: '#fff',
+              padding: '6px 12px',
+              borderRadius: '20px',
+              fontSize: '0.75rem',
+              fontWeight: 800,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              backdropFilter: 'blur(8px)',
+              transition: 'all 0.3s'
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <rect width="18" height="18" x="3" y="3" rx="2" />
+              {aspectRatioMode === 'fill' && <path d="M7 7h10v10H7z" fill="currentColor"/>}
+              {aspectRatioMode === 'cover' && <path d="M3 12h18M12 3v18"/>}
+            </svg>
+            {aspectRatioMode === 'contain' ? 'FIT' : aspectRatioMode === 'fill' ? 'STRETCH' : 'ZOOM'}
+          </button>
+
+          {/* Floating Watermark Layer */}
+          {playerSettings?.watermark === 'YES' && playerSettings?.watermarkLogo && (
+            <a 
+              href={playerSettings.watermarkUrl && playerSettings.watermarkUrl !== '#' ? playerSettings.watermarkUrl : undefined}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`premium-player-watermark position-${(playerSettings.watermarkPosition || 'Top Right').toLowerCase().replace(' ', '-')}`}
+              style={getWatermarkStyle(playerSettings.watermarkPosition)}
+            >
+              <img 
+                src={getWatermarkUrl(playerSettings.watermarkLogo)} 
+                alt="Watermark" 
+                style={{ maxHeight: '35px', opacity: 0.7 }}
+              />
+            </a>
+          )}
+
+          {/* Ad Overlay */}
+          {isAdPlaying && adMediaUrl && renderAdOverlay()}
+          {renderUserWatermark()}
+          {isWindowBlurred && renderSecurityOverlay()}
+        </VideoSkin>
+      </div>
     </Player.Provider>
   );
 };

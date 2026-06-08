@@ -13,7 +13,17 @@ const HEADERS_BY_TYPE = {
   seasons: ['title', 'showTitle', 'status', 'poster', 'thumbnail'],
   episodes: ['title', 'showTitle', 'seasonTitle', 'imdbId', 'description', 'access', 'imdbRating', 'releaseDate', 'duration', 'status', 'poster', 'videoType', 'videoQuality', 'videoFile', 'videoFile480', 'videoFile720', 'videoFile1080', 'downloadable', 'downloadUrl', 'subtitlesActive', 'seoTitle', 'metaDescription', 'keywords'],
   actors: ['name', 'bio', 'placeOfBirth', 'birthday', 'image', 'status'],
-  directors: ['name', 'bio', 'placeOfBirth', 'birthday', 'image', 'status']
+  directors: ['name', 'bio', 'placeOfBirth', 'birthday', 'image', 'status'],
+  languages: ['name', 'status'],
+  genres: ['name', 'status'],
+  coupons: ['couponCode', 'couponPercentage', 'usersAllow', 'couponUsed', 'expiryDate', 'status', 'showOnFrontend'],
+  sliders: ['title', 'image', 'contentType', 'videoUrl', 'section', 'postType', 'contentId', 'displayOn', 'imdbRating', 'releaseYear', 'duration', 'videoQuality', 'ccActive', 'status', 'link'],
+  experiences: ['title', 'description', 'icon', 'order', 'status'],
+  assets: ['title', 'url', 'size', 'dimension', 'date'],
+  'home-sections': ['title', 'sectionType', 'layout', 'limit', 'status', 'order'],
+  'subscription-plans': ['planName', 'duration', 'price', 'deviceLimit', 'ads', 'streamingQuality', 'status', 'getStarted'],
+  pages: ['title', 'slug', 'content', 'status'],
+  'sub-admins': ['name', 'email', 'phone', 'status', 'role', 'password']
 };
 
 const LABELS = {
@@ -27,7 +37,17 @@ const LABELS = {
   seasons: 'Seasons',
   episodes: 'Episodes',
   actors: 'Actors',
-  directors: 'Directors'
+  directors: 'Directors',
+  languages: 'Languages',
+  genres: 'Genres',
+  coupons: 'Coupons',
+  sliders: 'Sliders',
+  experiences: 'Experiences',
+  assets: 'Images',
+  'home-sections': 'Home Sections',
+  'subscription-plans': 'Subscription Plans',
+  pages: 'Pages',
+  'sub-admins': 'Sub Admins'
 };
 
 const API_ENDPOINTS = {
@@ -41,7 +61,17 @@ const API_ENDPOINTS = {
   seasons: { import: '/api/seasons/import', export: '/api/export/seasons', arrayKey: 'seasons' },
   episodes: { import: '/api/episodes/import', export: '/api/export/episodes', arrayKey: 'episodes' },
   actors: { import: '/api/actors/import', export: '/api/export/actors', arrayKey: 'actors' },
-  directors: { import: '/api/directors/import', export: '/api/export/directors', arrayKey: 'directors' }
+  directors: { import: '/api/directors/import', export: '/api/export/directors', arrayKey: 'directors' },
+  languages: { import: '/api/languages/import', export: '/api/export/languages', arrayKey: 'languages' },
+  genres: { import: '/api/genres/import', export: '/api/export/genres', arrayKey: 'genres' },
+  coupons: { import: '/api/coupons/import', export: '/api/export/coupons', arrayKey: 'coupons' },
+  sliders: { import: '/api/sliders/import', export: '/api/export/sliders', arrayKey: 'sliders' },
+  experiences: { import: '/api/experiences/import', export: '/api/export/experiences', arrayKey: 'experiences' },
+  assets: { import: '/api/assets/import', export: '/api/export/assets', arrayKey: 'assets' },
+  'home-sections': { import: '/api/home-sections/import', export: '/api/export/home-sections', arrayKey: 'home-sections' },
+  'subscription-plans': { import: '/api/subscription-plans/import', export: '/api/export/subscription-plans', arrayKey: 'subscription-plans' },
+  pages: { import: '/api/pages/import', export: '/api/export/pages', arrayKey: 'pages' },
+  'sub-admins': { import: '/api/sub-admins/import', export: '/api/export/sub-admins', arrayKey: 'sub-admins' }
 };
 
 const ImportExportModal = ({ isOpen, onClose, type, onImportSuccess }) => {

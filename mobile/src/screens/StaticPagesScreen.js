@@ -4,7 +4,8 @@ import {
   Text,
   View,
   TouchableOpacity,
-  ActivityIndicator
+  ActivityIndicator,
+  Linking
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
@@ -122,6 +123,53 @@ export default function StaticPagesScreen({ route, navigation }) {
           source={{ html: htmlContent }}
           style={[styles.webView, { backgroundColor: '#000000' }]}
           containerStyle={{ backgroundColor: '#000000' }}
+          onShouldStartLoadWithRequest={(request) => {
+            // Keep base64 data and internal pages loading in WebView
+            if (request.url.startsWith('about:blank') || request.url.startsWith('data:')) {
+              // Check if there is an email address inside the about:blank URL (e.g. about:blank/support@lemoott.com)
+              const emailMatch = request.url.match(/([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/);
+              if (emailMatch) {
+                const email = emailMatch[0];
+                Linking.openURL(`mailto:${email}`).catch((err) =>
+                  console.error('An error occurred trying to open email URL:', err)
+                );
+                return false;
+              }
+              return true;
+            }
+            
+            // If mailto: or tel: or sms:
+            if (
+              request.url.startsWith('mailto:') ||
+              request.url.startsWith('tel:') ||
+              request.url.startsWith('sms:')
+            ) {
+              Linking.openURL(request.url).catch((err) =>
+                console.error('An error occurred trying to open URL:', err)
+              );
+              return false;
+            }
+
+            // If http:// or https://
+            if (request.url.startsWith('http://') || request.url.startsWith('https://')) {
+              Linking.openURL(request.url).catch((err) =>
+                console.error('An error occurred trying to open web URL:', err)
+              );
+              return false;
+            }
+
+            // Check for fallback raw emails or file:/// urls containing email
+            const emailMatch = request.url.match(/([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/);
+            if (emailMatch) {
+              const email = emailMatch[0];
+              Linking.openURL(`mailto:${email}`).catch((err) =>
+                console.error('An error occurred trying to open email URL:', err)
+              );
+              return false;
+            }
+
+            return true;
+          }}
         />
       ) : (
         <View style={styles.emptyContainer}>

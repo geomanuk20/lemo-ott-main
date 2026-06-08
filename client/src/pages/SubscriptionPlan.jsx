@@ -8,9 +8,11 @@ import {
  CheckCircle2, 
  XCircle,
  RefreshCcw,
- Monitor
+ Monitor,
+ Upload
 } from 'lucide-react';
 import Loader from '../components/Loader';
+import ImportExportModal from '../components/ImportExportModal';
 
 const API_URL = '/api/subscription-plans';
 
@@ -20,6 +22,7 @@ const SubscriptionPlan = () => {
  const [loading, setLoading] = useState(false);
  const [notification, setNotification] = useState(null);
  const [deleteModal, setDeleteModal] = useState({ show: false, id: null });
+ const [isImportExportOpen, setIsImportExportOpen] = useState(false);
 
  useEffect(() => {
   fetchPlans();
@@ -95,10 +98,16 @@ const SubscriptionPlan = () => {
    )}
 
    <div className="content-area-p">
-    <button className="add-plan-btn" onClick={() => navigate('/admin/subscription-plan/add')}>
-     <Plus size={18} strokeWidth={3} />
-     <span>Add Plan</span>
-    </button>
+    <div className="action-bar-p" style={{ display: 'flex', gap: '15px', marginBottom: '25px' }}>
+     <button className="add-plan-btn" style={{ marginBottom: 0 }} onClick={() => navigate('/admin/subscription-plan/add')}>
+      <Plus size={18} strokeWidth={3} />
+      <span>Add Plan</span>
+     </button>
+     <button className="import-export-btn" onClick={() => setIsImportExportOpen(true)}>
+      <Upload size={18} />
+      <span>Import / Export</span>
+     </button>
+    </div>
 
     <div className="table-container-p">
      <table className="premium-table-v">
@@ -219,7 +228,17 @@ const SubscriptionPlan = () => {
     .alert-content-p { display: flex; flex-direction: column; align-items: center; gap: 10px; }
     .alert-text-p { color: #fff; font-weight: 700; }
     @keyframes slideDown { from { transform: translate(-50%, -100%); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+
+    .import-export-btn { background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 10px 18px; border-radius: 4px; display: flex; align-items: center; gap: 8px; font-weight: 700; cursor: pointer; transition: all 0.2s ease; font-size: 0.9rem; }
+    .import-export-btn:hover { background: #2a2a2a; border-color: #b3d332; color: #b3d332; }
    ` }} />
+
+   <ImportExportModal 
+    isOpen={isImportExportOpen}
+    onClose={() => setIsImportExportOpen(false)}
+    type="subscription-plans"
+    onImportSuccess={fetchPlans}
+   />
   </div>
  );
 };

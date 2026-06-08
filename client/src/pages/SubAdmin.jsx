@@ -14,9 +14,11 @@ import {
  Trash2,
  XCircle,
  AlertTriangle,
- UserCircle
+ UserCircle,
+ Upload
 } from 'lucide-react';
 import Loader from '../components/Loader';
+import ImportExportModal from '../components/ImportExportModal';
 
 const API_URL = '/api/users';
 
@@ -28,6 +30,7 @@ const SubAdmin = () => {
  const [searchTerm, setSearchTerm] = useState('');
  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
  const [deletingId, setDeletingId] = useState(null);
+ const [isImportExportOpen, setIsImportExportOpen] = useState(false);
 
  const fetchAdmins = async () => {
   try {
@@ -113,6 +116,11 @@ const SubAdmin = () => {
      <button className="add-user-btn-premium" onClick={() => navigate('/admin/users/sub-admin/add')}>
       <Plus size={16} strokeWidth={3} />
       <span>Add Sub Admin</span>
+     </button>
+
+     <button className="import-export-btn" onClick={() => setIsImportExportOpen(true)}>
+      <Upload size={16} />
+      <span>Import / Export</span>
      </button>
     </div>
    </div>
@@ -271,7 +279,17 @@ const SubAdmin = () => {
     
     .confirm-btn-p { background: #ff4d4d; color: #fff; border: none; padding: 12px 30px; border-radius: 10px; font-weight: 700; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 15px rgba(255, 77, 77, 0.3); }
     .confirm-btn-p:hover { background: #ff3333; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(255, 77, 77, 0.4); }
+
+    .import-export-btn { background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 10px 20px; border-radius: 6px; display: flex; align-items: center; gap: 8px; font-weight: 700; cursor: pointer; transition: all 0.2s ease; font-size: 0.9rem; }
+    .import-export-btn:hover { background: #2a2a2a; border-color: #b3d332; color: #b3d332; }
    ` }} />
+
+   <ImportExportModal 
+    isOpen={isImportExportOpen}
+    onClose={() => setIsImportExportOpen(false)}
+    type="sub-admins"
+    onImportSuccess={fetchAdmins}
+   />
   </div>
  );
 };

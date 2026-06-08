@@ -6,9 +6,11 @@ import {
  X, 
  CheckCircle2, 
  XCircle,
- Timer
+ Timer,
+ Upload
 } from 'lucide-react';
 import Loader from '../components/Loader';
+import ImportExportModal from '../components/ImportExportModal';
 
 const API_URL = '/api/coupons';
 
@@ -74,6 +76,7 @@ const Coupons = () => {
  const [loading, setLoading] = useState(true);
  const [notification, setNotification] = useState(null);
  const [deleteModal, setDeleteModal] = useState({ show: false, id: null });
+ const [isImportExportOpen, setIsImportExportOpen] = useState(false);
 
  useEffect(() => {
   fetchCoupons();
@@ -167,10 +170,16 @@ const Coupons = () => {
    )}
 
    <div className="content-area-p">
-    <button className="add-plan-btn" onClick={() => navigate('/admin/coupons/add')}>
-     <Plus size={18} strokeWidth={3} />
-     <span>Add Coupon</span>
-    </button>
+    <div style={{ display: 'flex', gap: '15px', marginBottom: '25px' }}>
+     <button className="add-plan-btn" style={{ marginBottom: 0 }} onClick={() => navigate('/admin/coupons/add')}>
+      <Plus size={18} strokeWidth={3} />
+      <span>Add Coupon</span>
+     </button>
+     <button className="import-export-btn" onClick={() => setIsImportExportOpen(true)}>
+      <Upload size={16} />
+      <span>Import / Export</span>
+     </button>
+    </div>
 
     <div className="table-container-p">
      <table className="premium-table-v">
@@ -247,6 +256,13 @@ const Coupons = () => {
     </div>
    </div>
 
+   <ImportExportModal
+    isOpen={isImportExportOpen}
+    onClose={() => setIsImportExportOpen(false)}
+    type="coupons"
+    onImportSuccess={fetchCoupons}
+   />
+
    <style dangerouslySetInnerHTML={{ __html: `
     .subscription-page { background: #000; min-height: 100vh; color: #fff; }
     
@@ -267,8 +283,11 @@ const Coupons = () => {
     @keyframes bounceIcon { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
 
     .content-area-p { padding: 30px; }
-    .add-plan-btn { background: #b3d332; color: #fff; border: none; padding: 10px 18px; border-radius: 4px; display: flex; align-items: center; gap: 8px; font-weight: 700; cursor: pointer; margin-bottom: 25px; transition: background 0.3s; }
+    .add-plan-btn { background: #b3d332; color: #fff; border: none; padding: 10px 18px; border-radius: 4px; display: flex; align-items: center; gap: 8px; font-weight: 700; cursor: pointer; transition: background 0.3s; }
     .add-plan-btn:hover { background: #14b072; }
+
+    .import-export-btn { background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 10px 18px; border-radius: 4px; display: flex; align-items: center; gap: 8px; font-weight: 700; cursor: pointer; transition: all 0.2s ease; font-size: 0.9rem; }
+    .import-export-btn:hover { background: #2a2a2a; border-color: #b3d332; color: #b3d332; }
 
     .table-container-p { background: #0a0a0a; border: 1px solid #222; border-radius: 4px; overflow: auto; }
     .premium-table-v { width: 100%; border-collapse: collapse; text-align: left; border: 1px solid #222; min-width: 1100px; }

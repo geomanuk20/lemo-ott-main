@@ -8,9 +8,11 @@ import {
  CheckCircle2, 
  XCircle,
  Loader2,
- Layers
+ Layers,
+ Upload
 } from 'lucide-react';
 import Loader from '../components/Loader';
+import ImportExportModal from '../components/ImportExportModal';
 
 const API_URL = '/api/home-sections';
 
@@ -22,6 +24,7 @@ const HomeSections = () => {
  const [editingId, setEditingId] = useState(null);
  const [deletingId, setDeletingId] = useState(null);
  const [notification, setNotification] = useState(null);
+ const [isImportExportOpen, setIsImportExportOpen] = useState(false);
 
  // Form State
  const [formData, setFormData] = useState({
@@ -156,10 +159,14 @@ const HomeSections = () => {
     )}
 
    <div className="language-inner-box">
-    <div className="action-bar">
+    <div className="action-bar" style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
      <button className="add-language-btn" onClick={handleAdd}>
       <Plus size={16} strokeWidth={3} />
       <span>Add Section</span>
+     </button>
+     <button className="import-export-btn" onClick={() => setIsImportExportOpen(true)}>
+      <Upload size={16} />
+      <span>Import / Export</span>
      </button>
     </div>
 
@@ -299,7 +306,14 @@ const HomeSections = () => {
       </div>
      </div>
     </div>
-   )}
+    )}
+
+    <ImportExportModal
+     isOpen={isImportExportOpen}
+     onClose={() => setIsImportExportOpen(false)}
+     type="home-sections"
+     onImportSuccess={fetchSections}
+    />
 
    <style dangerouslySetInnerHTML={{ __html: `
     .language-session-container { padding: 30px; animation: fadeIn 0.4s ease-out; }
@@ -307,7 +321,9 @@ const HomeSections = () => {
     
     .action-bar { margin-bottom: 30px; }
     .add-language-btn { background-color: #b3d332; color: white; border: none; padding: 8px 16px; border-radius: 6px; display: flex; align-items: center; gap: 6px; font-weight: 800; font-size: 0.9rem; cursor: pointer; transition: transform 0.2s; }
-    .add-language-btn:hover { transform: scale(1.02); background-color: #12a66d; }
+    .add-language-btn:hover { transform: scale(1.02); background-color: #b3d332; opacity: 0.9; }
+    .import-export-btn { background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 8px 16px; border-radius: 6px; display: flex; align-items: center; gap: 8px; font-weight: 800; cursor: pointer; transition: all 0.2s ease; font-size: 0.9rem; }
+    .import-export-btn:hover { background: #2a2a2a; border-color: #b3d332; color: #b3d332; }
 
     .language-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; }
     .language-card { background: linear-gradient(135deg, #1e1e1e 0%, #151515 100%); border-radius: 12px; padding: 25px 20px; border: 1px solid #2a2a2a; display: flex; flex-direction: column; align-items: center; }

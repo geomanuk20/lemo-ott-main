@@ -4,13 +4,13 @@
   "main": "index.js",
   "scripts": {
     "sync-version": "node scripts/sync-version.js",
-    "prestart":     "node scripts/sync-version.js",
-    "preandroid":   "node scripts/sync-version.js",
-    "preios":       "node scripts/sync-version.js",
-    "start":  "expo start",
+    "prestart": "node scripts/sync-version.js",
+    "preandroid": "node scripts/sync-version.js",
+    "preios": "node scripts/sync-version.js",
+    "start": "expo start",
     "android": "expo run:android",
-    "ios":    "expo run:ios",
-    "web":    "expo start --web"
+    "ios": "expo run:ios",
+    "web": "expo start --web"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
@@ -22,6 +22,7 @@
     "expo-av": "~16.0.8",
     "expo-constants": "~18.0.13",
     "expo-keep-awake": "~14.0.1",
+    "expo-screen-capture": "~8.0.9",
     "expo-screen-orientation": "~9.0.9",
     "expo-status-bar": "~3.0.9",
     "lucide-react-native": "^0.378.0",

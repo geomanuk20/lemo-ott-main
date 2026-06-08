@@ -7,10 +7,12 @@ import {
  RotateCw, 
  Loader2, 
  AlertTriangle,
- CheckCircle2
+ CheckCircle2,
+ Upload
 } from 'lucide-react';
 import Loader from '../components/Loader';
 import { formatImageUrl } from '../utils/image';
+import ImportExportModal from '../components/ImportExportModal';
 
 const API_URL = '/api/sliders';
 
@@ -21,6 +23,7 @@ const Slider = () => {
  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
  const [deletingId, setDeletingId] = useState(null);
  const [notification, setNotification] = useState(null);
+ const [isImportExportOpen, setIsImportExportOpen] = useState(false);
 
  const fetchSliders = async () => {
   try {
@@ -88,12 +91,16 @@ const Slider = () => {
     </div>
    )}
 
-   <div className="slider-controls-top">
-    <button className="add-slider-btn-green" onClick={() => navigate('/admin/home/slider/add')}>
-     <Plus size={18} strokeWidth={3} />
-     <span>Add Slider</span>
-    </button>
-   </div>
+    <div className="slider-controls-top">
+     <button className="add-slider-btn-green" onClick={() => navigate('/admin/home/slider/add')}>
+      <Plus size={18} strokeWidth={3} />
+      <span>Add Slider</span>
+     </button>
+     <button className="import-export-btn" onClick={() => setIsImportExportOpen(true)}>
+      <Upload size={16} />
+      <span>Import / Export</span>
+     </button>
+    </div>
 
    {loading ? (
     <div className="loader-container"><Loader size="small" inline={true} /></div>
@@ -163,12 +170,21 @@ const Slider = () => {
     </div>
    )}
 
-   <style dangerouslySetInnerHTML={{ __html: `
-    .slider-page { padding: 20px 30px; animation: fadeIn 0.4s ease-out; }
-    
-    .slider-controls-top { margin-bottom: 25px; }
-    .add-slider-btn-green { background: #b3d332; color: #fff; border: none; padding: 10px 20px; border-radius: 6px; display: flex; align-items: center; gap: 8px; font-weight: 700; cursor: pointer; transition: opacity 0.2s; }
-    .add-slider-btn-green:hover { opacity: 0.9; }
+    <ImportExportModal
+     isOpen={isImportExportOpen}
+     onClose={() => setIsImportExportOpen(false)}
+     type="sliders"
+     onImportSuccess={fetchSliders}
+    />
+
+    <style dangerouslySetInnerHTML={{ __html: `
+     .slider-page { padding: 20px 30px; animation: fadeIn 0.4s ease-out; }
+     
+     .slider-controls-top { display: flex; gap: 15px; align-items: center; margin-bottom: 25px; }
+     .add-slider-btn-green { background: #b3d332; color: #fff; border: none; padding: 10px 20px; border-radius: 6px; display: flex; align-items: center; gap: 8px; font-weight: 700; cursor: pointer; transition: opacity 0.2s; }
+     .add-slider-btn-green:hover { opacity: 0.9; }
+     .import-export-btn { background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 10px 20px; border-radius: 6px; display: flex; align-items: center; gap: 8px; font-weight: 700; cursor: pointer; transition: all 0.2s ease; font-size: 0.9rem; }
+     .import-export-btn:hover { background: #2a2a2a; border-color: #b3d332; color: #b3d332; }
 
     .slider-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(500px, 1fr)); gap: 30px; }
     

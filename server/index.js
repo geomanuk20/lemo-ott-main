@@ -4683,6 +4683,51 @@ app.get('/api/export/:type', async (req, res) => {
     } else if (type === 'directors') {
       const docs = await Director.find().sort({ createdAt: -1 });
       data = docs.map(doc => doc.toObject());
+    } else if (type === 'languages') {
+      const docs = await Language.find().sort({ createdAt: -1 });
+      data = docs.map(doc => doc.toObject());
+    } else if (type === 'genres') {
+      const docs = await Genre.find().sort({ createdAt: -1 });
+      data = docs.map(doc => doc.toObject());
+    } else if (type === 'coupons') {
+      const docs = await Coupon.find().sort({ createdAt: -1 });
+      data = docs.map(doc => doc.toObject());
+    } else if (type === 'sliders') {
+      const docs = await Slider.find().sort({ createdAt: -1 });
+      data = docs.map(doc => {
+        const obj = doc.toObject();
+        if (Array.isArray(obj.displayOn)) {
+          obj.displayOn = obj.displayOn.join(', ');
+        }
+        return obj;
+      });
+    } else if (type === 'experiences') {
+      const docs = await Experience.find().sort({ order: 1 });
+      data = docs.map(doc => doc.toObject());
+    } else if (type === 'assets') {
+      const docs = await Asset.find().sort({ createdAt: -1 });
+      data = docs.map(doc => doc.toObject());
+    } else if (type === 'home-sections') {
+      const docs = await HomeSection.find().sort({ order: 1 });
+      data = docs.map(doc => doc.toObject());
+    } else if (type === 'subscription-plans') {
+      const docs = await SubscriptionPlan.find().sort({ createdAt: -1 });
+      data = docs.map(doc => doc.toObject());
+    } else if (type === 'pages') {
+      const docs = await Page.find().sort({ createdAt: -1 });
+      data = docs.map(doc => doc.toObject());
+    } else if (type === 'sub-admins') {
+      const docs = await User.find({ role: { $in: ['sub-admin', 'admin'] }, isDeleted: false }).sort({ createdAt: -1 });
+      data = docs.map(doc => {
+        const obj = doc.toObject();
+        delete obj.password;
+        delete obj.resetToken;
+        delete obj.resetTokenExpiry;
+        delete obj.activeSessions;
+        delete obj.deviceHistory;
+        delete obj.watchlist;
+        return obj;
+      });
     } else {
       return res.status(400).json({ message: 'Invalid export type' });
     }
@@ -5498,6 +5543,699 @@ app.post('/api/directors/import', async (req, res) => {
     });
   } catch (err) {
     console.error('[SERVER ERROR] POST /api/directors/import:', err);
+    res.status(500).json({ message: 'Server error during import' });
+  }
+});
+
+// POST /api/languages/import - Import Languages
+app.post('/api/languages/import', async (req, res) => {
+  try {
+    const { languages } = req.body;
+    if (!languages || !Array.isArray(languages)) {
+      return res.status(400).json({ message: 'Languages array is required' });
+    }
+
+    let importedCount = 0;
+    let updatedCount = 0;
+    let errorCount = 0;
+    const errors = [];
+
+    for (let i = 0; i < languages.length; i++) {
+      const item = languages[i];
+      try {
+        const name = item.name || item.Name;
+        if (!name) {
+          errorCount++;
+          errors.push(`Row ${i + 1}: Name is required.`);
+          continue;
+        }
+
+        let status = true;
+        if (item.hasOwnProperty('status') || item.hasOwnProperty('Status')) {
+          const val = item.hasOwnProperty('status') ? item.status : item.Status;
+          status = String(val).toLowerCase() === 'true' || String(val) === '1' || String(val).toLowerCase() === 'active';
+        }
+
+        let lang = await Language.findOne({ 
+          name: { $regex: new RegExp('^' + name.trim().replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') }
+        });
+
+        if (lang) {
+          lang.status = status;
+          await lang.save();
+          updatedCount++;
+        } else {
+          lang = new Language({
+            name: name.trim(),
+            status
+          });
+          await lang.save();
+          importedCount++;
+        }
+      } catch (err) {
+        console.error('Error importing language:', item, err);
+        errorCount++;
+        errors.push(`Row ${i + 1}: ${err.message}`);
+      }
+    }
+
+    res.json({
+      message: 'Language import completed',
+      importedCount,
+      updatedCount,
+      errorCount,
+      errors
+    });
+  } catch (err) {
+    console.error('[SERVER ERROR] POST /api/languages/import:', err);
+    res.status(500).json({ message: 'Server error during import' });
+  }
+});
+
+// POST /api/genres/import - Import Genres
+app.post('/api/genres/import', async (req, res) => {
+  try {
+    const { genres } = req.body;
+    if (!genres || !Array.isArray(genres)) {
+      return res.status(400).json({ message: 'Genres array is required' });
+    }
+
+    let importedCount = 0;
+    let updatedCount = 0;
+    let errorCount = 0;
+    const errors = [];
+
+    for (let i = 0; i < genres.length; i++) {
+      const item = genres[i];
+      try {
+        const name = item.name || item.Name;
+        if (!name) {
+          errorCount++;
+          errors.push(`Row ${i + 1}: Name is required.`);
+          continue;
+        }
+
+        let status = true;
+        if (item.hasOwnProperty('status') || item.hasOwnProperty('Status')) {
+          const val = item.hasOwnProperty('status') ? item.status : item.Status;
+          status = String(val).toLowerCase() === 'true' || String(val) === '1' || String(val).toLowerCase() === 'active';
+        }
+
+        let genre = await Genre.findOne({ 
+          name: { $regex: new RegExp('^' + name.trim().replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') }
+        });
+
+        if (genre) {
+          genre.status = status;
+          await genre.save();
+          updatedCount++;
+        } else {
+          genre = new Genre({
+            name: name.trim(),
+            status
+          });
+          await genre.save();
+          importedCount++;
+        }
+      } catch (err) {
+        console.error('Error importing genre:', item, err);
+        errorCount++;
+        errors.push(`Row ${i + 1}: ${err.message}`);
+      }
+    }
+
+    res.json({
+      message: 'Genre import completed',
+      importedCount,
+      updatedCount,
+      errorCount,
+      errors
+    });
+  } catch (err) {
+    console.error('[SERVER ERROR] POST /api/genres/import:', err);
+    res.status(500).json({ message: 'Server error during import' });
+  }
+});
+
+// POST /api/coupons/import - Import Coupons
+app.post('/api/coupons/import', async (req, res) => {
+  try {
+    const { coupons } = req.body;
+    if (!coupons || !Array.isArray(coupons)) {
+      return res.status(400).json({ message: 'Coupons array is required' });
+    }
+
+    let importedCount = 0;
+    let updatedCount = 0;
+    let errorCount = 0;
+    const errors = [];
+
+    for (let i = 0; i < coupons.length; i++) {
+      const item = coupons[i];
+      try {
+        const couponCode = item.couponCode || item.CouponCode || item.couponcode || item.Couponcode;
+        const couponPercentage = Number(item.couponPercentage || item.CouponPercentage || 0);
+        const usersAllow = Number(item.usersAllow || item.UsersAllow || 0);
+        const expiryDate = item.expiryDate || item.ExpiryDate || '';
+
+        if (!couponCode || !couponPercentage || !usersAllow || !expiryDate) {
+          errorCount++;
+          errors.push(`Row ${i + 1}: Coupon Code, Percentage, Users Allow, and Expiry Date are required.`);
+          continue;
+        }
+
+        let coupon = await Coupon.findOne({ couponCode: String(couponCode).trim() });
+
+        const couponData = {
+          couponCode: String(couponCode).trim(),
+          couponPercentage,
+          usersAllow,
+          couponUsed: Number(item.couponUsed || item.CouponUsed || 0),
+          expiryDate: String(expiryDate).trim(),
+          status: item.status || item.Status || 'Active',
+          showOnFrontend: item.showOnFrontend || item.ShowOnFrontend || 'ON'
+        };
+
+        if (coupon) {
+          Object.assign(coupon, couponData);
+          await coupon.save();
+          updatedCount++;
+        } else {
+          coupon = new Coupon(couponData);
+          await coupon.save();
+          importedCount++;
+        }
+      } catch (err) {
+        console.error('Error importing coupon:', item, err);
+        errorCount++;
+        errors.push(`Row ${i + 1}: ${err.message}`);
+      }
+    }
+
+    res.json({
+      message: 'Coupons import completed',
+      importedCount,
+      updatedCount,
+      errorCount,
+      errors
+    });
+  } catch (err) {
+    console.error('[SERVER ERROR] POST /api/coupons/import:', err);
+    res.status(500).json({ message: 'Server error during import' });
+  }
+});
+
+// POST /api/sliders/import - Import Sliders
+app.post('/api/sliders/import', async (req, res) => {
+  try {
+    const { sliders } = req.body;
+    if (!sliders || !Array.isArray(sliders)) {
+      return res.status(400).json({ message: 'Sliders array is required' });
+    }
+
+    let importedCount = 0;
+    let updatedCount = 0;
+    let errorCount = 0;
+    const errors = [];
+
+    for (let i = 0; i < sliders.length; i++) {
+      const item = sliders[i];
+      try {
+        const title = String(item.title || item.Title || '').trim();
+        const section = String(item.section || item.Section || 'Main Slider').trim();
+        if (!title) {
+          errorCount++;
+          errors.push(`Row ${i + 1}: Title is required.`);
+          continue;
+        }
+
+        let displayOn = ['Home'];
+        if (item.hasOwnProperty('displayOn') || item.hasOwnProperty('DisplayOn')) {
+          const rawVal = item.displayOn || item.DisplayOn;
+          if (typeof rawVal === 'string') {
+            displayOn = rawVal.split(',').map(s => s.trim()).filter(Boolean);
+          } else if (Array.isArray(rawVal)) {
+            displayOn = rawVal.map(s => String(s).trim()).filter(Boolean);
+          }
+        }
+
+        let slider = await Slider.findOne({
+          title: { $regex: new RegExp('^' + title.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') },
+          section: { $regex: new RegExp('^' + section.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') }
+        });
+
+        const sliderData = {
+          title,
+          image: String(item.image || item.Image || ''),
+          contentType: String(item.contentType || item.ContentType || 'Image'),
+          videoUrl: String(item.videoUrl || item.VideoUrl || ''),
+          section,
+          postType: String(item.postType || item.PostType || ''),
+          contentId: String(item.contentId || item.ContentId || ''),
+          displayOn,
+          imdbRating: String(item.imdbRating || item.ImdbRating || ''),
+          releaseYear: String(item.releaseYear || item.ReleaseYear || ''),
+          duration: String(item.duration || item.Duration || ''),
+          videoQuality: String(item.videoQuality || item.VideoQuality || '8K Ultra HD'),
+          ccActive: String(item.ccActive || item.CcActive || 'Yes'),
+          status: String(item.status || item.Status || 'Active'),
+          link: String(item.link || item.Link || '')
+        };
+
+        if (slider) {
+          Object.assign(slider, sliderData);
+          await slider.save();
+          updatedCount++;
+        } else {
+          slider = new Slider(sliderData);
+          await slider.save();
+          importedCount++;
+        }
+      } catch (err) {
+        console.error('Error importing slider:', item, err);
+        errorCount++;
+        errors.push(`Row ${i + 1}: ${err.message}`);
+      }
+    }
+
+    res.json({
+      message: 'Sliders import completed',
+      importedCount,
+      updatedCount,
+      errorCount,
+      errors
+    });
+  } catch (err) {
+    console.error('[SERVER ERROR] POST /api/sliders/import:', err);
+    res.status(500).json({ message: 'Server error during import' });
+  }
+});
+
+// POST /api/experiences/import - Import Experiences
+app.post('/api/experiences/import', async (req, res) => {
+  try {
+    const { experiences } = req.body;
+    if (!experiences || !Array.isArray(experiences)) {
+      return res.status(400).json({ message: 'Experiences array is required' });
+    }
+
+    let importedCount = 0;
+    let updatedCount = 0;
+    let errorCount = 0;
+    const errors = [];
+
+    for (let i = 0; i < experiences.length; i++) {
+      const item = experiences[i];
+      try {
+        const title = String(item.title || item.Title || '').trim();
+        const description = String(item.description || item.Description || '').trim();
+        if (!title || !description) {
+          errorCount++;
+          errors.push(`Row ${i + 1}: Title and Description are required.`);
+          continue;
+        }
+
+        let exp = await Experience.findOne({
+          title: { $regex: new RegExp('^' + title.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') }
+        });
+
+        const expData = {
+          title,
+          description,
+          icon: String(item.icon || item.Icon || 'Globe'),
+          order: Number(item.order || item.Order || 0),
+          status: String(item.status || item.Status || 'Active')
+        };
+
+        if (exp) {
+          Object.assign(exp, expData);
+          await exp.save();
+          updatedCount++;
+        } else {
+          exp = new Experience(expData);
+          await exp.save();
+          importedCount++;
+        }
+      } catch (err) {
+        console.error('Error importing experience:', item, err);
+        errorCount++;
+        errors.push(`Row ${i + 1}: ${err.message}`);
+      }
+    }
+
+    res.json({
+      message: 'Experiences import completed',
+      importedCount,
+      updatedCount,
+      errorCount,
+      errors
+    });
+  } catch (err) {
+    console.error('[SERVER ERROR] POST /api/experiences/import:', err);
+    res.status(500).json({ message: 'Server error during import' });
+  }
+});
+
+// POST /api/assets/import - Import Assets (Images)
+app.post('/api/assets/import', async (req, res) => {
+  try {
+    const { assets } = req.body;
+    if (!assets || !Array.isArray(assets)) {
+      return res.status(400).json({ message: 'Assets array is required' });
+    }
+
+    let importedCount = 0;
+    let updatedCount = 0;
+    let errorCount = 0;
+    const errors = [];
+
+    for (let i = 0; i < assets.length; i++) {
+      const item = assets[i];
+      try {
+        const title = String(item.title || item.Title || '').trim();
+        const url = String(item.url || item.Url || '').trim();
+        if (!title || !url) {
+          errorCount++;
+          errors.push(`Row ${i + 1}: Title and URL are required.`);
+          continue;
+        }
+
+        let asset = await Asset.findOne({ url });
+
+        const assetData = {
+          title,
+          url,
+          size: String(item.size || item.Size || ''),
+          dimension: String(item.dimension || item.Dimension || 'Original'),
+          date: String(item.date || item.Date || new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }))
+        };
+
+        if (asset) {
+          Object.assign(asset, assetData);
+          await asset.save();
+          updatedCount++;
+        } else {
+          asset = new Asset(assetData);
+          await asset.save();
+          importedCount++;
+        }
+      } catch (err) {
+        console.error('Error importing asset:', item, err);
+        errorCount++;
+        errors.push(`Row ${i + 1}: ${err.message}`);
+      }
+    }
+
+    res.json({
+      message: 'Assets import completed',
+      importedCount,
+      updatedCount,
+      errorCount,
+      errors
+    });
+  } catch (err) {
+    console.error('[SERVER ERROR] POST /api/assets/import:', err);
+    res.status(500).json({ message: 'Server error during import' });
+  }
+});
+
+// POST /api/home-sections/import - Import Home Sections
+app.post('/api/home-sections/import', async (req, res) => {
+  try {
+    const { 'home-sections': homeSections } = req.body;
+    const list = homeSections || req.body.homeSections || req.body.sections;
+    if (!list || !Array.isArray(list)) {
+      return res.status(400).json({ message: 'Home Sections array is required' });
+    }
+
+    let importedCount = 0;
+    let updatedCount = 0;
+    let errorCount = 0;
+    const errors = [];
+
+    for (let i = 0; i < list.length; i++) {
+      const item = list[i];
+      try {
+        const title = String(item.title || item.Title || '').trim();
+        if (!title) {
+          errorCount++;
+          errors.push(`Row ${i + 1}: Title is required.`);
+          continue;
+        }
+
+        let hs = await HomeSection.findOne({
+          title: { $regex: new RegExp('^' + title.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') }
+        });
+
+        const hsData = {
+          title,
+          sectionType: String(item.sectionType || item.SectionType || ''),
+          layout: String(item.layout || item.Layout || 'Slider'),
+          limit: Number(item.limit || item.Limit || 10),
+          status: String(item.status || item.Status || 'Active'),
+          order: Number(item.order || item.Order || 0)
+        };
+
+        if (hs) {
+          Object.assign(hs, hsData);
+          await hs.save();
+          updatedCount++;
+        } else {
+          hs = new HomeSection(hsData);
+          await hs.save();
+          importedCount++;
+        }
+      } catch (err) {
+        console.error('Error importing home section:', item, err);
+        errorCount++;
+        errors.push(`Row ${i + 1}: ${err.message}`);
+      }
+    }
+
+    res.json({
+      message: 'Home Sections import completed',
+      importedCount,
+      updatedCount,
+      errorCount,
+      errors
+    });
+  } catch (err) {
+    console.error('[SERVER ERROR] POST /api/home-sections/import:', err);
+    res.status(500).json({ message: 'Server error during import' });
+  }
+});
+
+// POST /api/subscription-plans/import - Import Subscription Plans
+app.post('/api/subscription-plans/import', async (req, res) => {
+  try {
+    const { 'subscription-plans': subscriptionPlans } = req.body;
+    const list = subscriptionPlans || req.body.subscriptionPlans || req.body.plans;
+    if (!list || !Array.isArray(list)) {
+      return res.status(400).json({ message: 'Subscription plans array is required' });
+    }
+
+    let importedCount = 0;
+    let updatedCount = 0;
+    let errorCount = 0;
+    const errors = [];
+
+    for (let i = 0; i < list.length; i++) {
+      const item = list[i];
+      try {
+        const planName = String(item.planName || item.PlanName || item.planname || '').trim();
+        if (!planName) {
+          errorCount++;
+          errors.push(`Row ${i + 1}: Plan Name is required.`);
+          continue;
+        }
+
+        let plan = await SubscriptionPlan.findOne({
+          planName: { $regex: new RegExp('^' + planName.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') }
+        });
+
+        const planData = {
+          planName,
+          duration: String(item.duration || item.Duration || '1 Month'),
+          price: String(item.price || item.Price || '0'),
+          deviceLimit: String(item.deviceLimit || item.DeviceLimit || '1'),
+          ads: String(item.ads || item.Ads || 'OFF'),
+          streamingQuality: String(item.streamingQuality || item.StreamingQuality || 'HD'),
+          status: String(item.status || item.Status || 'Active'),
+          getStarted: String(item.getStarted || item.GetStarted || 'ON')
+        };
+
+        if (plan) {
+          Object.assign(plan, planData);
+          await plan.save();
+          updatedCount++;
+        } else {
+          plan = new SubscriptionPlan(planData);
+          await plan.save();
+          importedCount++;
+        }
+      } catch (err) {
+        console.error('Error importing subscription plan:', item, err);
+        errorCount++;
+        errors.push(`Row ${i + 1}: ${err.message}`);
+      }
+    }
+
+    res.json({
+      message: 'Subscription plans import completed',
+      importedCount,
+      updatedCount,
+      errorCount,
+      errors
+    });
+  } catch (err) {
+    console.error('[SERVER ERROR] POST /api/subscription-plans/import:', err);
+    res.status(500).json({ message: 'Server error during import' });
+  }
+});
+
+// POST /api/pages/import - Import Pages
+app.post('/api/pages/import', async (req, res) => {
+  try {
+    const { pages } = req.body;
+    if (!pages || !Array.isArray(pages)) {
+      return res.status(400).json({ message: 'Pages array is required' });
+    }
+
+    let importedCount = 0;
+    let updatedCount = 0;
+    let errorCount = 0;
+    const errors = [];
+
+    for (let i = 0; i < pages.length; i++) {
+      const item = pages[i];
+      try {
+        const title = String(item.title || item.Title || '').trim();
+        const slug = String(item.slug || item.Slug || '').trim();
+        if (!title || !slug) {
+          errorCount++;
+          errors.push(`Row ${i + 1}: Title and Slug are required.`);
+          continue;
+        }
+
+        let page = await Page.findOne({ slug: slug.toLowerCase() });
+
+        const pageData = {
+          title,
+          slug: slug.toLowerCase(),
+          content: String(item.content || item.Content || ''),
+          status: String(item.status || item.Status || 'Active')
+        };
+
+        if (page) {
+          Object.assign(page, pageData);
+          await page.save();
+          updatedCount++;
+        } else {
+          page = new Page(pageData);
+          await page.save();
+          importedCount++;
+        }
+      } catch (err) {
+        console.error('Error importing page:', item, err);
+        errorCount++;
+        errors.push(`Row ${i + 1}: ${err.message}`);
+      }
+    }
+
+    res.json({
+      message: 'Pages import completed',
+      importedCount,
+      updatedCount,
+      errorCount,
+      errors
+    });
+  } catch (err) {
+    console.error('[SERVER ERROR] POST /api/pages/import:', err);
+    res.status(500).json({ message: 'Server error during import' });
+  }
+});
+
+// POST /api/sub-admins/import - Import Sub Admins
+app.post('/api/sub-admins/import', async (req, res) => {
+  try {
+    const { 'sub-admins': subAdmins } = req.body;
+    const list = subAdmins || req.body.subAdmins || req.body.users;
+    if (!list || !Array.isArray(list)) {
+      return res.status(400).json({ message: 'Sub-Admins array is required' });
+    }
+
+    let importedCount = 0;
+    let updatedCount = 0;
+    let errorCount = 0;
+    const errors = [];
+
+    for (let i = 0; i < list.length; i++) {
+      const item = list[i];
+      try {
+        const email = String(item.email || item.Email || '').trim().toLowerCase();
+        if (!email) {
+          errorCount++;
+          errors.push(`Row ${i + 1}: Email is required.`);
+          continue;
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+          errorCount++;
+          errors.push(`Row ${i + 1}: Invalid email address.`);
+          continue;
+        }
+
+        const name = String(item.name || item.Name || email.split('@')[0]).trim();
+        const phone = String(item.phone || item.Phone || '').trim();
+        const status = String(item.status || item.Status || 'Active').trim();
+        const providedPassword = String(item.password || item.Password || '').trim();
+        const role = String(item.role || item.Role || 'sub-admin').toLowerCase().trim();
+
+        let user = await User.findOne({ email });
+        if (user) {
+          user.name = name;
+          user.phone = phone;
+          user.status = status;
+          user.role = role;
+          if (providedPassword && providedPassword !== user.password) {
+            user.password = providedPassword;
+          }
+          await user.save();
+          updatedCount++;
+        } else {
+          const passwordToUse = providedPassword || require('crypto').randomBytes(8).toString('hex');
+          user = new User({
+            email,
+            name,
+            password: passwordToUse,
+            phone,
+            status,
+            role,
+            subscriptionPlan: 'Basic Plan',
+            expiryDate: '2099-12-31',
+            authProvider: 'Email',
+            isDeleted: false
+          });
+          await user.save();
+          importedCount++;
+        }
+      } catch (err) {
+        console.error('Error importing sub-admin:', item, err);
+        errorCount++;
+        errors.push(`Row ${i + 1}: ${err.message}`);
+      }
+    }
+
+    res.json({
+      message: 'Sub Admin import completed',
+      importedCount,
+      updatedCount,
+      errorCount,
+      errors
+    });
+  } catch (err) {
+    console.error('[SERVER ERROR] POST /api/sub-admins/import:', err);
     res.status(500).json({ message: 'Server error during import' });
   }
 });

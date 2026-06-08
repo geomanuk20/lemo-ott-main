@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, X, AlertTriangle, CheckCircle2, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, AlertTriangle, CheckCircle2, Loader2, ChevronLeft, ChevronRight, Upload } from 'lucide-react';
 import Loader from '../components/Loader';
+import ImportExportModal from '../components/ImportExportModal';
 
 const API_URL = '/api/languages';
 const ITEMS_PER_PAGE = 8;
@@ -16,6 +17,7 @@ const Languages = () => {
  const [nameValue, setNameValue] = useState('');
  const [statusValue, setStatusValue] = useState(true);
  const [notification, setNotification] = useState(null);
+ const [isImportExportOpen, setIsImportExportOpen] = useState(false);
 
  // Fetch languages from DB
  const fetchLanguages = async () => {
@@ -166,6 +168,10 @@ const Languages = () => {
       <Plus size={16} strokeWidth={3} />
       <span>Add Language</span>
      </button>
+     <button className="import-export-btn" onClick={() => setIsImportExportOpen(true)}>
+      <Upload size={16} />
+      <span>Import / Export</span>
+     </button>
     </div>
 
     {loading ? (
@@ -310,6 +316,13 @@ const Languages = () => {
     </div>
    )}
 
+    <ImportExportModal
+     isOpen={isImportExportOpen}
+     onClose={() => setIsImportExportOpen(false)}
+     type="languages"
+     onImportSuccess={fetchLanguages}
+    />
+
    <style dangerouslySetInnerHTML={{ __html: `
     .language-session-container {
      padding: 10px;
@@ -383,7 +396,10 @@ const Languages = () => {
      border: 1px solid #222;
     }
 
-    .action-bar { margin-bottom: 30px; }
+    .action-bar { display: flex; gap: 15px; margin-bottom: 30px; }
+    
+    .import-export-btn { background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 6px 16px; border-radius: 6px; display: flex; align-items: center; gap: 8px; font-weight: 700; cursor: pointer; transition: all 0.2s ease; font-size: 0.9rem; }
+    .import-export-btn:hover { background: #2a2a2a; border-color: #b3d332; color: #b3d332; }
 
     .add-language-btn {
      background-color: #b3d332;

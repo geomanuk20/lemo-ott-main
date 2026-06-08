@@ -13,9 +13,11 @@ import {
  Loader2,
  Calendar,
  Clock,
- Save
+ Save,
+ Upload
 } from 'lucide-react';
 import Loader from '../components/Loader';
+import ImportExportModal from '../components/ImportExportModal';
 
 const Images = () => {
  const [images, setImages] = useState([]);
@@ -28,6 +30,7 @@ const Images = () => {
  const [uploadFile, setUploadFile] = useState(null);
  const [uploadTitle, setUploadTitle] = useState('');
  const [uploadPreview, setUploadPreview] = useState('');
+ const [isImportExportOpen, setIsImportExportOpen] = useState(false);
  const fileInputRef = React.useRef(null);
 
  useEffect(() => {
@@ -162,24 +165,31 @@ const Images = () => {
        onChange={(e) => setSearchTerm(e.target.value)}
       />
      </div>
+     </div>
+     <div className="header-right" style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+      <input 
+       type="file" 
+       ref={fileInputRef} 
+       onChange={handleFileSelect} 
+       accept="image/*" 
+       style={{ display: 'none' }} 
+      />
+      <button 
+       className="import-export-btn" 
+       onClick={() => setIsImportExportOpen(true)}
+      >
+       <Upload size={16} />
+       <span>Import / Export</span>
+      </button>
+      <button 
+       className="upload-btn-premium" 
+       onClick={() => fileInputRef.current.click()}
+      >
+       <Plus size={18} strokeWidth={3} />
+       <span>Upload Image</span>
+      </button>
+     </div>
     </div>
-    <div className="header-right">
-     <input 
-      type="file" 
-      ref={fileInputRef} 
-      onChange={handleFileSelect} 
-      accept="image/*" 
-      style={{ display: 'none' }} 
-     />
-     <button 
-      className="upload-btn-premium" 
-      onClick={() => fileInputRef.current.click()}
-     >
-      <Plus size={18} strokeWidth={3} />
-      <span>Upload Image</span>
-     </button>
-    </div>
-   </div>
 
    <div className="images-grid-container">
     {filteredImages.length > 0 ? (
@@ -280,10 +290,19 @@ const Images = () => {
     </div>
    )}
 
+   <ImportExportModal
+    isOpen={isImportExportOpen}
+    onClose={() => setIsImportExportOpen(false)}
+    type="assets"
+    onImportSuccess={fetchAssets}
+   />
+
    <style dangerouslySetInnerHTML={{ __html: `
     .images-page { padding: 30px; animation: fadeIn 0.4s ease-out; }
     
     .images-header-section { display: flex; justify-content: space-between; align-items: center; margin-bottom: 35px; }
+    .import-export-btn { background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 12px 24px; border-radius: 12px; display: flex; align-items: center; gap: 8px; font-weight: 700; cursor: pointer; transition: all 0.2s ease; font-size: 0.9rem; }
+    .import-export-btn:hover { background: #2a2a2a; border-color: #b3d332; color: #b3d332; }
     
     .search-bar-exp { background: #1a1a1a; border: 1px solid #333; border-radius: 12px; display: flex; align-items: center; padding: 0 15px; width: 350px; transition: border-color 0.3s; }
     .search-bar-exp:focus-within { border-color: #b3d332; }

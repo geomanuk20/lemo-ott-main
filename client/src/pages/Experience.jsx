@@ -17,9 +17,11 @@ import {
  Save,
  Globe,
  MonitorPlay,
- Shield
+ Shield,
+ Upload
 } from 'lucide-react';
 import Loader from '../components/Loader';
+import ImportExportModal from '../components/ImportExportModal';
 
 const Experience = () => {
  const navigate = useNavigate();
@@ -32,6 +34,7 @@ const Experience = () => {
  const [editingExp, setEditingExp] = useState(null);
  const [newExp, setNewExp] = useState({ title: '', description: '', icon: 'Globe', status: 'Active' });
  const [notification, setNotification] = useState(null);
+ const [isImportExportOpen, setIsImportExportOpen] = useState(false);
 
  useEffect(() => {
   fetchExperiences();
@@ -158,6 +161,10 @@ const Experience = () => {
     <button className="add-experience-btn" onClick={() => setIsAddModalOpen(true)}>
      <Plus size={18} strokeWidth={3} />
      <span>Add New Experience</span>
+    </button>
+    <button className="import-export-btn" onClick={() => setIsImportExportOpen(true)}>
+     <Upload size={16} />
+     <span>Import / Export</span>
     </button>
    </div>
 
@@ -333,6 +340,13 @@ const Experience = () => {
     </div>
    )}
 
+    <ImportExportModal
+     isOpen={isImportExportOpen}
+     onClose={() => setIsImportExportOpen(false)}
+     type="experiences"
+     onImportSuccess={fetchExperiences}
+    />
+
    <style dangerouslySetInnerHTML={{ __html: `
     .experience-page { padding: 30px; animation: fadeIn 0.4s ease-out; position: relative; min-height: calc(100vh - 100px); }
     
@@ -354,9 +368,11 @@ const Experience = () => {
     .spoke-11 { transform: rotate(300deg); animation-delay: -0.166s; }
     .spoke-12 { transform: rotate(330deg); animation-delay: -0.083s; }
 
-    .experience-controls-top { margin-bottom: 30px; }
+    .experience-controls-top { display: flex; gap: 15px; align-items: center; margin-bottom: 30px; }
     .add-experience-btn { background: #b3d332; color: #fff; border: none; padding: 12px 24px; border-radius: 8px; display: flex; align-items: center; gap: 10px; font-weight: 700; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 15px rgba(22, 196, 127, 0.2); }
     .add-experience-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(22, 196, 127, 0.3); }
+    .import-export-btn { background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 12px 24px; border-radius: 8px; display: flex; align-items: center; gap: 8px; font-weight: 700; cursor: pointer; transition: all 0.2s ease; font-size: 0.9rem; }
+    .import-export-btn:hover { background: #2a2a2a; border-color: #b3d332; color: #b3d332; }
 
     .experience-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 25px; }
     
