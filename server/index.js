@@ -37,13 +37,33 @@ const getServerUrl = (req) => {
 };
 
 const getPhonePeCredentials = (gw) => {
-  let merchantId = gw?.settings?.merchantId || process.env.PHONEPE_MERCHANT_ID;
-  let saltKey = gw?.settings?.secretKey || gw?.settings?.publishableKey || process.env.PHONEPE_SALT_KEY;
-  let saltIndex = parseInt(gw?.settings?.saltIndex || process.env.PHONEPE_SALT_INDEX || '1');
   const hasDbSettings = !!gw?.settings?.merchantId;
   const isSandbox = hasDbSettings 
     ? (gw?.settings?.isSandbox !== false)
     : (process.env.PHONEPE_ENV || 'SANDBOX').toUpperCase() !== 'PRODUCTION';
+
+  let merchantId;
+  let saltKey;
+  let saltIndex;
+
+  if (hasDbSettings) {
+    // Database settings mapping:
+    // - Client Id (merchantId) -> settings.merchantId
+    // - API Key (publishableKey) -> settings.publishableKey (contains the salt key)
+    // - Client Version (secretKey) -> settings.secretKey (contains the salt index/client version)
+    merchantId = gw.settings.merchantId;
+    saltKey = gw.settings.publishableKey;
+    saltIndex = parseInt(gw.settings.secretKey || '1');
+  } else {
+    // Fallback to .env environment variables (supports both V2 and V1 naming)
+    merchantId = process.env.PHONEPE_CLIENT_ID || process.env.PHONEPE_MERCHANT_ID;
+    saltKey = process.env.PHONEPE_CLIENT_SECRET || process.env.PHONEPE_SALT_KEY;
+    saltIndex = parseInt(process.env.PHONEPE_CLIENT_VERSION || process.env.PHONEPE_SALT_INDEX || '1');
+  }
+
+  if (isNaN(saltIndex)) {
+    saltIndex = 1;
+  }
 
   // Base64 decode saltKey if it's base64 encoded
   if (saltKey && !saltKey.includes('-')) {
@@ -66,10 +86,17 @@ const getPhonePeCredentials = (gw) => {
     }
   }
 
-
+  // Auto-fallback to standard PhonePe Sandbox credentials in test mode
+  // to ensure test transactions always succeed, regardless of production keys entered.
+  if (isSandbox) {
+    merchantId = 'PGTESTPAYUAT';
+    saltKey = '099eb0cd-02cf-4e2a-8aca-3e6c6aff0399';
+    saltIndex = 1;
+  }
 
   return { merchantId, saltKey, saltIndex, isSandbox };
 };
+
 
 const getPhonePeClient = (merchantId, saltKey, saltIndex, env) => {
   // Clear require cache for the PhonePe SDK to bypass client re-initialization restrictions

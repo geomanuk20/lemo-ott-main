@@ -219,29 +219,28 @@ const EditPaymentGateway = () => {
                 </div>
               </>
             )}
-
             {isPhonePe && (
               <>
                 <div className="form-row-g">
-                  <label>Client Id</label>
+                  <label>Client ID</label>
                   <input 
                     type="text" 
                     name="merchantId" 
                     value={formData.settings.merchantId} 
                     onChange={handleSettingsChange}
-                    placeholder="Enter PhonePe Client ID"
+                    placeholder="Enter PhonePe Client ID (Merchant ID)"
                     required
                   />
                 </div>
 
                 <div className="form-row-g">
-                  <label>API Key</label>
+                  <label>Client Secret</label>
                   <input 
                     type="text" 
                     name="publishableKey" 
                     value={formData.settings.publishableKey} 
                     onChange={handleSettingsChange}
-                    placeholder="Enter PhonePe API Key"
+                    placeholder="Enter PhonePe Client Secret (Salt Key)"
                     required
                   />
                 </div>
