@@ -30,6 +30,40 @@ const getServerUrl = (req) => {
   return `${isHttps ? 'https' : 'http'}://${host}`;
 };
 
+const getPhonePeCredentials = (gw) => {
+  let merchantId = gw?.settings?.merchantId || process.env.PHONEPE_MERCHANT_ID;
+  let saltKey = gw?.settings?.secretKey || gw?.settings?.publishableKey || process.env.PHONEPE_SALT_KEY;
+  let saltIndex = parseInt(gw?.settings?.saltIndex || process.env.PHONEPE_SALT_INDEX || '1');
+  const hasDbSettings = !!gw?.settings?.merchantId;
+  const isSandbox = hasDbSettings 
+    ? (gw?.settings?.isSandbox !== false)
+    : (process.env.PHONEPE_ENV || 'SANDBOX').toUpperCase() !== 'PRODUCTION';
+
+  // Base64 decode saltKey if it's base64 encoded
+  if (saltKey && !saltKey.includes('-')) {
+    try {
+      const decoded = Buffer.from(saltKey, 'base64').toString('utf8');
+      if (decoded.includes('-')) {
+        saltKey = decoded;
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  // Auto-fallback to standard PhonePe Sandbox credentials in test mode
+  // if no custom sandbox credentials are set or if the configured key is the production one.
+  if (isSandbox) {
+    if (!merchantId || merchantId === 'M23BOWZSDX87L_2602051537' || merchantId === '') {
+      merchantId = 'PGPLAYMERCHANT';
+      saltKey = '099eb0cd-02cf-4e2a-8aca-3e6c6aff0399';
+      saltIndex = 1;
+    }
+  }
+
+  return { merchantId, saltKey, saltIndex, isSandbox };
+};
+
 // Enable Mongoose buffering with a reasonable timeout
 mongoose.set('bufferCommands', true);
 mongoose.set('bufferTimeoutMS', 15000);
@@ -114,6 +148,7 @@ const TVCategory = require('./models/TVCategory');
 const Asset = require('./models/Asset');
 const Experience = require('./models/Experience');
 const Rating = require('./models/Rating');
+const Submission = require('./models/Submission');
 
 const isAdminRequest = async (req) => {
   try {
@@ -1304,6 +1339,227 @@ app.get('/api/ratings/status', async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+});
+
+// --- Submissions API ---
+app.post('/api/submissions', async (req, res) => {
+  try {
+    const submission = new Submission(req.body);
+    await submission.save();
+    res.status(201).json({ success: true, message: 'Submission saved successfully', data: submission });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+app.get('/api/submissions', async (req, res) => {
+  try {
+    const filter = {};
+    if (req.query.email) {
+      filter.email = req.query.email;
+    }
+    const submissions = await Submission.find(filter).sort({ createdAt: -1 });
+    res.json(submissions);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.get('/api/submissions/:id', async (req, res) => {
+  try {
+    const submission = await Submission.findById(req.params.id);
+    if (!submission) return res.status(404).json({ message: 'Submission not found' });
+    res.json(submission);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Admin: update review status or any field on a submission
+app.patch('/api/submissions/:id', async (req, res) => {
+  try {
+    const updated = await Submission.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!updated) return res.status(404).json({ message: 'Submission not found' });
+    res.json({ success: true, data: updated });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.delete('/api/submissions/:id', async (req, res) => {
+  try {
+    await Submission.findByIdAndDelete(req.params.id);
+    res.json({ success: true, message: 'Submission deleted' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Bulk delete submissions
+app.post('/api/submissions/bulk-delete', async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!ids || !Array.isArray(ids)) return res.status(400).json({ message: 'ids array required' });
+    await Submission.deleteMany({ _id: { $in: ids } });
+    res.json({ success: true, message: `${ids.length} submissions deleted` });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Import submissions from JSON
+app.post('/api/submissions/import', async (req, res) => {
+  try {
+    const { submissions } = req.body;
+    if (!submissions || !Array.isArray(submissions)) return res.status(400).json({ message: 'submissions array required' });
+    const inserted = await Submission.insertMany(submissions, { ordered: false });
+    res.json({ success: true, message: `${inserted.length} submissions imported` });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// PhonePe Submissions Payment
+app.post('/api/payment/phonepe/initiate-submission', async (req, res) => {
+  try {
+    const PaymentGateway = require('./models/PaymentGateway');
+    const gw = await PaymentGateway.findOne({ name: 'PhonePe' });
+    if (!gw || gw.status !== 'Active') return res.status(400).json({ message: 'PhonePe gateway is not active. Please contact admin.' });
+
+    const { merchantId, saltKey, saltIndex, isSandbox } = getPhonePeCredentials(gw);
+    console.log('[PhonePe Submission] merchantId:', merchantId, '| isSandbox:', isSandbox, '| saltKey:', saltKey ? `${saltKey.substring(0, 5)}...${saltKey.substring(saltKey.length - 5)}` : 'null', '| saltIndex:', saltIndex);
+
+    if (!merchantId || !saltKey) {
+      return res.status(400).json({ message: 'PhonePe credentials not configured. Please contact admin.' });
+    }
+
+    const transactionId = 'SUB_' + Date.now() + Math.random().toString(36).substring(2, 7).toUpperCase();
+
+    // Create a pending Submission record BEFORE initiating payment
+    const Submission = require('./models/Submission');
+    const submissionData = {
+      ...req.body.submissionData,
+      paymentMethod: 'PhonePe',
+      paymentDescription: `Pending PhonePe Payment: ${transactionId}`,
+      paymentId: transactionId,
+      paymentStatus: 'Pending'
+    };
+
+    const submission = new Submission(submissionData);
+    await submission.save();
+
+    const amountInPaise = 500 * 100; // Fixed: ₹500
+
+    const { StandardCheckoutClient, Env, StandardCheckoutPayRequest } = require('@phonepe-pg/pg-sdk-node');
+    const env = isSandbox ? Env.SANDBOX : Env.PRODUCTION;
+    const client = StandardCheckoutClient.getInstance(merchantId, saltKey, saltIndex, env);
+
+
+    const serverUrl = getServerUrl(req);
+    const redirectUrl = `${serverUrl}/api/payment/phonepe/callback-submission?txnId=${transactionId}`;
+
+    const request = StandardCheckoutPayRequest.builder()
+      .merchantOrderId(transactionId)
+      .amount(amountInPaise)
+      .redirectUrl(redirectUrl)
+      .build();
+
+    const response = await client.pay(request);
+
+    if (response && response.redirectUrl) {
+      return res.json({ redirectUrl: response.redirectUrl });
+    } else {
+      // Rollback the pending submission if PhonePe didn't give a URL
+      await Submission.findByIdAndDelete(submission._id);
+      return res.status(400).json({ message: 'PhonePe did not return a redirect URL. Please try again.' });
+    }
+  } catch (error) {
+    console.error('PhonePe submission init error:', error?.response?.data || error.message);
+    res.status(500).json({ message: 'Payment gateway error: ' + (error.message || 'Unknown error') });
+  }
+});
+
+app.all('/api/payment/phonepe/callback-submission', async (req, res) => {
+  try {
+    const requestData = { ...req.query, ...req.body };
+
+    // PhonePe V2 sends ?code=PAYMENT_SUCCESS or a base64 encoded response body
+    let parsedData = requestData;
+    if (requestData.response) {
+      try {
+        const decodedResponse = Buffer.from(requestData.response, 'base64').toString('utf8');
+        parsedData = JSON.parse(decodedResponse);
+      } catch (e) { /* ignore decode errors */ }
+    }
+
+    const txnId = req.query.txnId
+      || parsedData.data?.merchantTransactionId
+      || parsedData.merchantTransactionId
+      || parsedData.transactionId
+      || requestData.transactionId
+      || requestData.orderId;
+
+    // PhonePe V2 redirect appends ?code=PAYMENT_SUCCESS to the redirectUrl
+    let successCode = req.query.code
+      || parsedData.code
+      || requestData.code
+      || requestData.state
+      || parsedData.state;
+
+    const Submission = require('./models/Submission');
+    const submission = await Submission.findOne({ paymentId: txnId });
+
+    if (!submission) {
+      console.error(`Submission not found for txnId: ${txnId}`);
+      const clientUrl = getClientUrl(req);
+      return res.redirect(`${clientUrl}/submission?payment_status=error`);
+    }
+
+    // If no code from redirect, query PhonePe directly for status
+    if (!successCode && txnId) {
+      try {
+        const PaymentGateway = require('./models/PaymentGateway');
+        const gw = await PaymentGateway.findOne({ name: 'PhonePe' });
+        if (gw) {
+          const { merchantId, saltKey, saltIndex, isSandbox } = getPhonePeCredentials(gw);
+
+          const { StandardCheckoutClient, Env } = require('@phonepe-pg/pg-sdk-node');
+          const env = isSandbox ? Env.SANDBOX : Env.PRODUCTION;
+          const client = StandardCheckoutClient.getInstance(merchantId, saltKey, saltIndex, env);
+
+          const statusRes = await client.getOrderStatus(txnId);
+          console.log('PhonePe order status response:', JSON.stringify(statusRes));
+
+          // V2 SDK returns { state: 'COMPLETED' | 'FAILED' | 'PENDING' }
+          if (statusRes?.state === 'COMPLETED' || statusRes?.code === 'PAYMENT_SUCCESS') {
+            successCode = 'PAYMENT_SUCCESS';
+          } else if (statusRes?.state === 'FAILED') {
+            successCode = 'PAYMENT_FAILED';
+          }
+        }
+      } catch (e) {
+        console.error('Error querying PhonePe order status:', e.message);
+      }
+    }
+
+    const clientUrl = getClientUrl(req);
+
+    if (successCode === 'PAYMENT_SUCCESS') {
+      submission.paymentStatus = 'Completed';
+      submission.paymentDescription = `PhonePe Payment Completed: ${txnId}`;
+      await submission.save();
+      return res.redirect(`${clientUrl}/submission?payment_status=success&txn=${txnId}`);
+    } else {
+      submission.paymentStatus = 'Failed';
+      submission.paymentDescription = `PhonePe Payment Failed/Cancelled: ${txnId} (code: ${successCode || 'unknown'})`;
+      await submission.save();
+      return res.redirect(`${clientUrl}/submission?payment_status=failed`);
+    }
+  } catch (err) {
+    console.error('Submission callback error:', err.message);
+    const clientUrl = getClientUrl(req);
+    res.redirect(`${clientUrl}/submission?payment_status=error`);
   }
 });
 
@@ -3311,12 +3567,7 @@ app.post('/api/payment/phonepe/initiate', async (req, res) => {
     const gw = await PaymentGateway.findOne({ name: 'PhonePe' });
     if (!gw || gw.status !== 'Active') return res.status(400).json({ message: 'PhonePe is not active' });
 
-    let merchantId = process.env.PHONEPE_MERCHANT_ID || gw.settings?.merchantId;
-    let saltKey = process.env.PHONEPE_SALT_KEY || gw.settings?.secretKey || gw.settings?.publishableKey;
-    let saltIndex = process.env.PHONEPE_SALT_INDEX || '1';
-    
-    // Fallback sandbox check mapping to the correct schema path
-    const isSandbox = gw.settings?.isSandbox !== false;
+    const { merchantId, saltKey, saltIndex, isSandbox } = getPhonePeCredentials(gw);
 
     const transactionId = 'TXN_' + Date.now() + Math.random().toString(36).substring(2, 7).toUpperCase();
 
@@ -3368,7 +3619,7 @@ app.post('/api/payment/phonepe/initiate', async (req, res) => {
     const { StandardCheckoutClient, Env, StandardCheckoutPayRequest } = require('@phonepe-pg/pg-sdk-node');
     
     const env = isSandbox ? Env.SANDBOX : Env.PRODUCTION;
-    const client = StandardCheckoutClient.getInstance(merchantId, saltKey, parseInt(saltIndex), env);
+    const client = StandardCheckoutClient.getInstance(merchantId, saltKey, saltIndex, env);
 
     const serverUrl = getServerUrl(req);
     const redirectUrl = `${serverUrl}/api/payment/phonepe/callback?txnId=${transactionId}`;
@@ -3412,14 +3663,11 @@ app.all('/api/payment/phonepe/callback', async (req, res) => {
       const PaymentGateway = require('./models/PaymentGateway');
       const gw = await PaymentGateway.findOne({ name: 'PhonePe' });
       if (gw) {
-        let merchantId = process.env.PHONEPE_MERCHANT_ID || gw.settings?.merchantId;
-        let saltKey = process.env.PHONEPE_SALT_KEY || gw.settings?.secretKey || gw.settings?.publishableKey;
-        let saltIndex = process.env.PHONEPE_SALT_INDEX || '1';
-        const isSandbox = gw.settings?.isSandbox !== false;
+        const { merchantId, saltKey, saltIndex, isSandbox } = getPhonePeCredentials(gw);
         
         const { StandardCheckoutClient, Env } = require('@phonepe-pg/pg-sdk-node');
         const env = isSandbox ? Env.SANDBOX : Env.PRODUCTION;
-        const client = StandardCheckoutClient.getInstance(merchantId, saltKey, parseInt(saltIndex), env);
+        const client = StandardCheckoutClient.getInstance(merchantId, saltKey, saltIndex, env);
         
         try {
           const statusRes = await client.getOrderStatus(txnId);

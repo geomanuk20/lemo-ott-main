@@ -585,7 +585,7 @@ function AdsController({ isAdPlaying, adsConfig, playedAdsRef, triggerAd, vastPr
 // Main Video Player
 // ================================================================
 
-const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, videoTitle, videoId, userId, playerSettings, className, poster, ...rest }) => {
+const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, videoTitle, videoId, userId, contentType, onRatingSubmitted, playerSettings, className, poster, ...rest }) => {
   const containerRef = useRef(null);
   const playerRef = useRef(null);
 
@@ -603,6 +603,65 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
   const playedAdsRef = useRef(new Set());
   const timerRef = useRef(null);
   const [aspectRatioMode, setAspectRatioMode] = useState('contain'); // 'contain' | 'fill' | 'cover'
+
+  // Rating overlay states
+  const [showRatingOverlay, setShowRatingOverlay] = useState(false);
+  const [selectedRating, setSelectedRating] = useState(0);
+  const [hoveredRating, setHoveredRating] = useState(0);
+  const [hasRatedThisSession, setHasRatedThisSession] = useState(false);
+  const [isSubmittingRating, setIsSubmittingRating] = useState(false);
+  const [ratingSuccess, setRatingSuccess] = useState(false);
+
+  // Rating helper variables and hooks
+  const currentUserId = userId || (() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem('user') || '{}');
+      return stored.id || stored._id || null;
+    } catch(e) {
+      return null;
+    }
+  })();
+
+  const getNormalizedContentType = () => {
+    if (contentType) {
+      const cType = contentType.toLowerCase().trim();
+      if (cType === 'show' || cType === 'shows' || cType === 'series' || cType === 'short-web-series') return 'show';
+      if (cType === 'sports' || cType === 'sport') return 'sports';
+      if (cType === 'live' || cType === 'channel' || cType === 'channels' || cType === 'tv-channel' || cType === 'tv-channels') return 'live';
+      return 'movie';
+    }
+    try {
+      const paths = window.location.pathname.split('/');
+      const detailsIndex = paths.indexOf('details');
+      if (detailsIndex !== -1 && paths[detailsIndex + 1]) {
+        const urlType = paths[detailsIndex + 1].toLowerCase().trim();
+        if (urlType === 'show' || urlType === 'shows' || urlType === 'series' || urlType === 'short-web-series') return 'show';
+        if (urlType === 'sports' || urlType === 'sport') return 'sports';
+        if (urlType === 'live' || urlType === 'channel' || urlType === 'channels' || urlType === 'tv-channel' || urlType === 'tv-channels') return 'live';
+      }
+    } catch (e) {}
+    return 'movie';
+  };
+
+  useEffect(() => {
+    if (videoId && currentUserId) {
+      fetch(`/api/ratings/status?userId=${currentUserId}&contentId=${videoId}`)
+        .then(res => {
+          if (res.ok) return res.json();
+          throw new Error('Rating check failed');
+        })
+        .then(data => {
+          if (data.rated) {
+            setHasRatedThisSession(true);
+          } else {
+            setHasRatedThisSession(false);
+          }
+        })
+        .catch(err => console.error('Error checking rating status in player:', err));
+    } else {
+      setHasRatedThisSession(false);
+    }
+  }, [videoId, currentUserId]);
 
   useEffect(() => {
     const checkUserGating = () => {
@@ -742,9 +801,62 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
     }
   }, [isAdPlaying, activePlayer]);
 
-  const handleMuxTimeUpdate = (currentTime, duration) => {
+  const handleRatingSubmit = async () => {
+    if (!currentUserId || !videoId || selectedRating === 0) return;
+    setIsSubmittingRating(true);
+
+    try {
+      const response = await fetch('/api/ratings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: currentUserId,
+          contentId: videoId,
+          contentType: getNormalizedContentType(),
+          rating: selectedRating
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setRatingSuccess(true);
+        setHasRatedThisSession(true);
+        if (onRatingSubmitted) {
+          onRatingSubmitted(selectedRating, result.averageRating, result.ratingsCount);
+        }
+        setTimeout(() => {
+          setShowRatingOverlay(false);
+          setRatingSuccess(false);
+        }, 2500);
+      } else {
+        const errorData = await response.json();
+        alert(errorData.message || 'Failed to submit rating. Please try again.');
+        setIsSubmittingRating(false);
+      }
+    } catch (err) {
+      console.error('Error submitting rating from player:', err);
+      alert('Network error. Failed to submit rating.');
+      setIsSubmittingRating(false);
+    }
+  };
+
+  const handlePlayerTimeUpdate = (currentTime, duration) => {
     if (onTimeUpdate) {
       onTimeUpdate(currentTime, duration);
+    }
+
+    // Rating trigger check
+    if (duration && duration > 0) {
+      const timeRemaining = duration - currentTime;
+      if (
+        timeRemaining > 0 &&
+        timeRemaining <= 5 &&
+        !showRatingOverlay &&
+        !hasRatedThisSession &&
+        currentUserId
+      ) {
+        setShowRatingOverlay(true);
+      }
     }
 
     if (!userShouldSeeAds || !adsConfig) return;
@@ -982,6 +1094,108 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
             />
           )}
         </div>
+      </div>
+    );
+  };
+
+  const renderRatingOverlay = () => {
+    if (!showRatingOverlay) return null;
+
+    return (
+      <div 
+        className="premium-rating-popup"
+        style={{
+          position: 'absolute',
+          top: '50%',
+          right: '25px',
+          transform: 'translateY(-50%)',
+          width: '290px',
+          background: 'rgba(10, 10, 10, 0.85)',
+          backdropFilter: 'blur(24px)',
+          border: '1px solid rgba(255, 255, 255, 0.12)',
+          borderRadius: '16px',
+          padding: '24px 20px',
+          color: '#fff',
+          zIndex: 9999,
+          boxShadow: '0 20px 50px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '18px',
+          fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+        }}
+      >
+        <button 
+          className="rating-close-btn"
+          onClick={() => {
+            setShowRatingOverlay(false);
+            setHasRatedThisSession(true);
+          }}
+          aria-label="Close rating prompt"
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+
+        {ratingSuccess ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '10px 0', textAlign: 'center', animation: 'fadeIn 0.3s ease-out' }}>
+            <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="#b3d332" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ filter: 'drop-shadow(0 0 8px rgba(179,211,50,0.5))' }}>
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+            <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#b3d332' }}>Rating Submitted!</h4>
+            <p style={{ margin: 0, fontSize: '0.8rem', color: '#aaa' }}>Thank you for your feedback.</p>
+          </div>
+        ) : (
+          <>
+            <div style={{ textAlign: 'center', width: '100%' }}>
+              <h4 style={{ margin: '0 0 4px 0', fontSize: '1rem', fontWeight: 800, letterSpacing: '0.5px', color: '#fff' }}>Rate this video</h4>
+              <p style={{ margin: 0, fontSize: '0.75rem', color: '#aaa', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {videoTitle || 'Current Video'}
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {[1, 2, 3, 4, 5].map((starVal) => {
+                const isFilled = starVal <= (hoveredRating || selectedRating);
+                return (
+                  <button 
+                    key={starVal}
+                    className="rating-star-btn"
+                    onMouseEnter={() => setHoveredRating(starVal)}
+                    onMouseLeave={() => setHoveredRating(0)}
+                    onClick={() => setSelectedRating(starVal)}
+                    type="button"
+                  >
+                    <svg 
+                      viewBox="0 0 24 24" 
+                      width="28" 
+                      height="28" 
+                      fill={isFilled ? '#b3d332' : 'transparent'} 
+                      stroke={isFilled ? '#b3d332' : 'rgba(255, 255, 255, 0.4)'} 
+                      strokeWidth="2" 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round"
+                      style={{ transition: 'all 0.15s ease' }}
+                    >
+                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                    </svg>
+                  </button>
+                );
+              })}
+            </div>
+
+            <button 
+              className="rating-submit-btn"
+              disabled={isSubmittingRating || selectedRating === 0}
+              onClick={handleRatingSubmit}
+              type="button"
+            >
+              {isSubmittingRating ? 'Submitting...' : 'Submit Rating'}
+            </button>
+          </>
+        )}
       </div>
     );
   };
@@ -1369,12 +1583,93 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
     }
   `;
 
+  const ratingStyles = `
+    @keyframes slideInRight {
+      0% {
+        opacity: 0;
+        transform: translate3d(50px, -50%, 0) scale(0.9);
+      }
+      100% {
+        opacity: 1;
+        transform: translate3d(0, -50%, 0) scale(1);
+      }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    .premium-rating-popup {
+      animation: slideInRight 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    .rating-star-btn {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 4px;
+      transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+      outline: none;
+    }
+    .rating-star-btn:hover {
+      transform: scale(1.25);
+    }
+    .rating-star-btn:active {
+      transform: scale(0.9);
+    }
+    .rating-submit-btn {
+      background: #b3d332;
+      color: #000;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 20px;
+      font-weight: 700;
+      font-size: 0.9rem;
+      width: 100%;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 4px 15px rgba(179, 211, 50, 0.3);
+      outline: none;
+    }
+    .rating-submit-btn:hover:not(:disabled) {
+      background: #c3e342;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(179, 211, 50, 0.5);
+    }
+    .rating-submit-btn:disabled {
+      background: rgba(255, 255, 255, 0.1);
+      color: rgba(255, 255, 255, 0.35);
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+    .rating-close-btn {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: transparent;
+      border: none;
+      color: rgba(255, 255, 255, 0.4);
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      outline: none;
+    }
+    .rating-close-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+    }
+  `;
+
+  const combinedSecurityAndRatingStyles = securityStyles + ratingStyles;
+
   // --- RENDERING PIPELINE ---
 
   if (isHtmlEmbed) {
     return (
       <div ref={containerRef} className="premium-player-wrapper" style={containerStyle} onContextMenu={(e) => e.preventDefault()}>
-        <style dangerouslySetInnerHTML={{ __html: securityStyles }} />
+        <style dangerouslySetInnerHTML={{ __html: combinedSecurityAndRatingStyles }} />
         {embedInfo.type === 'html' ? (
           <HtmlScriptExecutor html={embedInfo.src} />
         ) : (
@@ -1410,7 +1705,7 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
   if (activePlayer === 'MUX_PLAYER' && playbackId) {
     return (
       <div ref={containerRef} style={containerStyle} onContextMenu={(e) => e.preventDefault()}>
-        <style dangerouslySetInnerHTML={{ __html: securityStyles }} />
+        <style dangerouslySetInnerHTML={{ __html: combinedSecurityAndRatingStyles }} />
         <MuxPlayer
           ref={playerRef}
           playbackId={playbackId}
@@ -1431,7 +1726,7 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
             }
           }}
           onTimeUpdate={(e) => {
-            handleMuxTimeUpdate(e.target.currentTime, e.target.duration);
+            handlePlayerTimeUpdate(e.target.currentTime, e.target.duration);
           }}
           style={muxPlayerStyle}
           metadata={metadata}
@@ -1494,6 +1789,7 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
         )}
         {/* Ad Overlay */}
         {isAdPlaying && adMediaUrl && renderAdOverlay()}
+        {renderRatingOverlay()}
         {renderUserWatermark()}
         {isWindowBlurred && renderSecurityOverlay()}
       </div>
@@ -1514,7 +1810,7 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
           style={{ width: '100%', height: '100%', background: 'transparent' }}
           {...rest}
         >
-          <style dangerouslySetInnerHTML={{ __html: securityStyles }} />
+          <style dangerouslySetInnerHTML={{ __html: combinedSecurityAndRatingStyles }} />
           <HlsVideo 
             src={getStreamSrc()} 
             playsInline 
@@ -1522,9 +1818,7 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
             autoPlay={isAutoplayEnabled}
             onEnded={onEnded}
             onTimeUpdate={(e) => {
-              if (onTimeUpdate) {
-                onTimeUpdate(e.target.currentTime, e.target.duration);
-              }
+              handlePlayerTimeUpdate(e.target.currentTime, e.target.duration);
             }}
             style={playerStyle}
           >
@@ -1612,6 +1906,7 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
 
           {/* Ad Overlay */}
           {isAdPlaying && adMediaUrl && renderAdOverlay()}
+          {renderRatingOverlay()}
           {renderUserWatermark()}
           {isWindowBlurred && renderSecurityOverlay()}
         </VideoSkin>

@@ -149,6 +149,8 @@ const Sidebar = () => {
       { name: 'Coupons', icon: <Tag size={20} />, path: '/admin/coupons' },
       { name: 'Payment Gateway', icon: <Wallet size={20} />, path: '/admin/payment-gateway' },
       { name: 'Transactions', icon: <FileText size={20} />, path: '/admin/transactions' },
+      { name: 'Submissions', icon: <Film size={20} />, path: '/admin/submissions' },
+
       { 
         name: 'Pages', 
         icon: <FileText size={20} />, 

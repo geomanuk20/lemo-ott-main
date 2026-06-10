@@ -115,6 +115,10 @@ const FrontendDetails = () => {
  const [activeVideoUrl, setActiveVideoUrl] = useState(null);
  const [showNextBtn, setShowNextBtn] = useState(false);
  const [playerSettings, setPlayerSettings] = useState(null);
+ const [userRating, setUserRating] = useState(0);
+ const [selectedRating, setSelectedRating] = useState(0);
+ const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
+ const [isRatingSubmitting, setIsRatingSubmitting] = useState(false);
  const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   const handlePlayVideo = (url, targetEpisode = null) => {
@@ -377,6 +381,15 @@ const FrontendDetails = () => {
      if (Array.isArray(wlData)) {
       setIsWatchlisted(wlData.some(item => item._id === id));
      }
+     try {
+      const rateResponse = await fetch(`/api/ratings/status?userId=${user.id}&contentId=${id}`);
+      if (rateResponse.ok) {
+       const rateData = await rateResponse.json();
+       setUserRating(rateData.rating || 0);
+      }
+     } catch (rateErr) {
+      console.error('Error fetching rating status:', rateErr);
+     }
     } else {
      const watchlist = JSON.parse(localStorage.getItem('watchlist') || '[]');
      setIsWatchlisted(watchlist.some(item => item.id === id));
@@ -438,6 +451,65 @@ const FrontendDetails = () => {
    console.error('Error toggling watchlist:', err);
   }
  };
+
+  const handleOpenRatingModal = () => {
+   if (!user || !user.id) {
+    navigate('/login', { state: { from: window.location.pathname } });
+    return;
+   }
+   setSelectedRating(userRating || 0);
+   setIsRatingModalOpen(true);
+  };
+
+  const handleRatingSubmit = async () => {
+   if (!user || !user.id) {
+    navigate('/login', { state: { from: window.location.pathname } });
+    return;
+   }
+   if (selectedRating < 1 || selectedRating > 5) return;
+
+   setIsRatingSubmitting(true);
+   const cleanType = type ? type.toLowerCase().trim() : '';
+   let normalizedRatingType = 'movie';
+   if (cleanType === 'show' || cleanType === 'shows' || cleanType === 'series' || cleanType === 'short-web-series') {
+    normalizedRatingType = 'show';
+   } else if (cleanType === 'sports' || cleanType === 'sport') {
+    normalizedRatingType = 'sports';
+   } else if (cleanType === 'live' || cleanType === 'channel' || cleanType === 'channels' || cleanType === 'tv-channel' || cleanType === 'tv-channels') {
+    normalizedRatingType = 'live';
+   }
+
+   try {
+    const response = await fetch('/api/ratings', {
+     method: 'POST',
+     headers: { 'Content-Type': 'application/json' },
+     body: JSON.stringify({
+      userId: user.id,
+      contentId: id,
+      contentType: normalizedRatingType,
+      rating: selectedRating
+     })
+    });
+    const result = await response.json();
+    if (response.ok) {
+     setUserRating(selectedRating);
+     setData(prev => ({ 
+      ...prev, 
+      imdbRating: result.averageRating,
+      ratingsCount: result.ratingsCount
+     }));
+     showNotification('Rating submitted successfully!');
+     setIsRatingModalOpen(false);
+    } else {
+     showNotification(result.message || 'Failed to submit rating', 'error');
+    }
+   } catch (err) {
+    console.error('Error submitting rating:', err);
+    showNotification('Error submitting rating', 'error');
+   } finally {
+    setIsRatingSubmitting(false);
+   }
+  };
 
  const handleShare = async (platform) => {
   const url = window.location.href;
@@ -531,10 +603,12 @@ const FrontendDetails = () => {
     {notification && (
      <div className="fe-watchlist-notification-v">
       <div className="note-content-v">
-       <Bookmark size={18} />
+       {notification.toLowerCase().includes('watchlist') ? <Bookmark size={18} /> : <Check size={18} />}
        <span>{notification}</span>
       </div>
-      <Link to="/watchlist" className="view-wl-btn-v">VIEW WATCHLIST</Link>
+      {notification.toLowerCase().includes('watchlist') && (
+       <Link to="/watchlist" className="view-wl-btn-v">VIEW WATCHLIST</Link>
+      )}
      </div>
     )}
 
@@ -573,6 +647,41 @@ const FrontendDetails = () => {
          <div className="share-icon-v"><Share2 size={24} /></div>
          <span>Copy Link</span>
         </div>
+       </div>
+      </div>
+     </div>
+    )}
+
+    {isRatingModalOpen && (
+     <div className="fe-rating-modal-overlay-v" onClick={() => setIsRatingModalOpen(false)}>
+      <div className="fe-rating-modal-v" onClick={e => e.stopPropagation()}>
+       <button className="fe-rating-close-v" onClick={() => setIsRatingModalOpen(false)}>
+        <X size={20} />
+       </button>
+       <h2>Rate Content</h2>
+       <h3>{data.title}</h3>
+       <div className="fe-rating-stars-v">
+        {[1, 2, 3, 4, 5].map((starVal) => (
+         <button 
+          key={starVal}
+          className={`star-btn-v ${starVal <= selectedRating ? 'active' : ''}`}
+          onClick={() => setSelectedRating(starVal)}
+         >
+          <Star size={36} fill={starVal <= selectedRating ? '#b3d332' : 'transparent'} />
+         </button>
+        ))}
+       </div>
+       <div className="fe-rating-actions-v">
+        <button 
+         className="fe-rating-submit-btn-v"
+         onClick={handleRatingSubmit}
+         disabled={isRatingSubmitting || selectedRating === 0}
+        >
+         {isRatingSubmitting ? 'Submitting...' : 'Submit Rating'}
+        </button>
+        <button className="fe-rating-cancel-btn-v" onClick={() => setIsRatingModalOpen(false)}>
+         Cancel
+       </button>
        </div>
       </div>
      </div>
@@ -626,20 +735,27 @@ const FrontendDetails = () => {
         <div className="stat-item-v"><Eye size={16} /> <span>{formatViews(data.views, data._id)}</span></div>
         <div className="stat-item-v"><Calendar size={16} /> <span>{new Date(data.releaseDate || data.createdAt).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}</span></div>
         <div className="stat-item-v"><Clock size={16} /> <span>{data.duration || '2h 30m'}</span></div>
-        {(() => {
-         const ratingVal = parseFloat(data.imdbRating || '7.5');
-         const percentage = (ratingVal / 10) * 100;
-         return (
-          <div 
-           className="fe-rating-circle-v" 
-           style={{ background: `conic-gradient(#b3d332 ${percentage}%, rgba(255,255,255,0.1) ${percentage}%)` }}
-          >
-           <div className="rating-inner-v">
-            <span className="imdb-val-v">{ratingVal.toFixed(1)}</span>
-           </div>
-          </div>
-         );
-        })()}
+        <div className="fe-rating-wrapper-v" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+          {(() => {
+           const ratingVal = parseFloat(data.imdbRating || '7.5');
+           const percentage = (ratingVal / 10) * 100;
+           return (
+            <div 
+             className="fe-rating-circle-v" 
+             style={{ background: `conic-gradient(#b3d332 ${percentage}%, rgba(255,255,255,0.1) ${percentage}%)`, margin: 0 }}
+            >
+             <div className="rating-inner-v">
+              <span className="imdb-val-v">{ratingVal.toFixed(1)}</span>
+             </div>
+            </div>
+           );
+          })()}
+          <span className="fe-ratings-count-v" style={{ fontSize: '0.68rem', fontWeight: 700, color: '#888', textTransform: 'lowercase' }}>
+           {data.ratingsCount && data.ratingsCount > 0 
+             ? `${data.ratingsCount} ${data.ratingsCount === 1 ? 'rating' : 'ratings'}`
+             : 'no ratings'}
+          </span>
+         </div>
        </div>
 
        {/* Action Buttons */}
@@ -647,6 +763,10 @@ const FrontendDetails = () => {
         <button className={`action-btn-v watchlist-v ${isWatchlisted ? 'active' : ''}`} onClick={handleWatchlist}>
          {isWatchlisted ? <Check size={18} /> : <Plus size={18} />}
          <span>{isWatchlisted ? 'In Watchlist' : 'Add to Watchlist'}</span>
+        </button>
+        <button className={`action-btn-v rate-btn-v ${userRating > 0 ? 'active' : ''}`} onClick={handleOpenRatingModal}>
+         <Star size={18} fill={userRating > 0 ? '#b3d332' : 'transparent'} color={userRating > 0 ? '#b3d332' : 'currentColor'} />
+         <span>{userRating > 0 ? `Rated ${userRating}★` : 'Rate'}</span>
         </button>
         <button className="action-btn-v share-v" onClick={() => setIsShareModalOpen(true)}>
          <Share2 size={18} />
@@ -961,6 +1081,16 @@ const FrontendDetails = () => {
             videoTitle={activeVideoUrl === data?.trailerUrl ? `${getTitle(data)} - Trailer` : getTitle(data)}
             playerSettings={playerSettings}
             videoId={data?._id}
+            userId={user?.id}
+            contentType={cleanType}
+            onRatingSubmitted={(rating, avgRating, count) => {
+              setUserRating(rating);
+              setData(prev => ({
+                ...prev,
+                imdbRating: avgRating,
+                ratingsCount: count
+              }));
+            }}
              subtitles={activeVideoUrl === data?.trailerUrl ? [] : currentSubs.list}
              subtitlesActive={activeVideoUrl === data?.trailerUrl ? 'Inactive' : currentSubs.active}
              onEnded={() => {
@@ -1406,6 +1536,27 @@ const FrontendDetails = () => {
     .facebook-v .share-icon-v { background: #1877F2; }
     .twitter-v .share-icon-v { background: #1DA1F2; }
     .copy-v .share-icon-v { background: #444; }
+
+    .rate-btn-v { background: rgba(255,255,255,0.08) !important; border: 1px solid rgba(255,255,255,0.15) !important; color: #fff !important; }
+    .rate-btn-v:hover { background: rgba(255,255,255,0.15) !important; border-color: #b3d332 !important; color: #b3d332 !important; }
+    .rate-btn-v.active { border-color: #b3d332 !important; color: #b3d332 !important; background: rgba(179, 211, 50, 0.08) !important; }
+
+    .fe-rating-modal-overlay-v { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 50000; display: flex; align-items: center; justify-content: center; animation: fadeIn 0.3s ease-out; }
+    .fe-rating-modal-v { background: #0c0c0c; border: 1px solid #222; border-radius: 16px; padding: 40px 30px; width: 90%; max-width: 420px; text-align: center; position: relative; box-shadow: 0 15px 40px rgba(0,0,0,0.6); animation: modalSlideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+    .fe-rating-close-v { position: absolute; top: 15px; right: 15px; background: none; border: none; color: #888; cursor: pointer; transition: color 0.2s; }
+    .fe-rating-close-v:hover { color: #ff4d4d; }
+    .fe-rating-modal-v h2 { font-size: 1.4rem; font-weight: 800; margin-top: 0; margin-bottom: 5px; color: #fff; }
+    .fe-rating-modal-v h3 { font-size: 1rem; font-weight: 500; color: #888; margin-top: 0; margin-bottom: 30px; }
+    .fe-rating-stars-v { display: flex; justify-content: center; gap: 15px; margin-bottom: 35px; }
+    .star-btn-v { background: none; border: none; color: #444; cursor: pointer; transition: transform 0.2s, color 0.2s; }
+    .star-btn-v:hover { transform: scale(1.2); }
+    .star-btn-v.active { color: #b3d332; }
+    .fe-rating-actions-v { display: flex; flex-direction: column; gap: 12px; }
+    .fe-rating-submit-btn-v { background: #b3d332; color: #000; border: none; padding: 12px; border-radius: 8px; font-weight: 700; font-size: 1rem; cursor: pointer; transition: background 0.2s, opacity 0.2s; }
+    .fe-rating-submit-btn-v:hover { background: #c5e63b; }
+    .fe-rating-submit-btn-v:disabled { opacity: 0.5; cursor: not-allowed; }
+    .fe-rating-cancel-btn-v { background: #1a1a1a; color: #fff; border: 1px solid #333; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+    .fe-rating-cancel-btn-v:hover { background: #2a2a2a; }
     
     @keyframes modalSlideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     @keyframes noteSlideUp { from { transform: translate(-50%, 40px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }

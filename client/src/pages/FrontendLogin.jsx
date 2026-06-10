@@ -101,7 +101,7 @@ const FrontendLogin = () => {
     localStorage.setItem('token', data.token);
     localStorage.setItem('user', JSON.stringify(data.user));
     window.dispatchEvent(new Event('profileUpdate'));
-    navigate('/');
+    navigate(location.state?.from || '/');
    } else {
     setError(data.message || 'Google authentication failed');
    }
@@ -186,7 +186,7 @@ const FrontendLogin = () => {
     localStorage.setItem('token', data.token);
     localStorage.setItem('user', JSON.stringify(data.user));
     window.dispatchEvent(new Event('profileUpdate'));
-    navigate('/');
+    navigate(location.state?.from || '/');
    } else {
     setError(data.message || 'Facebook authentication failed');
    }

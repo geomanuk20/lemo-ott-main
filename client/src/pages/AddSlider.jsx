@@ -55,10 +55,43 @@ const AddSlider = () => {
   fetchContent();
  }, [formData.postType]);
 
- const handleChange = (e) => {
-  const { name, value } = e.target;
-  setFormData(prev => ({ ...prev, [name]: value }));
- };
+  const handleChange = (e) => {
+   const { name, value } = e.target;
+   setFormData(prev => {
+    const nextData = { ...prev, [name]: value };
+    if (name === 'contentId' && value) {
+     const selectedItem = contentList.find(item => item._id === value);
+     if (selectedItem) {
+      nextData.title = selectedItem.title || selectedItem.name || prev.title;
+      nextData.imdbRating = selectedItem.imdbRating || selectedItem.rating || '';
+      
+      let year = '';
+      if (selectedItem.releaseDate) {
+       year = String(new Date(selectedItem.releaseDate).getFullYear());
+      } else if (selectedItem.releaseYear) {
+       year = String(selectedItem.releaseYear);
+      } else if (selectedItem.date) {
+       year = String(selectedItem.date).split('-')[0] || String(selectedItem.date).split('/')[0] || '';
+      }
+      nextData.releaseYear = year;
+      
+      nextData.videoQuality = selectedItem.videoQuality || '8K Ultra HD';
+      nextData.duration = selectedItem.duration || '';
+      nextData.image = selectedItem.poster || selectedItem.thumbnail || selectedItem.logo || prev.image;
+      
+      const typeMap = {
+       'Movies': 'movie',
+       'TV Shows': 'show',
+       'Sports': 'sports',
+       'Live TV': 'live'
+      };
+      const type = typeMap[prev.postType] || 'movie';
+      nextData.link = `/details/${type}/${value}`;
+     }
+    }
+    return nextData;
+   });
+  };
 
  const handleCheckboxChange = (e) => {
   const { value, checked } = e.target;

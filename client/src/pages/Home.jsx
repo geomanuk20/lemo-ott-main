@@ -402,9 +402,9 @@ const Home = () => {
            </div>
           );
          })()}
-         <div className="meta-item-v">{slide.year || '2024'}</div>
-         <div className="meta-cc-v">CC</div>
-         <div className="meta-item-v">{slide.duration || '2h 15m'}</div>
+          <div className="meta-item-v">{slide.releaseYear || slide.year || '2024'}</div>
+          <div className="meta-cc-v">CC</div>
+          <div className="meta-item-v">{slide.duration || '2h 15m'}</div>
         </div>
         <div className="fe-hero-desc-v" dangerouslySetInnerHTML={{ __html: slide.description || "Dive into a world of cinematic excellence. Experience the best in storytelling with our featured selection of the month." }} />
         <div className="fe-hero-actions-v">

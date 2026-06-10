@@ -44,6 +44,7 @@ const FrontendFooter = ({ settings = null }) => {
               <Link to="/shows">TV Shows</Link>
               <Link to="/live-tv">Live TV</Link>
               <Link to="/subscription">Subscription</Link>
+              <Link to="/submission">Submission</Link>
             </div>
             <div className="footer-col-v">
               <h4>COMPANY</h4>

@@ -101,6 +101,8 @@ import FrontendDetails from './pages/FrontendDetails';
 import FrontendViewAll from './pages/FrontendViewAll';
 import FrontendShortFilms from './pages/FrontendShortFilms';
 import FrontendWebSeries from './pages/FrontendWebSeries';
+import FrontendSubmission from './pages/FrontendSubmission';
+import AdminSubmissions from './pages/AdminSubmissions';
 
 
 
@@ -419,7 +421,7 @@ function App() {
         <Route path="/checkout" element={<FrontendCheckout />} />
         <Route path="/details/:type/:id" element={<FrontendDetails />} />
         <Route path="/view-all/:type/:title" element={<FrontendViewAll />} />
-
+        <Route path="/submission" element={<FrontendSubmission />} />
 
         
         {/* Dynamic Static Pages */}
@@ -508,6 +510,7 @@ function App() {
           <Route path="coupons/add" element={<AddCoupon />} />
           <Route path="coupons/edit/:id" element={<EditCoupon />} />
           <Route path="transactions" element={<Transactions />} />
+          <Route path="submissions" element={<AdminSubmissions />} />
           <Route path="payment-gateway" element={<PaymentGateway />} />
           <Route path="payment-gateway/edit/:id" element={<EditPaymentGateway />} />
           <Route path="pages/list" element={<PagesList />} />
