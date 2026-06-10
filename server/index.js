@@ -2516,6 +2516,7 @@ app.put('/api/payment-gateways/:id', async (req, res) => {
         ...gateway.settings,
         ...settings
       };
+      gateway.markModified('settings');
     }
 
     await gateway.save();
