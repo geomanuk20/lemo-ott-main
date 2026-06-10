@@ -13,20 +13,26 @@ const PORT = process.env.PORT || 5001;
 
 // Dynamic URL discovery for emails and payment gateways
 const getClientUrl = (req) => {
-  const host = req.get('host');
+  if (process.env.CLIENT_URL) {
+    return process.env.CLIENT_URL;
+  }
+  const host = (req && (req.headers['x-forwarded-host'] || req.get('host'))) || '';
   if (host.includes('localhost') || host.includes('127.0.0.1')) {
     return 'http://localhost:5173';
   }
-  const isHttps = req.secure || req.headers['x-forwarded-proto'] === 'https';
+  const isHttps = req && (req.secure || req.headers['x-forwarded-proto'] === 'https');
   return `${isHttps ? 'https' : 'http'}://${host}`;
 };
 
 const getServerUrl = (req) => {
-  const host = req.get('host');
+  if (process.env.SERVER_URL) {
+    return process.env.SERVER_URL;
+  }
+  const host = (req && (req.headers['x-forwarded-host'] || req.get('host'))) || '';
   if (host.includes('localhost') || host.includes('127.0.0.1')) {
     return 'http://localhost:5001';
   }
-  const isHttps = req.secure || req.headers['x-forwarded-proto'] === 'https';
+  const isHttps = req && (req.secure || req.headers['x-forwarded-proto'] === 'https');
   return `${isHttps ? 'https' : 'http'}://${host}`;
 };
 
@@ -62,6 +68,17 @@ const getPhonePeCredentials = (gw) => {
   }
 
   return { merchantId, saltKey, saltIndex, isSandbox };
+};
+
+const getPhonePeClient = (merchantId, saltKey, saltIndex, env, StandardCheckoutClient) => {
+  try {
+    return StandardCheckoutClient.getInstance(merchantId, saltKey, saltIndex, env);
+  } catch (err) {
+    if (err.message && err.message.includes('Cannot re-initialize')) {
+      return StandardCheckoutClient.getInstance();
+    }
+    throw err;
+  }
 };
 
 // Enable Mongoose buffering with a reasonable timeout
@@ -1453,7 +1470,7 @@ app.post('/api/payment/phonepe/initiate-submission', async (req, res) => {
 
     const { StandardCheckoutClient, Env, StandardCheckoutPayRequest } = require('@phonepe-pg/pg-sdk-node');
     const env = isSandbox ? Env.SANDBOX : Env.PRODUCTION;
-    const client = StandardCheckoutClient.getInstance(merchantId, saltKey, saltIndex, env);
+    const client = getPhonePeClient(merchantId, saltKey, saltIndex, env, StandardCheckoutClient);
 
 
     const serverUrl = getServerUrl(req);
@@ -1526,7 +1543,7 @@ app.all('/api/payment/phonepe/callback-submission', async (req, res) => {
 
           const { StandardCheckoutClient, Env } = require('@phonepe-pg/pg-sdk-node');
           const env = isSandbox ? Env.SANDBOX : Env.PRODUCTION;
-          const client = StandardCheckoutClient.getInstance(merchantId, saltKey, saltIndex, env);
+          const client = getPhonePeClient(merchantId, saltKey, saltIndex, env, StandardCheckoutClient);
 
           const statusRes = await client.getOrderStatus(txnId);
           console.log('PhonePe order status response:', JSON.stringify(statusRes));
@@ -3619,7 +3636,7 @@ app.post('/api/payment/phonepe/initiate', async (req, res) => {
     const { StandardCheckoutClient, Env, StandardCheckoutPayRequest } = require('@phonepe-pg/pg-sdk-node');
     
     const env = isSandbox ? Env.SANDBOX : Env.PRODUCTION;
-    const client = StandardCheckoutClient.getInstance(merchantId, saltKey, saltIndex, env);
+    const client = getPhonePeClient(merchantId, saltKey, saltIndex, env, StandardCheckoutClient);
 
     const serverUrl = getServerUrl(req);
     const redirectUrl = `${serverUrl}/api/payment/phonepe/callback?txnId=${transactionId}`;
@@ -3667,7 +3684,7 @@ app.all('/api/payment/phonepe/callback', async (req, res) => {
         
         const { StandardCheckoutClient, Env } = require('@phonepe-pg/pg-sdk-node');
         const env = isSandbox ? Env.SANDBOX : Env.PRODUCTION;
-        const client = StandardCheckoutClient.getInstance(merchantId, saltKey, saltIndex, env);
+        const client = getPhonePeClient(merchantId, saltKey, saltIndex, env, StandardCheckoutClient);
         
         try {
           const statusRes = await client.getOrderStatus(txnId);
