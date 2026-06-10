@@ -1,5 +1,5 @@
 const mongoose = require('./server/node_modules/mongoose');
-const { StandardCheckoutClient, Env, StandardCheckoutPayRequest } = require('./server/node_modules/@phonepe-pg/pg-sdk-node');
+const { StandardCheckoutClient, Env, StandardCheckoutPayRequest, MetaInfo, PrefillUserLoginDetails } = require('./server/node_modules/@phonepe-pg/pg-sdk-node');
 
 async function testLivePhonePe() {
   try {
@@ -25,13 +25,43 @@ async function testLivePhonePe() {
     const transactionId = 'TXN_TEST_' + Date.now();
     console.log('Created transaction ID:', transactionId);
 
-    const request = StandardCheckoutPayRequest.builder()
+    // Build the request with all parameters like the live site does
+    let requestBuilder = StandardCheckoutPayRequest.builder()
       .merchantOrderId(transactionId)
       .amount(100) // ₹1.00 (100 paise)
-      .redirectUrl('https://lemoott.com/api/payment/phonepe/callback')
-      .build();
+      .redirectUrl('https://lemoott.com/api/payment/phonepe/callback');
 
-    console.log('Sending pay request to PhonePe Production API...');
+    // Add mock prefill user details
+    try {
+      const prefill = PrefillUserLoginDetails.builder()
+        .phoneNumber('9999999999')
+        .build();
+      requestBuilder = requestBuilder.prefillUserLoginDetails(prefill);
+      console.log('Added prefill user details.');
+    } catch (e) {
+      console.error('Prefill builder error:', e);
+    }
+
+    // Add mock meta info
+    try {
+      const meta = MetaInfo.builder()
+        .udf1("subscription")
+        .udf2("Test Plan")
+        .udf3("test_user_123")
+        .build();
+      requestBuilder = requestBuilder.metaInfo(meta);
+      console.log('Added meta info.');
+    } catch (e) {
+      console.error('MetaInfo builder error:', e);
+    }
+
+    requestBuilder = requestBuilder
+      .message('Lemo OTT Subscription Test')
+      .expireAfter(3600);
+
+    const request = requestBuilder.build();
+
+    console.log('Sending pay request to PhonePe Production API with all parameters...');
     const response = await client.pay(request);
 
     console.log('\nSuccess! PhonePe returned the redirect URL:');

@@ -1506,7 +1506,10 @@ app.post('/api/payment/phonepe/initiate-submission', async (req, res) => {
     const client = getPhonePeClient(merchantId, saltKey, saltIndex, env);
 
 
-    const serverUrl = getServerUrl(req);
+    let serverUrl = getServerUrl(req);
+    if (!isSandbox && (serverUrl.includes('localhost') || serverUrl.includes('127.0.0.1'))) {
+      serverUrl = 'https://lemoott.com';
+    }
     const redirectUrl = `${serverUrl}/api/payment/phonepe/callback-submission?txnId=${transactionId}`;
 
     let requestBuilder = StandardCheckoutPayRequest.builder()
@@ -3725,7 +3728,10 @@ app.post('/api/payment/phonepe/initiate', async (req, res) => {
     const env = isSandbox ? Env.SANDBOX : Env.PRODUCTION;
     const client = getPhonePeClient(merchantId, saltKey, saltIndex, env);
 
-    const serverUrl = getServerUrl(req);
+    let serverUrl = getServerUrl(req);
+    if (!isSandbox && (serverUrl.includes('localhost') || serverUrl.includes('127.0.0.1'))) {
+      serverUrl = 'https://lemoott.com';
+    }
     const redirectUrl = `${serverUrl}/api/payment/phonepe/callback?txnId=${transactionId}`;
     
     let requestBuilder = StandardCheckoutPayRequest.builder()
