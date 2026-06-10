@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+const mongoose = require('./server/node_modules/mongoose');
 const { StandardCheckoutClient, Env, StandardCheckoutPayRequest } = require('./server/node_modules/@phonepe-pg/pg-sdk-node');
 
 async function testLivePhonePe() {
