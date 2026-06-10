@@ -36,8 +36,9 @@ const getServerUrl = (req) => {
   return `${isHttps ? 'https' : 'http'}://${host}`;
 };
 
-const getPhonePeCredentials = (gw) => {
-  const hasDbSettings = !!gw?.settings?.merchantId;
+const getPhonePeCredentials = (gw, req) => {
+  const useEnvSettings = process.env.PHONEPE_ENV !== undefined;
+  const hasDbSettings = !useEnvSettings && !!gw?.settings?.merchantId;
   let isSandbox;
   if (hasDbSettings) {
     const val = gw?.settings?.isSandbox;
@@ -69,18 +70,6 @@ const getPhonePeCredentials = (gw) => {
     saltIndex = 1;
   }
 
-  // Base64 decode saltKey if it's base64 encoded
-  if (saltKey && !saltKey.includes('-')) {
-    try {
-      const decoded = Buffer.from(saltKey, 'base64').toString('utf8');
-      if (decoded.includes('-')) {
-        saltKey = decoded;
-      }
-    } catch (e) {
-      // ignore
-    }
-  }
-
   // Handle case where saltKey includes index suffix (e.g. key###1)
   if (saltKey && saltKey.includes('###')) {
     const parts = saltKey.split('###');
@@ -90,11 +79,11 @@ const getPhonePeCredentials = (gw) => {
     }
   }
 
-  // Auto-fallback to standard PhonePe Sandbox credentials in test mode
-  // to ensure test transactions always succeed, regardless of production keys entered.
-  if (isSandbox) {
-    merchantId = 'PGTESTPAYUAT';
-    saltKey = '099eb0cd-02cf-4e2a-8aca-3e6c6aff0399';
+  // Fallback to standard sandbox credentials ONLY if merchantId is empty/missing
+  // or is a standard test merchant ID.
+  if (isSandbox && (!merchantId || merchantId === 'PGTESTPAYUAT' || merchantId === 'PGTESTPAYUAT86')) {
+    merchantId = 'PGTESTPAYUAT86';
+    saltKey = '96434309-7796-489d-8924-ab56988a6076';
     saltIndex = 1;
   }
 
@@ -1477,7 +1466,7 @@ app.post('/api/payment/phonepe/initiate-submission', async (req, res) => {
     const gw = await PaymentGateway.findOne({ name: 'PhonePe' });
     if (!gw || gw.status !== 'Active') return res.status(400).json({ message: 'PhonePe gateway is not active. Please contact admin.' });
 
-    const { merchantId, saltKey, saltIndex, isSandbox } = getPhonePeCredentials(gw);
+    const { merchantId, saltKey, saltIndex, isSandbox } = getPhonePeCredentials(gw, req);
     console.log('[PhonePe Submission] merchantId:', merchantId, '| isSandbox:', isSandbox, '| saltKey:', saltKey ? `${saltKey.substring(0, 5)}...${saltKey.substring(saltKey.length - 5)}` : 'null', '| saltIndex:', saltIndex);
 
     if (!merchantId || !saltKey) {
@@ -1608,7 +1597,7 @@ app.all('/api/payment/phonepe/callback-submission', async (req, res) => {
         const PaymentGateway = require('./models/PaymentGateway');
         const gw = await PaymentGateway.findOne({ name: 'PhonePe' });
         if (gw) {
-          const { merchantId, saltKey, saltIndex, isSandbox } = getPhonePeCredentials(gw);
+          const { merchantId, saltKey, saltIndex, isSandbox } = getPhonePeCredentials(gw, req);
 
           const { StandardCheckoutClient, Env } = require('@phonepe-pg/pg-sdk-node');
           const env = isSandbox ? Env.SANDBOX : Env.PRODUCTION;
@@ -3613,7 +3602,7 @@ app.get('/api/payment/phonepe/debug-config', async (req, res) => {
   try {
     const PaymentGateway = require('./models/PaymentGateway');
     const gw = await PaymentGateway.findOne({ name: 'PhonePe' });
-    const creds = getPhonePeCredentials(gw);
+    const creds = getPhonePeCredentials(gw, req);
     res.json({
       dbSettings: gw?.settings,
       resolvedCredentials: {
@@ -3674,7 +3663,7 @@ app.post('/api/payment/phonepe/initiate', async (req, res) => {
     const gw = await PaymentGateway.findOne({ name: 'PhonePe' });
     if (!gw || gw.status !== 'Active') return res.status(400).json({ message: 'PhonePe is not active' });
 
-    const { merchantId, saltKey, saltIndex, isSandbox } = getPhonePeCredentials(gw);
+    const { merchantId, saltKey, saltIndex, isSandbox } = getPhonePeCredentials(gw, req);
 
     const transactionId = 'TXN_' + Date.now() + Math.random().toString(36).substring(2, 7).toUpperCase();
 
@@ -3804,7 +3793,7 @@ app.all('/api/payment/phonepe/callback', async (req, res) => {
       const PaymentGateway = require('./models/PaymentGateway');
       const gw = await PaymentGateway.findOne({ name: 'PhonePe' });
       if (gw) {
-        const { merchantId, saltKey, saltIndex, isSandbox } = getPhonePeCredentials(gw);
+        const { merchantId, saltKey, saltIndex, isSandbox } = getPhonePeCredentials(gw, req);
         
         const { StandardCheckoutClient, Env } = require('@phonepe-pg/pg-sdk-node');
         const env = isSandbox ? Env.SANDBOX : Env.PRODUCTION;
