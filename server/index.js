@@ -57,12 +57,21 @@ const getPhonePeCredentials = (gw) => {
     }
   }
 
+  // Handle case where saltKey includes index suffix (e.g. key###1)
+  if (saltKey && saltKey.includes('###')) {
+    const parts = saltKey.split('###');
+    saltKey = parts[0];
+    if (parts[1]) {
+      saltIndex = parseInt(parts[1]);
+    }
+  }
+
   // Auto-fallback to standard PhonePe Sandbox credentials in test mode
-  // if no custom sandbox credentials are set or if the configured key is the production one.
+  // if no custom sandbox credentials are set or if the configured key is a production one.
   if (isSandbox) {
-    if (!merchantId || merchantId === 'M23BOWZSDX87L_2602051537' || merchantId === '') {
-      merchantId = 'PGPLAYMERCHANT';
-      saltKey = '099eb0cd-02cf-4e2a-8aca-3e6c6aff0399';
+    if (!merchantId || !merchantId.startsWith('PGTEST') || merchantId === '') {
+      merchantId = 'PGTESTPAYUAT86';
+      saltKey = '96434309-7796-489d-8924-ab56988a6076';
       saltIndex = 1;
     }
   }
@@ -70,15 +79,16 @@ const getPhonePeCredentials = (gw) => {
   return { merchantId, saltKey, saltIndex, isSandbox };
 };
 
-const getPhonePeClient = (merchantId, saltKey, saltIndex, env, StandardCheckoutClient) => {
-  try {
-    return StandardCheckoutClient.getInstance(merchantId, saltKey, saltIndex, env);
-  } catch (err) {
-    if (err.message && err.message.includes('Cannot re-initialize')) {
-      return StandardCheckoutClient.getInstance();
+const getPhonePeClient = (merchantId, saltKey, saltIndex, env) => {
+  // Clear require cache for the PhonePe SDK to bypass client re-initialization restrictions
+  Object.keys(require.cache).forEach((key) => {
+    if (key.includes('@phonepe-pg/pg-sdk-node')) {
+      delete require.cache[key];
     }
-    throw err;
-  }
+  });
+
+  const { StandardCheckoutClient } = require('@phonepe-pg/pg-sdk-node');
+  return StandardCheckoutClient.getInstance(merchantId, saltKey, saltIndex, env);
 };
 
 // Enable Mongoose buffering with a reasonable timeout
@@ -1470,7 +1480,7 @@ app.post('/api/payment/phonepe/initiate-submission', async (req, res) => {
 
     const { StandardCheckoutClient, Env, StandardCheckoutPayRequest } = require('@phonepe-pg/pg-sdk-node');
     const env = isSandbox ? Env.SANDBOX : Env.PRODUCTION;
-    const client = getPhonePeClient(merchantId, saltKey, saltIndex, env, StandardCheckoutClient);
+    const client = getPhonePeClient(merchantId, saltKey, saltIndex, env);
 
 
     const serverUrl = getServerUrl(req);
@@ -1543,7 +1553,7 @@ app.all('/api/payment/phonepe/callback-submission', async (req, res) => {
 
           const { StandardCheckoutClient, Env } = require('@phonepe-pg/pg-sdk-node');
           const env = isSandbox ? Env.SANDBOX : Env.PRODUCTION;
-          const client = getPhonePeClient(merchantId, saltKey, saltIndex, env, StandardCheckoutClient);
+          const client = getPhonePeClient(merchantId, saltKey, saltIndex, env);
 
           const statusRes = await client.getOrderStatus(txnId);
           console.log('PhonePe order status response:', JSON.stringify(statusRes));
@@ -3636,7 +3646,7 @@ app.post('/api/payment/phonepe/initiate', async (req, res) => {
     const { StandardCheckoutClient, Env, StandardCheckoutPayRequest } = require('@phonepe-pg/pg-sdk-node');
     
     const env = isSandbox ? Env.SANDBOX : Env.PRODUCTION;
-    const client = getPhonePeClient(merchantId, saltKey, saltIndex, env, StandardCheckoutClient);
+    const client = getPhonePeClient(merchantId, saltKey, saltIndex, env);
 
     const serverUrl = getServerUrl(req);
     const redirectUrl = `${serverUrl}/api/payment/phonepe/callback?txnId=${transactionId}`;
@@ -3684,7 +3694,7 @@ app.all('/api/payment/phonepe/callback', async (req, res) => {
         
         const { StandardCheckoutClient, Env } = require('@phonepe-pg/pg-sdk-node');
         const env = isSandbox ? Env.SANDBOX : Env.PRODUCTION;
-        const client = getPhonePeClient(merchantId, saltKey, saltIndex, env, StandardCheckoutClient);
+        const client = getPhonePeClient(merchantId, saltKey, saltIndex, env);
         
         try {
           const statusRes = await client.getOrderStatus(txnId);
