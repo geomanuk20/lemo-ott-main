@@ -38,9 +38,13 @@ const getServerUrl = (req) => {
 
 const getPhonePeCredentials = (gw) => {
   const hasDbSettings = !!gw?.settings?.merchantId;
-  const isSandbox = hasDbSettings 
-    ? (gw?.settings?.isSandbox !== false)
-    : (process.env.PHONEPE_ENV || 'SANDBOX').toUpperCase() !== 'PRODUCTION';
+  let isSandbox;
+  if (hasDbSettings) {
+    const val = gw?.settings?.isSandbox;
+    isSandbox = (val !== false && val !== 'false' && val !== 0 && val !== '0' && val !== undefined);
+  } else {
+    isSandbox = (process.env.PHONEPE_ENV || 'SANDBOX').toUpperCase() !== 'PRODUCTION';
+  }
 
   let merchantId;
   let saltKey;
