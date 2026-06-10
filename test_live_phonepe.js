@@ -1,0 +1,55 @@
+const mongoose = require('mongoose');
+const { StandardCheckoutClient, Env, StandardCheckoutPayRequest } = require('./server/node_modules/@phonepe-pg/pg-sdk-node');
+
+async function testLivePhonePe() {
+  try {
+    console.log('Connecting to MongoDB Atlas...');
+    await mongoose.connect('mongodb+srv://geomanuk20_db_user:6w2GRqYm7DMfOXiB@video.lukedio.mongodb.net/video');
+    console.log('Connected!');
+
+    const PaymentGateway = require('./server/models/PaymentGateway');
+    const gw = await PaymentGateway.findOne({ name: 'PhonePe' });
+
+    if (!gw) {
+      console.log('Error: PhonePe gateway not found in DB!');
+      return;
+    }
+
+    console.log('Current DB Settings:', {
+      merchantId: gw.settings.merchantId,
+      isSandbox: gw.settings.isSandbox,
+      publishableKeyLength: gw.settings.publishableKey ? gw.settings.publishableKey.length : 0,
+      secretKey: gw.settings.secretKey
+    });
+
+    const merchantId = gw.settings.merchantId;
+    const saltKey = gw.settings.publishableKey;
+    const saltIndex = parseInt(gw.settings.secretKey || '1');
+
+    console.log('\nInitializing PhonePe client in Env.PRODUCTION...');
+    const client = StandardCheckoutClient.getInstance(merchantId, saltKey, saltIndex, Env.PRODUCTION);
+
+    const transactionId = 'TXN_TEST_' + Date.now();
+    console.log('Created transaction ID:', transactionId);
+
+    const request = StandardCheckoutPayRequest.builder()
+      .merchantOrderId(transactionId)
+      .amount(100) // ₹1.00 (100 paise)
+      .redirectUrl('https://lemoott.com/api/payment/phonepe/callback')
+      .build();
+
+    console.log('Sending pay request to PhonePe Production API...');
+    const response = await client.pay(request);
+
+    console.log('\nSuccess! PhonePe returned the redirect URL:');
+    console.log(response.redirectUrl);
+
+  } catch (error) {
+    console.error('\nError initiating live payment:', error.response?.data || error.message);
+  } finally {
+    await mongoose.connection.close();
+    console.log('DB connection closed.');
+  }
+}
+
+testLivePhonePe();
