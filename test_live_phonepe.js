@@ -34,20 +34,8 @@ async function testLivePhonePe() {
     console.log('Sending pay request to PhonePe Production API...');
     const response = await client.pay(request);
 
-    const originalUrl = response.redirectUrl;
-    console.log('\nOriginal URL from PhonePe:');
-    console.log(originalUrl);
-
-    // Force replace mercury-t2 with web.phonepe.com
-    let modifiedUrl = originalUrl;
-    if (originalUrl && originalUrl.includes('mercury-t2.phonepe.com')) {
-      modifiedUrl = originalUrl.replace('mercury-t2.phonepe.com', 'web.phonepe.com');
-    } else if (originalUrl && originalUrl.includes('mercury.phonepe.com')) {
-      modifiedUrl = originalUrl.replace('mercury.phonepe.com', 'web.phonepe.com');
-    }
-
-    console.log('\nModified Redirect URL (forced to web.phonepe.com):');
-    console.log(modifiedUrl);
+    console.log('\nSuccess! PhonePe returned the redirect URL:');
+    console.log(response.redirectUrl);
 
   } catch (error) {
     console.error('\nError initiating live payment:', error.response?.data || error.message);
