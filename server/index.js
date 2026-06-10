@@ -3601,6 +3601,26 @@ app.post('/api/payment/free-success', async (req, res) => {
   }
 });
 
+// PhonePe Config Debugger Route
+app.get('/api/payment/phonepe/debug-config', async (req, res) => {
+  try {
+    const PaymentGateway = require('./models/PaymentGateway');
+    const gw = await PaymentGateway.findOne({ name: 'PhonePe' });
+    const creds = getPhonePeCredentials(gw);
+    res.json({
+      dbSettings: gw?.settings,
+      resolvedCredentials: {
+        merchantId: creds.merchantId,
+        isSandbox: creds.isSandbox,
+        saltKeyLength: creds.saltKey ? creds.saltKey.length : 0,
+        saltIndex: creds.saltIndex
+      }
+    });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // PhonePe Initiate Payment
 app.post('/api/payment/phonepe/initiate', async (req, res) => {
   try {
