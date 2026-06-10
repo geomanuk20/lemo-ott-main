@@ -66,15 +66,7 @@ const getPhonePeCredentials = (gw) => {
     }
   }
 
-  // Auto-fallback to standard PhonePe Sandbox credentials in test mode
-  // if no custom sandbox credentials are set or if the configured key is a production one.
-  if (isSandbox) {
-    if (!merchantId || !merchantId.startsWith('PGTEST') || merchantId === '') {
-      merchantId = 'PGTESTPAYUAT86';
-      saltKey = '96434309-7796-489d-8924-ab56988a6076';
-      saltIndex = 1;
-    }
-  }
+
 
   return { merchantId, saltKey, saltIndex, isSandbox };
 };
