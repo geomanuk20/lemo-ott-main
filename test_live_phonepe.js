@@ -15,13 +15,6 @@ async function testLivePhonePe() {
       return;
     }
 
-    console.log('Current DB Settings:', {
-      merchantId: gw.settings.merchantId,
-      isSandbox: gw.settings.isSandbox,
-      publishableKeyLength: gw.settings.publishableKey ? gw.settings.publishableKey.length : 0,
-      secretKey: gw.settings.secretKey
-    });
-
     const merchantId = gw.settings.merchantId;
     const saltKey = gw.settings.publishableKey;
     const saltIndex = parseInt(gw.settings.secretKey || '1');
@@ -41,8 +34,20 @@ async function testLivePhonePe() {
     console.log('Sending pay request to PhonePe Production API...');
     const response = await client.pay(request);
 
-    console.log('\nSuccess! PhonePe returned the redirect URL:');
-    console.log(response.redirectUrl);
+    const originalUrl = response.redirectUrl;
+    console.log('\nOriginal URL from PhonePe:');
+    console.log(originalUrl);
+
+    // Force replace mercury-t2 with web.phonepe.com
+    let modifiedUrl = originalUrl;
+    if (originalUrl && originalUrl.includes('mercury-t2.phonepe.com')) {
+      modifiedUrl = originalUrl.replace('mercury-t2.phonepe.com', 'web.phonepe.com');
+    } else if (originalUrl && originalUrl.includes('mercury.phonepe.com')) {
+      modifiedUrl = originalUrl.replace('mercury.phonepe.com', 'web.phonepe.com');
+    }
+
+    console.log('\nModified Redirect URL (forced to web.phonepe.com):');
+    console.log(modifiedUrl);
 
   } catch (error) {
     console.error('\nError initiating live payment:', error.response?.data || error.message);
