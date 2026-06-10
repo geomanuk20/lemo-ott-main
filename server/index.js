@@ -685,11 +685,11 @@ app.post('/api/login', async (req, res) => {
     const normalizedEmail = email.trim().toLowerCase();
 
     // Enforce email domain checks for login
-    const isAdminDomain = normalizedEmail.endsWith('@video.com') || normalizedEmail === 'admin@video.com';
+    const isAdminDomain = normalizedEmail.endsWith('@video.com') || normalizedEmail.endsWith('@admin.com') || normalizedEmail === 'admin@video.com';
     const isGmailDomain = normalizedEmail.endsWith('@gmail.com');
 
     if (!isAdminDomain && !isGmailDomain) {
-      return res.status(400).json({ message: 'Only @gmail.com email addresses are allowed for users, and admin@video.com for admin login.' });
+      return res.status(400).json({ message: 'Only @gmail.com email addresses are allowed for users, and admin@video.com or @admin.com for admin login.' });
     }
 
     const user = await User.findOne({ email: normalizedEmail });
