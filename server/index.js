@@ -1497,7 +1497,7 @@ app.post('/api/payment/phonepe/initiate-submission', async (req, res) => {
 
     const amountInPaise = 500 * 100; // Fixed: ₹500
 
-    const { StandardCheckoutClient, Env, StandardCheckoutPayRequest } = require('@phonepe-pg/pg-sdk-node');
+    const { StandardCheckoutClient, Env, StandardCheckoutPayRequest, MetaInfo, PrefillUserLoginDetails } = require('@phonepe-pg/pg-sdk-node');
     const env = isSandbox ? Env.SANDBOX : Env.PRODUCTION;
     const client = getPhonePeClient(merchantId, saltKey, saltIndex, env);
 
@@ -1505,11 +1505,44 @@ app.post('/api/payment/phonepe/initiate-submission', async (req, res) => {
     const serverUrl = getServerUrl(req);
     const redirectUrl = `${serverUrl}/api/payment/phonepe/callback-submission?txnId=${transactionId}`;
 
-    const request = StandardCheckoutPayRequest.builder()
+    let requestBuilder = StandardCheckoutPayRequest.builder()
       .merchantOrderId(transactionId)
       .amount(amountInPaise)
-      .redirectUrl(redirectUrl)
-      .build();
+      .redirectUrl(redirectUrl);
+
+    // Build prefill user login details if phone is available
+    const submissionPhone = req.body.submissionData?.phone;
+    if (submissionPhone) {
+      const phoneClean = submissionPhone.replace(/\D/g, '').slice(-10);
+      if (phoneClean.length === 10) {
+        try {
+          const prefill = PrefillUserLoginDetails.builder()
+              .phoneNumber(phoneClean)
+              .build();
+          requestBuilder = requestBuilder.prefillUserLoginDetails(prefill);
+        } catch (e) {
+          console.error("Prefill details builder error:", e);
+        }
+      }
+    }
+
+    // Build metaInfo
+    try {
+      const meta = MetaInfo.builder()
+          .udf1("submission")
+          .udf2(req.body.submissionData?.contentName || "film")
+          .udf3(req.body.submissionData?.email || "email")
+          .build();
+      requestBuilder = requestBuilder.metaInfo(meta);
+    } catch (e) {
+      console.error("MetaInfo builder error:", e);
+    }
+
+    requestBuilder = requestBuilder
+        .message(`Lemo OTT Film Submission: ${req.body.submissionData?.contentName || 'Content'}`)
+        .expireAfter(3600);
+
+    const request = requestBuilder.build();
 
     const response = await client.pay(request);
 
@@ -3663,7 +3696,7 @@ app.post('/api/payment/phonepe/initiate', async (req, res) => {
     const amountInPaise = Math.round(numericPrice * 100);
     
     // Using PhonePe V2 SDK
-    const { StandardCheckoutClient, Env, StandardCheckoutPayRequest } = require('@phonepe-pg/pg-sdk-node');
+    const { StandardCheckoutClient, Env, StandardCheckoutPayRequest, MetaInfo, PrefillUserLoginDetails } = require('@phonepe-pg/pg-sdk-node');
     
     const env = isSandbox ? Env.SANDBOX : Env.PRODUCTION;
     const client = getPhonePeClient(merchantId, saltKey, saltIndex, env);
@@ -3671,12 +3704,43 @@ app.post('/api/payment/phonepe/initiate', async (req, res) => {
     const serverUrl = getServerUrl(req);
     const redirectUrl = `${serverUrl}/api/payment/phonepe/callback?txnId=${transactionId}`;
     
-    // The SDK builder for V2
-    const request = StandardCheckoutPayRequest.builder()
+    let requestBuilder = StandardCheckoutPayRequest.builder()
         .merchantOrderId(transactionId)
         .amount(amountInPaise)
-        .redirectUrl(redirectUrl)
-        .build();
+        .redirectUrl(redirectUrl);
+
+    // Build prefill user login details if phone is available
+    if (user.phone) {
+      const phoneClean = user.phone.replace(/\D/g, '').slice(-10);
+      if (phoneClean.length === 10) {
+        try {
+          const prefill = PrefillUserLoginDetails.builder()
+              .phoneNumber(phoneClean)
+              .build();
+          requestBuilder = requestBuilder.prefillUserLoginDetails(prefill);
+        } catch (e) {
+          console.error("Prefill details builder error:", e);
+        }
+      }
+    }
+
+    // Build metaInfo
+    try {
+      const meta = MetaInfo.builder()
+          .udf1("subscription")
+          .udf2(plan.planName)
+          .udf3(user._id.toString())
+          .build();
+      requestBuilder = requestBuilder.metaInfo(meta);
+    } catch (e) {
+      console.error("MetaInfo builder error:", e);
+    }
+
+    requestBuilder = requestBuilder
+        .message(`Lemo OTT Subscription: ${plan.planName}`)
+        .expireAfter(3600);
+
+    const request = requestBuilder.build();
 
     const response = await client.pay(request);
     
