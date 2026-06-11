@@ -47,7 +47,7 @@ const getPhonePeCredentials = (gw, req) => {
   let isSandbox;
   if (hasDbSettings) {
     const val = gw?.settings?.isSandbox;
-    isSandbox = (val !== false && val !== 'false' && val !== 0 && val !== '0' && val !== undefined);
+    isSandbox = (val === true || val === 'true' || val === undefined);
   } else {
     isSandbox = (process.env.PHONEPE_ENV || 'SANDBOX').toUpperCase() !== 'PRODUCTION';
   }
