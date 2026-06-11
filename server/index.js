@@ -20,8 +20,8 @@ const getClientUrl = (req) => {
   if (host.includes('localhost') || host.includes('127.0.0.1')) {
     return 'http://localhost:5173';
   }
-  const isHttps = req && (req.secure || req.headers['x-forwarded-proto'] === 'https');
-  return `${isHttps ? 'https' : 'http'}://${host}`;
+  // For production/live environments, always force HTTPS protocol
+  return `https://${host}`;
 };
 
 const getServerUrl = (req) => {
@@ -32,8 +32,8 @@ const getServerUrl = (req) => {
   if (host.includes('localhost') || host.includes('127.0.0.1')) {
     return 'http://localhost:5001';
   }
-  const isHttps = req && (req.secure || req.headers['x-forwarded-proto'] === 'https');
-  return `${isHttps ? 'https' : 'http'}://${host}`;
+  // For production/live environments, always force HTTPS protocol
+  return `https://${host}`;
 };
 
 const getPhonePeCredentials = (gw, req) => {
