@@ -40,9 +40,12 @@ const getPhonePeCredentials = (gw, req) => {
   const host = (req && (req.headers['x-forwarded-host'] || req.get('host'))) || '';
   const isLocal = host.includes('localhost') || host.includes('127.0.0.1');
 
-  // Prioritize DB settings on production server (not localhost) if they are configured.
-  // On local environment, we can use the env settings to override and force UAT/Sandbox.
-  const useEnvSettings = isLocal && process.env.PHONEPE_ENV !== undefined;
+  // If environment variables are explicitly configured in .env, prioritize them.
+  // This allows easy environment-based configuration (.env) without database override.
+  const envMerchantId = process.env.PHONEPE_CLIENT_ID || process.env.PHONEPE_MERCHANT_ID;
+  const envSaltKey = process.env.PHONEPE_CLIENT_SECRET || process.env.PHONEPE_SALT_KEY;
+  const useEnvSettings = isLocal || (!!envMerchantId && !!envSaltKey);
+
   const hasDbSettings = !useEnvSettings && !!gw?.settings?.merchantId;
   let isSandbox;
   if (hasDbSettings) {
@@ -66,8 +69,8 @@ const getPhonePeCredentials = (gw, req) => {
     saltIndex = parseInt(gw.settings.secretKey || '1');
   } else {
     // Fallback to .env environment variables (supports both V2 and V1 naming)
-    merchantId = process.env.PHONEPE_CLIENT_ID || process.env.PHONEPE_MERCHANT_ID;
-    saltKey = process.env.PHONEPE_CLIENT_SECRET || process.env.PHONEPE_SALT_KEY;
+    merchantId = envMerchantId;
+    saltKey = envSaltKey;
     saltIndex = parseInt(process.env.PHONEPE_CLIENT_VERSION || process.env.PHONEPE_SALT_INDEX || '1');
   }
 
@@ -384,7 +387,7 @@ const localUpload = multer({ storage: diskStorage });
 // Middleware
 app.use(cors());
 app.use((req, res, next) => {
-  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Referrer-Policy', 'origin');
   next();
 });
 app.use(express.json({ limit: '50mb' }));
