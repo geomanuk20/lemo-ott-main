@@ -47,12 +47,16 @@ const getPhonePeCredentials = (gw, req) => {
   const useEnvSettings = isLocal || (!!envMerchantId && !!envSaltKey);
 
   const hasDbSettings = !useEnvSettings && !!gw?.settings?.merchantId;
+  
+  // Enforce environment control from process.env if explicitly set (master override)
   let isSandbox;
-  if (hasDbSettings) {
+  if (process.env.PHONEPE_ENV !== undefined) {
+    isSandbox = process.env.PHONEPE_ENV.toUpperCase() !== 'PRODUCTION';
+  } else if (hasDbSettings) {
     const val = gw?.settings?.isSandbox;
     isSandbox = (val === true || val === 'true' || val === undefined);
   } else {
-    isSandbox = (process.env.PHONEPE_ENV || 'SANDBOX').toUpperCase() !== 'PRODUCTION';
+    isSandbox = true;
   }
 
   let merchantId;
