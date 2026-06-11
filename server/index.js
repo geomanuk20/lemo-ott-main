@@ -37,7 +37,12 @@ const getServerUrl = (req) => {
 };
 
 const getPhonePeCredentials = (gw, req) => {
-  const useEnvSettings = process.env.PHONEPE_ENV !== undefined;
+  const host = (req && (req.headers['x-forwarded-host'] || req.get('host'))) || '';
+  const isLocal = host.includes('localhost') || host.includes('127.0.0.1');
+
+  // Prioritize DB settings on production server (not localhost) if they are configured.
+  // On local environment, we can use the env settings to override and force UAT/Sandbox.
+  const useEnvSettings = isLocal && process.env.PHONEPE_ENV !== undefined;
   const hasDbSettings = !useEnvSettings && !!gw?.settings?.merchantId;
   let isSandbox;
   if (hasDbSettings) {
