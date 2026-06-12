@@ -1,5 +1,6 @@
 const mongoose = require('./server/node_modules/mongoose');
 const { StandardCheckoutClient, Env, StandardCheckoutPayRequest, MetaInfo, PrefillUserLoginDetails } = require('./server/node_modules/@phonepe-pg/pg-sdk-node');
+require('dotenv').config({ path: './server/.env' });
 
 async function testLivePhonePe() {
   try {
@@ -10,17 +11,35 @@ async function testLivePhonePe() {
     const PaymentGateway = require('./server/models/PaymentGateway');
     const gw = await PaymentGateway.findOne({ name: 'PhonePe' });
 
-    if (!gw) {
-      console.log('Error: PhonePe gateway not found in DB!');
+    // Load from .env or fallback to DB
+    const envMerchantId = process.env.PHONEPE_CLIENT_ID || process.env.PHONEPE_MERCHANT_ID;
+    const envSaltKey = process.env.PHONEPE_CLIENT_SECRET || process.env.PHONEPE_SALT_KEY;
+    const envSaltIndex = parseInt(process.env.PHONEPE_CLIENT_VERSION || process.env.PHONEPE_SALT_INDEX || '1');
+
+    const useEnv = !!envMerchantId && !!envSaltKey;
+    const merchantId = useEnv ? envMerchantId : gw?.settings?.merchantId;
+    let saltKey = useEnv ? envSaltKey : gw?.settings?.publishableKey;
+    let saltIndex = useEnv ? envSaltIndex : parseInt(gw?.settings?.secretKey || '1');
+
+    if (isNaN(saltIndex)) saltIndex = 1;
+
+    if (saltKey && saltKey.includes('###')) {
+      const parts = saltKey.split('###');
+      saltKey = parts[0];
+      if (parts[1]) saltIndex = parseInt(parts[1]);
+    }
+
+    if (!merchantId || !saltKey) {
+      console.log('Error: PhonePe credentials not configured!');
       return;
     }
 
-    const merchantId = gw.settings.merchantId;
-    const saltKey = gw.settings.publishableKey;
-    const saltIndex = parseInt(gw.settings.secretKey || '1');
+    const isSandbox = (process.env.PHONEPE_ENV || 'SANDBOX').toUpperCase() !== 'PRODUCTION';
+    const env = isSandbox ? Env.SANDBOX : Env.PRODUCTION;
 
-    console.log('\nInitializing PhonePe client in Env.PRODUCTION...');
-    const client = StandardCheckoutClient.getInstance(merchantId, saltKey, saltIndex, Env.PRODUCTION);
+    console.log(`\nInitializing PhonePe client in Env.${isSandbox ? 'SANDBOX' : 'PRODUCTION'}...`);
+    console.log(`Using Merchant ID: ${merchantId}`);
+    const client = StandardCheckoutClient.getInstance(merchantId, saltKey, saltIndex, env);
 
     const transactionId = 'TXN_TEST_' + Date.now();
     console.log('Created transaction ID:', transactionId);
