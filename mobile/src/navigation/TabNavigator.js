@@ -42,9 +42,7 @@ export default function TabNavigator() {
           backgroundColor: '#121212',
           borderTopColor: '#1a1a1a',
           borderTopWidth: 1,
-          paddingBottom: 5,
           paddingTop: 5,
-          height: 60,
         },
         tabBarActiveTintColor: '#b3d332', // Brand Lime Accent
         tabBarInactiveTintColor: '#8e8e93',
