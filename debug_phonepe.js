@@ -31,7 +31,7 @@ const debugPhonePe = async () => {
     // saltKey: '099eb0cd-02cf-4e2a-8aca-3e6c6aff0399'
     // saltIndex: '1'
 
-    const hostUrl = isSandbox ? 'https://api-preprod.phonepe.com/apis/pg-sandbox' : 'https://api.phonepe.com/apis/hermes';
+    const hostUrl = isSandbox ? 'https://api-preprod.phonepe.com/apis/pg-sandbox' : 'https://api.phonepe.com/apis/pg';
     const transactionId = 'TXN_' + Date.now() + Math.random().toString(36).substring(2, 7).toUpperCase();
 
     const payload = {
