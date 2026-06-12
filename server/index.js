@@ -48,17 +48,6 @@ const getPhonePeCredentials = (gw, req) => {
 
   const hasDbSettings = !useEnvSettings && !!gw?.settings?.merchantId;
   
-  // Enforce environment control from process.env if explicitly set (master override)
-  let isSandbox;
-  if (process.env.PHONEPE_ENV !== undefined) {
-    isSandbox = process.env.PHONEPE_ENV.toUpperCase() !== 'PRODUCTION';
-  } else if (hasDbSettings) {
-    const val = gw?.settings?.isSandbox;
-    isSandbox = (val === true || val === 'true' || val === undefined);
-  } else {
-    isSandbox = true;
-  }
-
   let merchantId;
   let saltKey;
   let saltIndex;
@@ -76,6 +65,18 @@ const getPhonePeCredentials = (gw, req) => {
     merchantId = envMerchantId;
     saltKey = envSaltKey;
     saltIndex = parseInt(process.env.PHONEPE_CLIENT_VERSION || process.env.PHONEPE_SALT_INDEX || '1');
+  }
+
+  // Enforce environment control from process.env if explicitly set (master override)
+  let isSandbox;
+  if (process.env.PHONEPE_ENV !== undefined) {
+    isSandbox = process.env.PHONEPE_ENV.toUpperCase() !== 'PRODUCTION';
+  } else if (hasDbSettings) {
+    const val = gw?.settings?.isSandbox;
+    isSandbox = (val === true || val === 'true' || val === undefined);
+  } else {
+    // Auto-detect production mode if Merchant ID does not start with PGTEST
+    isSandbox = !merchantId || merchantId.startsWith('PGTEST');
   }
 
   if (isNaN(saltIndex)) {
@@ -1559,7 +1560,11 @@ app.post('/api/payment/phonepe/initiate-submission', async (req, res) => {
     const response = await client.pay(request);
 
     if (response && response.redirectUrl) {
-      return res.json({ redirectUrl: response.redirectUrl });
+      let finalRedirectUrl = response.redirectUrl;
+      if (!isSandbox && finalRedirectUrl.includes('mercury-t2.phonepe.com')) {
+        finalRedirectUrl = finalRedirectUrl.replace('mercury-t2.phonepe.com', 'mercury.phonepe.com');
+      }
+      return res.json({ redirectUrl: finalRedirectUrl });
     } else {
       // Rollback the pending submission if PhonePe didn't give a URL
       await Submission.findByIdAndDelete(submission._id);
@@ -3780,7 +3785,11 @@ app.post('/api/payment/phonepe/initiate', async (req, res) => {
     const response = await client.pay(request);
     
     if (response && response.redirectUrl) {
-      return res.json({ redirectUrl: response.redirectUrl });
+      let finalRedirectUrl = response.redirectUrl;
+      if (!isSandbox && finalRedirectUrl.includes('mercury-t2.phonepe.com')) {
+        finalRedirectUrl = finalRedirectUrl.replace('mercury-t2.phonepe.com', 'mercury.phonepe.com');
+      }
+      return res.json({ redirectUrl: finalRedirectUrl });
     } else {
       return res.status(400).json({ message: 'Failed to initiate PhonePe V2 payment' });
     }

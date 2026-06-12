@@ -84,7 +84,11 @@ async function testLivePhonePe() {
     const response = await client.pay(request);
 
     console.log('\nSuccess! PhonePe returned the redirect URL:');
-    console.log(response.redirectUrl);
+    let finalRedirectUrl = response.redirectUrl;
+    if (!isSandbox && finalRedirectUrl.includes('mercury-t2.phonepe.com')) {
+      finalRedirectUrl = finalRedirectUrl.replace('mercury-t2.phonepe.com', 'mercury.phonepe.com');
+    }
+    console.log(finalRedirectUrl);
 
   } catch (error) {
     console.error('\nError initiating live payment:', error.response?.data || error.message);
