@@ -37,6 +37,42 @@ const stripHtml = (html) => {
     .trim();
 };
 
+const AvatarImage = ({ item, style }) => {
+  const name = typeof item === 'object' ? item.name : (item || '');
+  const imageUrl = typeof item === 'object' && item.image ? formatImageUrl(item.image) : null;
+  const [hasError, setHasError] = useState(!imageUrl || imageUrl.includes('placehold.co'));
+
+  useEffect(() => {
+    setHasError(!imageUrl || imageUrl.includes('placehold.co'));
+  }, [imageUrl]);
+
+  const getInitials = (fullName) => {
+    if (!fullName || typeof fullName !== 'string') return '?';
+    const parts = fullName.trim().split(/\s+/);
+    if (parts.length === 0) return '?';
+    if (parts.length === 1) {
+      return parts[0].substring(0, 2).toUpperCase();
+    }
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  };
+
+  if (hasError) {
+    return (
+      <View style={[style, styles.initialsAvatar]}>
+        <Text style={styles.initialsText}>{getInitials(name)}</Text>
+      </View>
+    );
+  }
+
+  return (
+    <Image
+      source={{ uri: imageUrl }}
+      style={style}
+      onError={() => setHasError(true)}
+    />
+  );
+};
+
 const formatViews = (count, docId = '') => {
   let num = parseInt(count, 10);
   if (isNaN(num) || num === 0) {
@@ -761,10 +797,9 @@ export default function DetailsScreen({ route, navigation }) {
                 keyExtractor={(item, idx) => idx.toString()}
                 renderItem={({ item }) => {
                   const directorName = typeof item === 'object' ? item.name : item;
-                  const directorImage = typeof item === 'object' && item.image ? formatImageUrl(item.image) : 'https://placehold.co/100/png?text=Director';
                   return (
                     <View style={styles.castCard}>
-                      <Image source={{ uri: directorImage }} style={styles.castAvatar} />
+                      <AvatarImage item={item} style={styles.castAvatar} />
                       <Text style={styles.castName} numberOfLines={2}>{directorName}</Text>
                     </View>
                   );
@@ -784,10 +819,9 @@ export default function DetailsScreen({ route, navigation }) {
                 keyExtractor={(item, idx) => idx.toString()}
                 renderItem={({ item }) => {
                   const castName = typeof item === 'object' ? item.name : item;
-                  const castImage = typeof item === 'object' && item.image ? formatImageUrl(item.image) : 'https://placehold.co/100/png?text=Cast';
                   return (
                     <View style={styles.castCard}>
-                      <Image source={{ uri: castImage }} style={styles.castAvatar} />
+                      <AvatarImage item={item} style={styles.castAvatar} />
                       <Text style={styles.castName} numberOfLines={2}>{castName}</Text>
                     </View>
                   );
@@ -1317,6 +1351,18 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     backgroundColor: '#1c1c1e',
     marginBottom: 6,
+  },
+  initialsAvatar: {
+    backgroundColor: '#2a2c31',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  initialsText: {
+    color: '#b3d332',
+    fontSize: 18,
+    fontWeight: '900',
   },
   castName: {
     color: '#ffffff',

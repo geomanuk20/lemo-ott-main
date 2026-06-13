@@ -559,7 +559,22 @@ const FrontendCheckout = () => {
     @keyframes slideDown { from { transform: translate(-50%, -150%); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
 
     @media (max-width: 900px) {
-     .checkout-content-v { grid-template-columns: 1fr; }
+     .checkout-content-v { grid-template-columns: 1fr; gap: 25px; }
+     .summary-section-v, .payment-section-v { padding: 30px; }
+    }
+
+    @media (max-width: 600px) {
+     .fe-checkout-page-v { padding: 100px 3% 60px; }
+     .summary-section-v, .payment-section-v { padding: 20px; border-radius: 12px; }
+     .checkout-header-v { margin-bottom: 30px; }
+     .checkout-header-v h1 { font-size: 1.8rem; }
+     .plan-summary-card-v { padding: 15px; gap: 12px; }
+     .plan-icon-v { width: 50px; height: 50px; }
+     .plan-details-v h3 { font-size: 1.1rem; }
+     .plan-price-v .price-v { font-size: 1.25rem; }
+     .coupon-input-group-v { flex-direction: column; }
+     .coupon-apply-btn-v, .coupon-remove-btn-v { padding: 12px 20px; width: 100%; min-height: 46px; }
+     .custom-alert-box-v { padding: 20px 30px; width: 90%; }
     }
    ` }} />
   </FrontendLayout>
