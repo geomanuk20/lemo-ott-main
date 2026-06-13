@@ -23,6 +23,9 @@ export default function StaticPagesScreen({ route, navigation }) {
         const response = await client.get('/pages');
         if (response.data) {
           let match = response.data.find(p => p.slug === slug);
+          if (!match && (slug === 'terms-of-use' || slug === 'terms-of-service' || slug === 'terms')) {
+            match = response.data.find(p => p.slug === 'terms-of-use' || p.slug === 'terms-of-service' || p.slug === 'terms');
+          }
           if (!match) {
             // Fallbacks for help-center and supported-devices
             if (slug === 'help-center') {

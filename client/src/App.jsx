@@ -95,6 +95,7 @@ import FrontendLogin from './pages/FrontendLogin';
 import ResetPassword from './pages/ResetPassword';
 import Watchlist from './pages/Watchlist';
 import FrontendPage from './pages/FrontendPage';
+import ScrollToTop from './components/ScrollToTop';
 import FrontendSubscription from './pages/FrontendSubscription';
 import FrontendCheckout from './pages/FrontendCheckout';
 import FrontendDetails from './pages/FrontendDetails';
@@ -401,6 +402,7 @@ function App() {
 
   return (
     <Router>
+      <ScrollToTop />
       <TokenValidator />
       <MaintenanceWrapper>
         <Routes>
@@ -428,10 +430,12 @@ function App() {
         <Route path="/about" element={<FrontendPage fixedSlug="about-us" />} />
         <Route path="/contact" element={<FrontendPage fixedSlug="contact-us" />} />
         <Route path="/privacy" element={<FrontendPage fixedSlug="privacy-policy" />} />
-        <Route path="/terms" element={<FrontendPage fixedSlug="terms-of-use" />} />
+        <Route path="/terms" element={<FrontendPage fixedSlug="terms-of-service" />} />
         <Route path="/faq" element={<FrontendPage fixedSlug="faq" />} />
         <Route path="/help" element={<FrontendPage fixedSlug="help-center" />} />
         <Route path="/devices" element={<FrontendPage fixedSlug="supported-devices" />} />
+        <Route path="/refund-policy" element={<FrontendPage fixedSlug="refund-policy" />} />
+        <Route path="/:slug" element={<FrontendPage />} />
 
         {/* Admin Routes */}
         <Route path="/admin/login" element={<Login />} />

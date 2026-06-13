@@ -11,8 +11,7 @@ const FrontendFooter = ({ settings = null }) => {
       try {
         const res = await fetch('/api/pages');
         const data = await res.json();
-        // Filter out the hardcoded pages so we don't have duplicates
-        const hardcodedSlugs = ['about-us', 'contact-us', 'privacy-policy', 'terms-of-use', 'faq', 'help-center', 'supported-devices'];
+        const hardcodedSlugs = ['about-us', 'contact-us', 'privacy-policy', 'terms-of-use', 'terms-of-service', 'faq', 'help-center', 'supported-devices', 'refund-policy'];
         const dynamicPages = data.filter(p => p.status === 'Active' && !hardcodedSlugs.includes(p.slug));
         setPages(dynamicPages);
       } catch (err) {
@@ -52,6 +51,7 @@ const FrontendFooter = ({ settings = null }) => {
               <Link to="/contact">Contact</Link>
               <Link to="/privacy">Privacy Policy</Link>
               <Link to="/terms">Terms of Service</Link>
+              <Link to="/refund-policy">Refund Policy</Link>
             </div>
             <div className="footer-col-v">
               <h4>SUPPORT & PAGES</h4>

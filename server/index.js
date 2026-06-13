@@ -2693,6 +2693,29 @@ const seedPages = async () => {
       await Page.insertMany(defaultPages);
       console.log('Default pages seeded');
     }
+
+    // Seed Refund Policy if missing
+    const refundPolicyExists = await Page.findOne({ slug: 'refund-policy' });
+    if (!refundPolicyExists) {
+      const refundPolicyContent = `
+        <h2>Refund Policy</h2>
+        <p>Last updated: June 13, 2026</p>
+        <p>Thank you for choosing Lemo OTT. If you are not entirely satisfied with your purchase, we are here to help.</p>
+        <h3>1. Subscription Refunds</h3>
+        <p>We offer a full refund within 7 days of your initial purchase if you have not streamed any content. Once content streaming has initiated, we cannot process a refund.</p>
+        <h3>2. Processing Time</h3>
+        <p>Approved refunds will be processed and credited back to your original payment method within 5-7 working days.</p>
+        <h3>3. Contact Us</h3>
+        <p>If you have any questions about our Refund Policy, please contact us at support@lemoott.com.</p>
+      `;
+      await Page.create({
+        title: 'Refund Policy',
+        slug: 'refund-policy',
+        content: refundPolicyContent,
+        status: 'Active'
+      });
+      console.log('Refund Policy page seeded');
+    }
   } catch (err) {
     console.error('Error seeding pages:', err);
   }

@@ -19,7 +19,13 @@ const FrontendPage = ({ fixedSlug = null }) => {
     // since the API currently only supports fetching all or by ID
     const response = await fetch('/api/pages');
     const pages = await response.json();
-    const foundPage = pages.find(p => p.slug === slug);
+     
+    // Find the page matching the slug, with fallback for terms of use / terms of service variants
+    let foundPage = pages.find(p => p.slug === slug);
+    if (!foundPage && (slug === 'terms-of-use' || slug === 'terms-of-service' || slug === 'terms')) {
+      foundPage = pages.find(p => p.slug === 'terms-of-use' || p.slug === 'terms-of-service' || p.slug === 'terms');
+    }
+     
     setPageData(foundPage || null);
    } catch (error) {
     console.error('Error fetching page data:', error);

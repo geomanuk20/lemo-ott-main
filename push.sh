@@ -3,7 +3,7 @@ echo "Staging all files..."
 git add .
 
 echo "Committing changes..."
-git commit -m "fix: PhonePe production integration and watermark admin check"
+git commit -m "fix: resolve refund policy and terms of service display issues, add scroll-to-top handler, and update mobile app layout"
 
 echo "Pushing to GitHub..."
 git push origin main

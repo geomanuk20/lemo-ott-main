@@ -289,9 +289,15 @@ export default function ProfileScreen({ navigation }) {
           </TouchableOpacity>
           <TouchableOpacity 
             style={styles.pageLinkRow} 
-            onPress={() => navigation.navigate('StaticPage', { title: 'Terms of Service', slug: 'terms-of-use' })}
+            onPress={() => navigation.navigate('StaticPage', { title: 'Terms of Service', slug: 'terms-of-service' })}
           >
             <Text style={styles.pageLinkText}>Terms of Service</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.pageLinkRow} 
+            onPress={() => navigation.navigate('StaticPage', { title: 'Refund Policy', slug: 'refund-policy' })}
+          >
+            <Text style={styles.pageLinkText}>Refund Policy</Text>
           </TouchableOpacity>
         </View>
 
