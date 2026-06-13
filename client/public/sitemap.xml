@@ -13,40 +13,48 @@
     </image:image>
   </url>
   <url>
-    <loc>https://lemoott.com/movies</loc>
-    <lastmod>2026-06-13</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
     <loc>https://lemoott.com/shows</loc>
     <lastmod>2026-06-13</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://lemoott.com/uploads/site_logo.png</image:loc>
+      <image:title>LEMO OTT Logo</image:title>
+      <image:caption>LEMO OTT - Watch TV Shows Online</image:caption>
+    </image:image>
   </url>
   <url>
     <loc>https://lemoott.com/live-tv</loc>
     <lastmod>2026-06-13</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://lemoott.com/sports</loc>
-    <lastmod>2026-06-13</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://lemoott.com/uploads/site_logo.png</image:loc>
+      <image:title>LEMO OTT Logo</image:title>
+      <image:caption>LEMO OTT - Watch Live TV Online</image:caption>
+    </image:image>
   </url>
   <url>
     <loc>https://lemoott.com/short-films</loc>
     <lastmod>2026-06-13</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://lemoott.com/uploads/site_logo.png</image:loc>
+      <image:title>LEMO OTT Logo</image:title>
+      <image:caption>LEMO OTT - Watch Short Films Online</image:caption>
+    </image:image>
   </url>
   <url>
     <loc>https://lemoott.com/web-series</loc>
     <lastmod>2026-06-13</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://lemoott.com/uploads/site_logo.png</image:loc>
+      <image:title>LEMO OTT Logo</image:title>
+      <image:caption>LEMO OTT - Watch Web Series Online</image:caption>
+    </image:image>
   </url>
   <url>
     <loc>https://lemoott.com/subscription</loc>
@@ -101,5 +109,11 @@
     <lastmod>2026-06-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://lemoott.com/refund-policy</loc>
+    <lastmod>2026-06-13</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.3</priority>
   </url>
 </urlset>
