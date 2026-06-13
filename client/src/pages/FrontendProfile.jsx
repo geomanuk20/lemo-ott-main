@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Mail, Phone, Shield, Edit2, CheckCircle2, XCircle, Loader2, Camera, Bookmark, LogOut, CreditCard, FileText, Calendar, Download, Eye } from 'lucide-react';
+import { User, Mail, Phone, Shield, Edit2, CheckCircle2, XCircle, Loader2, Camera, Bookmark, LogOut, CreditCard, FileText, Calendar, Download, Eye, ChevronDown } from 'lucide-react';
 import Loader from '../components/Loader';
 import FrontendLayout from '../components/FrontendLayout';
 import { logoutUser } from '../utils/logout';
@@ -28,6 +28,14 @@ const FrontendProfile = () => {
  const [currentPage, setCurrentPage] = useState(1);
  const itemsPerPage = 5;
  const [selectedTransaction, setSelectedTransaction] = useState(null);
+
+ const handleTabClick = (tab) => {
+    if (window.innerWidth <= 992) {
+      setActiveTab(activeTab === tab ? null : tab);
+    } else {
+      setActiveTab(tab);
+    }
+  };
 
  useEffect(() => {
   const fetchUserData = async () => {
@@ -150,189 +158,216 @@ const FrontendProfile = () => {
       </div>
 
       <div className="fe-profile-nav-v">
-       <button className={activeTab === 'account' ? 'active' : ''} onClick={() => setActiveTab('account')}><User size={18} /> Account Info</button>
-       <button className={activeTab === 'subscription' ? 'active' : ''} onClick={() => setActiveTab('subscription')}><CreditCard size={18} /> Subscription</button>
-       <button className={activeTab === 'billing' ? 'active' : ''} onClick={() => setActiveTab('billing')}><FileText size={18} /> Billing History</button>
+       <button className={activeTab === 'account' ? 'active' : ''} onClick={() => handleTabClick('account')}><User size={18} /> Account Info</button>
+       <button className={activeTab === 'subscription' ? 'active' : ''} onClick={() => handleTabClick('subscription')}><CreditCard size={18} /> Subscription</button>
+       <button className={activeTab === 'billing' ? 'active' : ''} onClick={() => handleTabClick('billing')}><FileText size={18} /> Billing History</button>
        <button onClick={() => window.location.href = '/watchlist'}><Bookmark size={18} /> My Watchlist</button>
        <button className="logout-v" onClick={handleLogout}><LogOut size={18} /> Logout</button>
       </div>
      </div>
 
      <div className="fe-profile-content-v">
-      {activeTab === 'account' && (
-       <>
-        <div className="content-header-v">
-         <h2>Account Settings</h2>
-         {!isEditing && (
-          <button className="edit-toggle-v" onClick={() => setIsEditing(true)}>
-           <Edit2 size={16} /> Edit Profile
-          </button>
-         )}
+       {/* Account Info Section */}
+       <div className={`fe-accordion-item-v ${activeTab === 'account' ? 'active' : ''}`}>
+        <div className="fe-accordion-header-v" onClick={() => handleTabClick('account')}>
+         <h3><User size={18} /> Account Info</h3>
+         <ChevronDown size={18} className="chevron-icon-v" />
         </div>
-
-        <form onSubmit={handleSave} className="fe-profile-form-v">
-         <div className="form-grid-v">
-          <div className="form-group-v">
-           <label><User size={16} /> Full Name</label>
-           <input 
-            type="text" 
-            name="name"
-            value={formData.name} 
-            onChange={handleInputChange}
-            disabled={!isEditing}
-            placeholder="Enter your name"
-           />
-          </div>
-          <div className="form-group-v">
-           <label><Mail size={16} /> Email Address</label>
-           <input 
-            type="email" 
-            name="email"
-            value={formData.email} 
-            onChange={handleInputChange}
-            disabled={!isEditing}
-            placeholder="Enter your email"
-           />
-          </div>
-          <div className="form-group-v">
-           <label><Phone size={16} /> Phone Number</label>
-           <input 
-            type="text" 
-            name="phone"
-            value={formData.phone} 
-            onChange={handleInputChange}
-            disabled={!isEditing}
-            placeholder="Enter your phone"
-           />
-          </div>
-          {isEditing && (
-           <div className="form-group-v full-v">
-            <label>Change Password</label>
-            <input 
-             type="password" 
-             name="password"
-             value={formData.password} 
-             onChange={handleInputChange}
-             placeholder="Leave blank to keep current password"
-            />
-           </div>
+        <div className="fe-accordion-content-v">
+         <div className="content-header-v">
+          <h2>Account Settings</h2>
+          {!isEditing && (
+           <button type="button" className="edit-toggle-v" onClick={() => setIsEditing(true)}>
+            <Edit2 size={16} /> Edit Profile
+           </button>
           )}
          </div>
 
-         {isEditing && (
-          <div className="form-actions-v">
-           <button type="button" className="cancel-btn-v" onClick={() => setIsEditing(false)}>Cancel</button>
-           <button type="submit" className="save-btn-v" disabled={loading}>
-            {loading ? (
-             <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Loader2 className="spinner-v" size={18} /> Saving...
-             </span>
-            ) : 'Save Changes'}
-           </button>
+         <form onSubmit={handleSave} className="fe-profile-form-v">
+          <div className="form-grid-v">
+           <div className="form-group-v">
+            <label><User size={16} /> Full Name</label>
+            <input 
+             type="text" 
+             name="name"
+             value={formData.name} 
+             onChange={handleInputChange}
+             disabled={!isEditing}
+             placeholder="Enter your name"
+            />
+           </div>
+           <div className="form-group-v">
+            <label><Mail size={16} /> Email Address</label>
+            <input 
+             type="email" 
+             name="email"
+             value={formData.email} 
+             onChange={handleInputChange}
+             disabled={!isEditing}
+             placeholder="Enter your email"
+            />
+           </div>
+           <div className="form-group-v">
+            <label><Phone size={16} /> Phone Number</label>
+            <input 
+             type="text" 
+             name="phone"
+             value={formData.phone} 
+             onChange={handleInputChange}
+             disabled={!isEditing}
+             placeholder="Enter your phone"
+            />
+           </div>
+           {isEditing && (
+            <div className="form-group-v full-v">
+             <label>Change Password</label>
+             <input 
+              type="password" 
+              name="password"
+              value={formData.password} 
+              onChange={handleInputChange}
+              placeholder="Leave blank to keep current password"
+             />
+            </div>
+           )}
           </div>
-         )}
-        </form>
-       </>
-      )}
 
-      {activeTab === 'subscription' && (
-       <div className="fe-subscription-v">
-        <div className="content-header-v">
-         <h2>My Subscription</h2>
-        </div>
-        <div className="plan-card-premium-v">
-         <div className="plan-badge-v">{fullUser?.subscriptionPlan || 'No Plan'}</div>
-         <div className="plan-status-v">
-          <span className="status-indicator-v active"></span>
-          {fullUser?.status === 'Active' ? 'Active Subscription' : 'Inactive'}
-         </div>
-         <div className="plan-details-v">
-          <div className="detail-item-v">
-           <Calendar size={20} />
-           <div>
-            <label>Expires On</label>
-            <span>{fullUser?.expiryDate || 'N/A'}</span>
+          {isEditing && (
+           <div className="form-actions-v">
+            <button type="button" className="cancel-btn-v" onClick={() => setIsEditing(false)}>Cancel</button>
+            <button type="submit" className="save-btn-v" disabled={loading}>
+             {loading ? (
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+               <Loader2 className="spinner-v" size={18} /> Saving...
+              </span>
+             ) : 'Save Changes'}
+            </button>
            </div>
-          </div>
-          <div className="detail-item-v">
-           <CreditCard size={20} />
-           <div>
-            <label>Payment Method</label>
-            <span>Credit Card (Ending in 4242)</span>
-           </div>
-          </div>
-         </div>
-         <button 
-          className="upgrade-btn-v" 
-          onClick={() => window.location.href = '/subscription'}
-         >
-          Change / Upgrade Plan
-         </button>
+          )}
+         </form>
         </div>
        </div>
-      )}
 
-      {activeTab === 'billing' && (
-       <div className="fe-billing-v">
-        <div className="content-header-v">
-         <h2>Billing History</h2>
+       {/* Subscription Section */}
+       <div className={`fe-accordion-item-v ${activeTab === 'subscription' ? 'active' : ''}`}>
+        <div className="fe-accordion-header-v" onClick={() => handleTabClick('subscription')}>
+         <h3><CreditCard size={18} /> Subscription</h3>
+         <ChevronDown size={18} className="chevron-icon-v" />
         </div>
-        <div className="invoice-table-v">
-         {transactions.length > 0 ? (
-           <>
-            <table>
-             <thead>
-              <tr>
-               <th>Time / Date</th>
-               <th>Plan</th>
-               <th>Amount</th>
-               <th>Action</th>
-              </tr>
-             </thead>
-             <tbody>
-              {transactions.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(tx => (
-               <tr key={tx._id}>
-                <td>{tx.paymentDate}</td>
-                <td>{tx.plan}</td>
-                <td>{tx.amount}</td>
-                <td>
-                 <button className="view-invoice-v" title="View Invoice" onClick={() => setSelectedTransaction(tx)}>
-                  <Eye size={14} />
-                 </button>
-                </td>
+        <div className="fe-accordion-content-v">
+         <div className="content-header-v">
+          <h2>My Subscription</h2>
+         </div>
+         <div className="plan-card-premium-v">
+          <div className="plan-badge-v">{fullUser?.subscriptionPlan || 'No Plan'}</div>
+          <div className="plan-status-v">
+           <span className="status-indicator-v active"></span>
+           {fullUser?.status === 'Active' ? 'Active Subscription' : 'Inactive'}
+          </div>
+          <div className="plan-details-v">
+           <div className="detail-item-v">
+            <Calendar size={20} />
+            <div>
+             <label>Expires On</label>
+             <span>{fullUser?.expiryDate || 'N/A'}</span>
+            </div>
+           </div>
+           <div className="detail-item-v">
+            <CreditCard size={20} />
+            <div>
+             <label>Payment Method</label>
+             <span>Credit Card (Ending in 4242)</span>
+            </div>
+           </div>
+          </div>
+          <button 
+           type="button"
+           className="upgrade-btn-v" 
+           onClick={() => window.location.href = '/subscription'}
+          >
+           Change / Upgrade Plan
+          </button>
+         </div>
+        </div>
+       </div>
+
+       {/* Billing Section */}
+       <div className={`fe-accordion-item-v ${activeTab === 'billing' ? 'active' : ''}`}>
+        <div className="fe-accordion-header-v" onClick={() => handleTabClick('billing')}>
+         <h3><FileText size={18} /> Billing History</h3>
+         <ChevronDown size={18} className="chevron-icon-v" />
+        </div>
+        <div className="fe-accordion-content-v">
+         <div className="content-header-v">
+          <h2>Billing History</h2>
+         </div>
+         <div className="invoice-table-v">
+          {transactions.length > 0 ? (
+            <>
+             <table>
+              <thead>
+               <tr>
+                <th>Time / Date</th>
+                <th>Plan</th>
+                <th>Amount</th>
+                <th>Action</th>
                </tr>
-              ))}
-             </tbody>
-            </table>
-            
-            {transactions.length > itemsPerPage && (
-             <div className="fe-pagination-v">
-              <button 
-               disabled={currentPage === 1} 
-               onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-              >
-               Prev
-              </button>
-              <span>Page {currentPage} of {Math.ceil(transactions.length / itemsPerPage)}</span>
-              <button 
-               disabled={currentPage === Math.ceil(transactions.length / itemsPerPage)} 
-               onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(transactions.length / itemsPerPage)))}
-              >
-               Next
-              </button>
-             </div>
-            )}
-           </>
-         ) : (
-          <div className="no-invoices-v">
-           <FileText size={48} />
-           <p>No billing records found.</p>
-          </div>
-         )}
+              </thead>
+              <tbody>
+               {transactions.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(tx => (
+                <tr key={tx._id}>
+                 <td>{tx.paymentDate}</td>
+                 <td>{tx.plan}</td>
+                 <td>{tx.amount}</td>
+                 <td>
+                  <button className="view-invoice-v" title="View Invoice" onClick={() => setSelectedTransaction(tx)}>
+                   <Eye size={14} />
+                  </button>
+                 </td>
+                </tr>
+               ))}
+              </tbody>
+             </table>
+             
+             {transactions.length > itemsPerPage && (
+              <div className="fe-pagination-v">
+               <button 
+                disabled={currentPage === 1} 
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+               >
+                Prev
+               </button>
+               <span>Page {currentPage} of {Math.ceil(transactions.length / itemsPerPage)}</span>
+               <button 
+                disabled={currentPage === Math.ceil(transactions.length / itemsPerPage)} 
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(transactions.length / itemsPerPage)))}
+               >
+                Next
+               </button>
+              </div>
+             )}
+            </>
+          ) : (
+           <div className="no-invoices-v">
+            <FileText size={48} />
+            <p>No billing records found.</p>
+           </div>
+          )}
+         </div>
         </div>
        </div>
-      )}
-     </div>
+
+       {/* Mobile-only links */}
+       <div className="fe-mobile-link-row-v fe-mobile-only-v" onClick={() => window.location.href = '/watchlist'}>
+        <h3><Bookmark size={18} /> My Watchlist</h3>
+        <ChevronDown size={18} className="chevron-icon-v" style={{ transform: 'rotate(-90deg)' }} />
+       </div>
+
+       <div className="fe-mobile-link-row-v logout-v fe-mobile-only-v" onClick={handleLogout}>
+        <h3><LogOut size={18} /> Logout</h3>
+        <ChevronDown size={18} className="chevron-icon-v" style={{ transform: 'rotate(-90deg)' }} />
+       </div>
+      </div>
     </div>
 
     {selectedTransaction && (
@@ -492,11 +527,126 @@ const FrontendProfile = () => {
     .spinner-v { animation: spin 1s linear infinite; }
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-    @media (max-width: 992px) {
-     .fe-profile-container-v { grid-template-columns: 1fr; }
-     .fe-profile-sidebar-v { position: relative; padding: 30px; }
-     .fe-profile-nav-v { flex-direction: row; flex-wrap: wrap; justify-content: center; }
+    .fe-accordion-header-v {
+      display: none;
     }
+    .fe-accordion-item-v {
+      display: none;
+    }
+    .fe-accordion-item-v.active {
+      display: block;
+    }
+    .fe-mobile-only-v {
+      display: none;
+    }
+    
+    @media (max-width: 992px) {
+     .fe-profile-container-v { grid-template-columns: 1fr; gap: 20px; }
+     .fe-profile-sidebar-v { position: relative; padding: 30px; }
+     .fe-profile-nav-v { display: none; }
+     
+     .fe-profile-content-v {
+       background: none;
+       border: none;
+       padding: 0;
+     }
+     
+     .fe-accordion-item-v {
+       display: block;
+       background: #0a0a0a;
+       border: 1px solid #222;
+       border-radius: 12px;
+       margin-bottom: 12px;
+       overflow: hidden;
+     }
+     
+     .fe-accordion-header-v {
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+       padding: 16px 20px;
+       cursor: pointer;
+       background: #111;
+       transition: 0.3s;
+     }
+     
+     .fe-accordion-header-v:hover {
+       background: #161616;
+     }
+     
+     .fe-accordion-header-v h3 {
+       display: flex;
+       align-items: center;
+       gap: 12px;
+       font-size: 1rem;
+       font-weight: 700;
+       margin: 0;
+       color: #fff;
+     }
+     
+     .fe-accordion-header-v h3 svg {
+       color: #888;
+     }
+     
+     .fe-accordion-item-v.active .fe-accordion-header-v h3 svg {
+       color: #b3d332;
+     }
+     
+     .fe-accordion-item-v.active .fe-accordion-header-v {
+       border-bottom: 1px solid #222;
+       background: #0a0a0a;
+     }
+     
+     .chevron-icon-v {
+       color: #888;
+       transition: transform 0.3s ease;
+     }
+     
+     .fe-accordion-item-v.active .chevron-icon-v {
+       transform: rotate(180deg);
+       color: #b3d332;
+     }
+     
+     .fe-accordion-content-v {
+       display: none;
+       padding: 24px;
+     }
+     
+     .fe-accordion-item-v.active .fe-accordion-content-v {
+       display: block;
+     }
+     
+     .fe-mobile-only-v {
+       display: flex;
+     }
+     
+     .fe-mobile-link-row-v {
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+       padding: 16px 20px;
+       background: #0a0a0a;
+       border: 1px solid #222;
+       border-radius: 12px;
+       margin-bottom: 12px;
+       cursor: pointer;
+     }
+     
+     .fe-mobile-link-row-v h3 {
+       display: flex;
+       align-items: center;
+       gap: 12px;
+       font-size: 1rem;
+       font-weight: 700;
+       margin: 0;
+       color: #fff;
+     }
+     
+     .fe-mobile-link-row-v.logout-v h3 {
+       color: #ff4d4d;
+     }
+    }
+    
     @media (max-width: 600px) {
      .fe-profile-form-v .form-grid-v { grid-template-columns: 1fr; }
      .form-group-v.full-v { grid-column: auto; }
@@ -505,6 +655,10 @@ const FrontendProfile = () => {
      .invoice-table-v table { min-width: 100%; }
      .invoice-table-v th { padding: 10px; font-size: 0.65rem; }
      .invoice-table-v td { padding: 10px; font-size: 0.75rem; }
+     
+     .fe-accordion-content-v {
+       padding: 16px;
+     }
     }
    ` }} />
   </FrontendLayout>
