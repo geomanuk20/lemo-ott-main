@@ -17,8 +17,20 @@ const getClientUrl = (req) => {
     return process.env.CLIENT_URL;
   }
   const host = (req && (req.headers['x-forwarded-host'] || req.get('host'))) || '';
-  if (host.includes('localhost') || host.includes('127.0.0.1')) {
-    return 'http://localhost:5173';
+  const isLocal = host.includes('localhost') || 
+                  host.includes('127.0.0.1') || 
+                  host.startsWith('192.168.') || 
+                  host.startsWith('10.') || 
+                  host.startsWith('172.') || 
+                  host.includes(':5173') || 
+                  host.includes(':5001');
+
+  if (isLocal) {
+    if (host.includes('localhost') || host.includes('127.0.0.1')) {
+      return 'http://localhost:5173';
+    }
+    const hostWithClientPort = host.replace(':5001', ':5173');
+    return `http://${hostWithClientPort}`;
   }
   // For production/live environments, always force HTTPS protocol
   return `https://${host}`;
@@ -29,8 +41,20 @@ const getServerUrl = (req) => {
     return process.env.SERVER_URL;
   }
   const host = (req && (req.headers['x-forwarded-host'] || req.get('host'))) || '';
-  if (host.includes('localhost') || host.includes('127.0.0.1')) {
-    return 'http://localhost:5001';
+  const isLocal = host.includes('localhost') || 
+                  host.includes('127.0.0.1') || 
+                  host.startsWith('192.168.') || 
+                  host.startsWith('10.') || 
+                  host.startsWith('172.') || 
+                  host.includes(':5001') || 
+                  host.includes(':5173');
+
+  if (isLocal) {
+    if (host.includes('localhost') || host.includes('127.0.0.1')) {
+      return 'http://localhost:5001';
+    }
+    const hostWithServerPort = host.replace(':5173', ':5001');
+    return `http://${hostWithServerPort}`;
   }
   // For production/live environments, always force HTTPS protocol
   return `https://${host}`;
@@ -38,7 +62,13 @@ const getServerUrl = (req) => {
 
 const getPhonePeCredentials = (gw, req) => {
   const host = (req && (req.headers['x-forwarded-host'] || req.get('host'))) || '';
-  const isLocal = host.includes('localhost') || host.includes('127.0.0.1');
+  const isLocal = host.includes('localhost') || 
+                  host.includes('127.0.0.1') || 
+                  host.startsWith('192.168.') || 
+                  host.startsWith('10.') || 
+                  host.startsWith('172.') || 
+                  host.includes(':5001') || 
+                  host.includes(':5173');
 
   // If environment variables are explicitly configured in .env, prioritize them.
   // This allows easy environment-based configuration (.env) without database override.
@@ -304,7 +334,6 @@ const MenuSettings = mongoose.model('MenuSettings', menuSettingsSchema);
 const { cloudinary, upload } = require('./cloudinaryConfig');
 const { uploadFileToS3, uploadInputToS3, getPresignedUrlIfS3, uploadHlsToS3, getS3FileStream } = require('./s3Config');
 const { transcodeToHls } = require('./hlsTranscoder');
-const { uploadToMux, getPlaybackPolicyCached, signPlaybackId } = require('./muxService');
 const { createMediaConvertHlsJob } = require('./mediaConvert');
 const { signCloudFrontUrl, getCloudFrontUrl } = require('./cloudFrontSigner');
 
@@ -527,10 +556,10 @@ app.post('/api/upload', localUpload.single('file'), async (req, res) => {
       console.log(`[UPLOAD] MediaConvert job triggered successfully. Permanent playback URL: ${fileUrl}`);
     } else {
       console.log(`[UPLOAD] Image/Asset detected: ${originalName}. Uploading to Cloudinary...`);
-      // Upload image to Cloudinary
+      // Upload image/asset to Cloudinary
       const uploadResult = await cloudinary.uploader.upload(filePath, {
         folder: 'video_ott_uploads',
-        resource_type: 'image',
+        resource_type: 'auto',
       });
       fileUrl = uploadResult.secure_url;
     }
@@ -583,12 +612,15 @@ app.delete('/api/assets/:id', async (req, res) => {
 // Experiences API
 app.get('/api/experiences', async (req, res) => {
   try {
-    const exps = await Experience.find().sort({ order: 1 });
+    const isAdmin = await isAdminRequest(req);
+    const query = isAdmin ? {} : { status: 'Active' };
+    const exps = await Experience.find(query).sort({ order: 1 });
     res.json(exps);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
+
 
 app.post('/api/experiences', async (req, res) => {
   try {
@@ -1513,7 +1545,12 @@ app.post('/api/payment/phonepe/initiate-submission', async (req, res) => {
 
 
     let serverUrl = getServerUrl(req);
-    if (!isSandbox && (serverUrl.includes('localhost') || serverUrl.includes('127.0.0.1'))) {
+    const isLocalUrl1 = serverUrl.includes('localhost') || 
+                        serverUrl.includes('127.0.0.1') || 
+                        serverUrl.includes('192.168.') || 
+                        serverUrl.includes('10.') || 
+                        serverUrl.includes('172.');
+    if (!isSandbox && isLocalUrl1) {
       serverUrl = 'https://lemoott.com';
     }
     const redirectUrl = `${serverUrl}/api/payment/phonepe/callback-submission?txnId=${transactionId}`;
@@ -1938,29 +1975,7 @@ app.delete('/api/genres/:id', async (req, res) => {
   }
 });
 
-// Mux Sign Token Route
-app.get('/api/mux/sign-token', async (req, res) => {
-  const { playbackId } = req.query;
-  if (!playbackId) {
-    return res.status(400).json({ message: 'playbackId query parameter is required' });
-  }
 
-  try {
-    const policy = await getPlaybackPolicyCached(playbackId);
-    if (policy === 'signed') {
-      const token = signPlaybackId(playbackId);
-      if (token) {
-        return res.json({ token });
-      } else {
-        return res.status(500).json({ message: 'Failed to sign playback ID. Verify backend signing key configuration.' });
-      }
-    }
-    return res.json({ token: null });
-  } catch (err) {
-    console.error('Error in /api/mux/sign-token:', err.message);
-    res.status(500).json({ message: err.message });
-  }
-});
 
 // Video Proxy and Streaming Endpoint
 app.get('/api/videos/:folder/:file', async (req, res) => {
@@ -2105,17 +2120,20 @@ app.delete('/api/movies/:id', async (req, res) => {
 // NewRelease Routes
 app.get('/api/new-releases', async (req, res) => {
   try {
+    const isAdmin = await isAdminRequest(req);
     const menuSettings = await MenuSettings.findOne().lean();
-    if (menuSettings && menuSettings.movies?.toUpperCase() === 'OFF') {
+    if (!isAdmin && menuSettings && menuSettings.movies?.toUpperCase() === 'OFF') {
       return res.json([]);
     }
-    const newReleases = await NewRelease.find().sort({ createdAt: -1 });
+    const query = isAdmin ? {} : { status: 'Active' };
+    const newReleases = await NewRelease.find(query).sort({ createdAt: -1 });
     const signedNewReleases = await signVideoDocuments(newReleases, req);
     res.json(signedNewReleases);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
+
 
 app.get('/api/new-releases/:id', async (req, res) => {
   try {
@@ -2831,6 +2849,41 @@ app.get('/api/vast-proxy', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// Subtitle Proxy Endpoint to fetch remote subtitle files (.vtt, .srt) and serve them with clean CORS headers
+app.get('/api/subtitle-proxy', async (req, res) => {
+  try {
+    const { url } = req.query;
+    if (!url) return res.status(400).send('URL is required');
+
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      return res.status(400).send('Invalid URL format');
+    }
+
+    console.log(`[SUBTITLE-PROXY] Fetching subtitle from: ${url}`);
+    const response = await axios.get(url, { 
+      timeout: 8000,
+      responseType: 'text' 
+    });
+    
+    let contentType = 'text/vtt; charset=utf-8';
+    if (url.split('?')[0].toLowerCase().endsWith('.srt')) {
+      contentType = 'text/plain; charset=utf-8';
+    }
+
+    res.set({
+      'Content-Type': contentType,
+      'Access-Control-Allow-Origin': '*',
+      'Cache-Control': 'public, max-age=86400'
+    });
+
+    res.send(response.data);
+  } catch (err) {
+    console.error('[SUBTITLE-PROXY] Error fetching subtitle:', err.message);
+    res.status(500).send(err.message);
+  }
+});
+
 
 
 const seedPlayerAds = async () => {
@@ -3762,7 +3815,12 @@ app.post('/api/payment/phonepe/initiate', async (req, res) => {
     const client = getPhonePeClient(merchantId, saltKey, saltIndex, env);
 
     let serverUrl = getServerUrl(req);
-    if (!isSandbox && (serverUrl.includes('localhost') || serverUrl.includes('127.0.0.1'))) {
+    const isLocalUrl2 = serverUrl.includes('localhost') || 
+                        serverUrl.includes('127.0.0.1') || 
+                        serverUrl.includes('192.168.') || 
+                        serverUrl.includes('10.') || 
+                        serverUrl.includes('172.');
+    if (!isSandbox && isLocalUrl2) {
       serverUrl = 'https://lemoott.com';
     }
     const redirectUrl = `${serverUrl}/api/payment/phonepe/callback?txnId=${transactionId}`;
@@ -4121,13 +4179,15 @@ app.get('/api/sports-videos', async (req, res) => {
         return res.json([]);
       }
     }
-    const videos = await SportsVideo.find().populate('category');
+    const query = isAdmin ? {} : { status: 'Active' };
+    const videos = await SportsVideo.find(query).populate('category');
     const signedVideos = await signVideoDocuments(videos, req);
     res.json(signedVideos);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
+
 
 app.get('/api/sports-videos/:id', async (req, res) => {
   try {
@@ -4237,7 +4297,9 @@ app.delete('/api/seasons/:id', async (req, res) => {
 // Episode Routes
 app.get('/api/episodes', async (req, res) => {
   try {
+    const isAdmin = await isAdminRequest(req);
     const filter = {};
+    if (!isAdmin) filter.status = 'Active';
     if (req.query.showId) filter.showId = req.query.showId;
     if (req.query.seasonId) filter.seasonId = req.query.seasonId;
     const episodes = await Episode.find(filter)
@@ -4378,7 +4440,8 @@ app.get('/api/tv-channels', async (req, res) => {
         return res.json([]);
       }
     }
-    const channels = await TVChannel.find().populate('category').sort({ createdAt: -1 });
+    const query = isAdmin ? {} : { status: 'Active' };
+    const channels = await TVChannel.find(query).populate('category').sort({ createdAt: -1 });
     res.json(channels);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -4535,8 +4598,10 @@ app.delete('/api/directors/:id', async (req, res) => {
 app.get('/api/sliders', async (req, res) => {
   console.log('GET /api/sliders request received');
   try {
+    const isAdmin = await isAdminRequest(req);
+    const query = isAdmin ? {} : { status: 'Active' };
     // Aggressive timeout and lean query to handle large payloads
-    const sliders = await Slider.find()
+    const sliders = await Slider.find(query)
       .sort({ createdAt: -1 })
       .maxTimeMS(20000) // Increase to 20s
       .lean()
@@ -4552,6 +4617,7 @@ app.get('/api/sliders', async (req, res) => {
     res.status(500).json({ message: 'Error fetching sliders' });
   }
 });
+
 
 app.get('/api/sliders/:id', async (req, res) => {
   try {
@@ -4701,7 +4767,9 @@ app.get('/api/home-aggregated', async (req, res) => {
       filteredSliders = sliders.filter(slide => {
         const postType = slide.postType;
         if (postType === 'Movies' && moviesOff) return false;
+        if (postType === 'Short Film' && shortFilmsOff) return false;
         if (postType === 'TV Shows' && showsOff) return false;
+        if (postType === 'Short Web Series' && webSeriesOff) return false;
         if (postType === 'Sports' && sportsOff) return false;
         if (postType === 'Live TV' && liveTvOff) return false;
 

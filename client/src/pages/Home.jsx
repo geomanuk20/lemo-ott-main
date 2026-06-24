@@ -32,7 +32,11 @@ import FrontendFooter from '../components/FrontendFooter';
 import { formatImageUrl } from '../utils/image';
 
 const isItemActive = (item, type, menuSettings) => {
-  if (!menuSettings || !item) return true;
+  if (!item) return false;
+  // Always require Active status — inactive content must never show on frontend
+  if (item.status && item.status !== 'Active') return false;
+
+  if (!menuSettings) return true;
 
   // New Releases have their own section and are never hidden by menu settings
   const normType = type ? type.toLowerCase().trim() : '';
@@ -83,10 +87,17 @@ const isItemActive = (item, type, menuSettings) => {
 };
 
 const isSliderActive = (slide, menuSettings) => {
-  if (!menuSettings || !slide) return true;
+  if (!slide) return false;
+  // Always require Active status — inactive sliders must never show on frontend
+  if (slide.status && slide.status !== 'Active') return false;
+
+  if (!menuSettings) return true;
+
   const postType = slide.postType;
   if (postType === 'Movies' && menuSettings.movies?.toUpperCase() === 'OFF') return false;
+  if (postType === 'Short Film' && menuSettings.shortFilms?.toUpperCase() === 'OFF') return false;
   if (postType === 'TV Shows' && menuSettings.shows?.toUpperCase() === 'OFF') return false;
+  if (postType === 'Short Web Series' && menuSettings.webSeries?.toUpperCase() === 'OFF') return false;
   if (postType === 'Sports' && menuSettings.sports?.toUpperCase() === 'OFF') return false;
   if (postType === 'Live TV' && menuSettings.liveTv?.toUpperCase() === 'OFF') return false;
   
@@ -100,6 +111,7 @@ const isSliderActive = (slide, menuSettings) => {
 
   return true;
 };
+
 
 const Home = () => {
   const navigate = useNavigate();
@@ -149,6 +161,16 @@ const Home = () => {
       const cachedMenu = localStorage.getItem('fe_menu_settings');
       if (cachedMenu) mSettings = JSON.parse(cachedMenu);
     } catch (e) {}
+
+    // Cache versioning: bump this version when server-side filtering changes
+    // to force all users to get fresh data and discard stale cached content
+    const CACHE_VERSION = 'v2_active_only';
+    const storedVersion = localStorage.getItem('home_cache_version');
+    if (storedVersion !== CACHE_VERSION) {
+      // Stale cache — clear it so inactive items don't flash on screen
+      localStorage.removeItem('home_data_cache');
+      localStorage.setItem('home_cache_version', CACHE_VERSION);
+    }
 
     // Load from cache first for instant rendering
     const cachedData = localStorage.getItem('home_data_cache');
@@ -418,7 +440,9 @@ const Home = () => {
            if (!targetLink && slide.contentId && slide.postType) {
             const typeMap = {
              'Movies': 'movie',
+             'Short Film': 'movie',
              'TV Shows': 'show',
+             'Short Web Series': 'show',
              'Sports': 'sports',
              'Live TV': 'live'
             };

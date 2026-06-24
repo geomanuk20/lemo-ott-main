@@ -39,7 +39,11 @@ const formatViews = (count, docId = '') => {
   return num + ' Views';
 };
 const isItemActive = (item, type, menuSettings) => {
-  if (!menuSettings || !item) return true;
+  if (!item) return false;
+  // Always require Active status — inactive content must never show on frontend
+  if (item.status && item.status !== 'Active') return false;
+
+  if (!menuSettings) return true;
 
   let contentType = item.contentType;
   if (!contentType) {
@@ -85,6 +89,7 @@ const isItemActive = (item, type, menuSettings) => {
 
   return true;
 };
+
 
 const checkIsPaid = (item, contentType) => {
   if (!item) return false;
@@ -360,8 +365,14 @@ const FrontendDetails = () => {
      parentId = typeof result.showId === 'object' ? (result.showId._id || result.showId.id) : result.showId;
     }
     
-    // Filter related items to exclude disabled ones
-    let finalRelated = Array.isArray(relatedResult) ? relatedResult.filter(item => item._id !== id && item._id !== parentId) : [];
+    // Filter related items: must be Active and not the current item
+    let finalRelated = Array.isArray(relatedResult)
+      ? relatedResult.filter(item =>
+          item._id !== id &&
+          item._id !== parentId &&
+          item.status === 'Active'
+        )
+      : [];
     try {
       const cached = localStorage.getItem('fe_menu_settings');
       if (cached) {
@@ -373,6 +384,7 @@ const FrontendDetails = () => {
     }
     
     setRelated(finalRelated.slice(0, 6));
+
 
     // Check watchlist
     if (user.id) {
@@ -890,21 +902,53 @@ const FrontendDetails = () => {
         )}
 
        {(type === 'movie' || type === 'show' || type === 'shows' || type === 'series' || type === 'short-web-series' || type === 'new-releases' || type === 'episode' || type === 'episodes' || type === 'season' || type === 'seasons') && (
-        <div className="fe-info-cast-v">
-         <p><strong>Actors:</strong> {
-          (data.actors && data.actors.length > 0 ? data.actors : (data.showId && typeof data.showId === 'object' && data.showId.actors)) && 
-          (data.actors && data.actors.length > 0 ? data.actors : (data.showId && data.showId.actors)).length > 0
-          ? (data.actors && data.actors.length > 0 ? data.actors : data.showId.actors).map(a => typeof a === 'object' ? a.name : a).join(', ') 
-          : 'N/A'
-         }</p>
-         <p><strong>Directors:</strong> {
-          (data.directors && data.directors.length > 0 ? data.directors : (data.showId && typeof data.showId === 'object' && data.showId.directors)) && 
-          (data.directors && data.directors.length > 0 ? data.directors : (data.showId && data.showId.directors)).length > 0
-          ? (data.directors && data.directors.length > 0 ? data.directors : data.showId.directors).map(d => typeof d === 'object' ? d.name : d).join(', ') 
-          : 'N/A'
-         }</p>
-        </div>
-       )}
+         <div className="fe-info-cast-v">
+          {(() => {
+            const rawActors = data.actors && data.actors.length > 0 
+              ? data.actors 
+              : (data.showId && typeof data.showId === 'object' ? data.showId.actors : null);
+            const actorsList = rawActors && rawActors.length > 0 
+              ? rawActors.map(a => typeof a === 'object' ? a.name : a)
+              : [];
+
+            const rawDirectors = data.directors && data.directors.length > 0 
+              ? data.directors 
+              : (data.showId && typeof data.showId === 'object' ? data.showId.directors : null);
+            const directorsList = rawDirectors && rawDirectors.length > 0 
+              ? rawDirectors.map(d => typeof d === 'object' ? d.name : d)
+              : [];
+
+            return (
+              <>
+                <div className="fe-cast-group">
+                  <div className="fe-cast-label">Directors</div>
+                  <div className="fe-cast-list">
+                    {directorsList.length > 0 ? (
+                      directorsList.map((director, idx) => (
+                        <span key={idx} className="fe-cast-chip">{director}</span>
+                      ))
+                    ) : (
+                      <span className="fe-cast-empty">N/A</span>
+                    )}
+                  </div>
+                </div>
+                <div className="fe-cast-group">
+                  <div className="fe-cast-label">Actors</div>
+                  <div className="fe-cast-list">
+                    {actorsList.length > 0 ? (
+                      actorsList.map((actor, idx) => (
+                        <span key={idx} className="fe-cast-chip">{actor}</span>
+                      ))
+                    ) : (
+                      <span className="fe-cast-empty">N/A</span>
+                    )}
+                  </div>
+                </div>
+              </>
+            );
+          })()}
+         </div>
+        )}
 
        <div className="fe-info-desc-v">
         <div dangerouslySetInnerHTML={{ __html: data.description || (data.showId && typeof data.showId === 'object' && data.showId.description) || 'No description available for this title.' }} />
@@ -1373,9 +1417,13 @@ const FrontendDetails = () => {
     .fe-trailer-btn-v { background: #ff9800; color: #fff; border: none; padding: 14px 28px; border-radius: 8px; font-weight: 800; font-size: 0.85rem; letter-spacing: 1px; display: flex; align-items: center; gap: 10px; cursor: pointer; transition: 0.3s; margin-bottom: 40px; box-shadow: 0 10px 20px rgba(255,152,0,0.2); }
     .fe-trailer-btn-v:hover { background: #f57c00; transform: translateY(-2px); box-shadow: 0 15px 30px rgba(255,152,0,0.4); }
 
-    .fe-info-cast-v { margin-bottom: 25px; border-left: 2px solid #b3d332; padding-left: 15px; }
-    .fe-info-cast-v p { margin-bottom: 8px; color: #ddd; font-size: 0.85rem; line-height: 1.4; }
-    .fe-info-cast-v strong { color: #fff; font-weight: 700; min-width: 80px; display: inline-block; }
+    .fe-info-cast-v { margin-bottom: 30px; display: flex; flex-direction: column; gap: 16px; }
+    .fe-cast-group { display: flex; align-items: flex-start; gap: 15px; }
+    .fe-cast-label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1.2px; color: #888; font-weight: 800; min-width: 90px; padding-top: 6px; }
+    .fe-cast-list { display: flex; flex-wrap: wrap; gap: 8px; }
+    .fe-cast-chip { background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); color: #fff; padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; transition: all 0.25s ease; cursor: default; }
+    .fe-cast-chip:hover { background: rgba(179, 211, 50, 0.1); border-color: #b3d332; color: #b3d332; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(179, 211, 50, 0.15); }
+    .fe-cast-empty { color: #555; font-size: 0.85rem; padding-top: 4px; }
 
     .fe-info-desc-v { color: #888; font-size: 0.9rem; line-height: 1.6; max-width: 800px; }
 
@@ -1438,6 +1486,8 @@ const FrontendDetails = () => {
      .fe-info-title-v { font-size: 2rem; }
      .fe-visual-stats-v { flex-wrap: wrap; gap: 15px; }
      .fe-info-meta-top-v { font-size: 0.9rem; margin-bottom: 20px; }
+     .fe-cast-group { flex-direction: column; gap: 6px; }
+     .fe-cast-label { min-width: auto; padding-top: 0; }
      .fe-info-desc-v { font-size: 0.95rem; }
      .fe-related-grid-v { grid-template-columns: repeat(2, 1fr); gap: 15px; }
      .fe-related-grid-v.grid-sports-v {

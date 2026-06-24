@@ -49,7 +49,8 @@ export default function LiveTVScreen({ navigation }) {
         client.get('/tv-channels'),
         client.get('/tv-categories')
       ]);
-      setChannels(channelsRes.data || []);
+      const activeChannels = (channelsRes.data || []).filter(c => c && c.status === 'Active');
+      setChannels(activeChannels);
       setCategories(categoriesRes.data || []);
     } catch (error) {
       console.error('Error fetching Live TV data:', error);

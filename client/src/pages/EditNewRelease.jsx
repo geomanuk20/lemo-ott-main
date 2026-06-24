@@ -15,6 +15,7 @@ const EditNewRelease = () => {
  const video720InputRef = useRef(null);
  const video1080InputRef = useRef(null);
  const trailerInputRef = useRef(null);
+ const downloadInputRef = useRef(null);
  const [loading, setLoading] = useState(false);
  const [fetching, setFetching] = useState(false);
  const [availableGenres, setAvailableGenres] = useState([]);
@@ -456,7 +457,7 @@ const EditNewRelease = () => {
        <div className="video-source-row">
         <div className="video-source-label">Video Upload Type</div>
         <select name="videoType" value={formData.videoType} onChange={handleChange}>
-         <option value="Local">Local</option>
+         <option value="Local">File</option>
          <option value="URL">URL</option>
          <option value="HLS/m3u8 / MPEG-DASH / YouTube / Vimeo">HLS/m3u8 / MPEG-DASH / YouTube / Vimeo</option>
          <option value="Embed Code">Embed Code</option>
@@ -545,8 +546,12 @@ const EditNewRelease = () => {
         </div>
        </div>
        <div className="form-group">
-        <label>Download URL</label>
-        <input type="text" name="downloadUrl" value={formData.downloadUrl} onChange={handleChange} />
+        <label>Download File / URL</label>
+        <div className="file-input-group">
+         <input type="text" name="downloadUrl" value={formData.downloadUrl} onChange={handleChange} placeholder="Choose file or enter URL" />
+         <button type="button" className="select-btn" onClick={() => downloadInputRef.current.click()}>Select</button>
+         <input type="file" ref={downloadInputRef} style={{ display: 'none' }} onChange={(e) => handleFileChange(e, 'downloadUrl')} />
+        </div>
        </div>
       </div>
 
@@ -585,12 +590,105 @@ const EditNewRelease = () => {
         <div key={index} className="subtitle-row">
          <div className="form-group half">
           <label>Language {index + 1}</label>
-          <input type="text" value={sub.language} readOnly />
+          <input 
+             type="text" 
+             value={sub.language} 
+             onChange={(e) => {
+               const newSubs = [...formData.subtitles];
+               newSubs[index].language = e.target.value;
+               setFormData(prev => ({ ...prev, subtitles: newSubs }));
+             }} 
+           />
          </div>
          <div className="form-group half">
-          <label>URL {index + 1}</label>
-          <input type="text" value={sub.url} onChange={(e) => handleSubChange(index, e.target.value)} />
-         </div>
+           <label>File {index + 1}</label>
+           <div className="file-input-group">
+            <input 
+              type="text" 
+              value={sub.url} 
+              onChange={(e) => handleSubChange(index, e.target.value)} 
+              placeholder="Choose file or enter URL" 
+              title={sub.url}
+            />
+            <button type="button" className="select-btn" onClick={() => {
+              const fileInput = document.getElementById(`sub-file-input-${index}`);
+              if (fileInput) fileInput.click();
+            }}>Select</button>
+            <input 
+              type="file" 
+              id={`sub-file-input-${index}`} 
+              style={{ display: 'none' }} 
+              accept=".vtt,.srt" 
+              onChange={async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                try {
+                  setLoading(true);
+                  const url = await uploadToCloudinary(file);
+                  if (url) {
+                    handleSubChange(index, url);
+                  } else {
+                    alert('Upload failed');
+                  }
+                } catch (err) {
+                  alert('Error uploading subtitle: ' + err.message);
+                } finally {
+                  setLoading(false);
+                }
+              }} 
+            />
+           </div>
+           {sub.url && (
+            <div className="subtitle-file-badge" title={sub.url} style={{
+              marginTop: '6px',
+              padding: '6px 12px',
+              background: '#1f1f1f',
+              borderRadius: '4px',
+              border: '1px solid #333',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '10px'
+            }}>
+              <span style={{
+                fontSize: '0.85rem',
+                color: '#ccc',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                maxWidth: 'calc(100% - 24px)'
+              }}>
+                📄 <strong style={{ color: '#b3d332' }}>Uploaded:</strong> {(() => {
+                  try {
+                    return decodeURIComponent(sub.url.split('/').pop().split('?')[0]);
+                  } catch (e) {
+                    return sub.url.split('/').pop().split('?')[0] || sub.url;
+                  }
+                })()}
+              </span>
+              <button
+                type="button"
+                onClick={() => handleSubChange(index, '')}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#ff4d4d',
+                  cursor: 'pointer',
+                  fontSize: '1.2rem',
+                  fontWeight: 'bold',
+                  padding: '0 4px',
+                  lineHeight: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+                title="Clear subtitle file"
+              >
+                ×
+              </button>
+            </div>
+           )}
+          </div>
         </div>
        ))}
        

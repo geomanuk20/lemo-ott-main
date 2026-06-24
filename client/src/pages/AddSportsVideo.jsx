@@ -13,6 +13,7 @@ const AddSportsVideo = () => {
  const video480InputRef = useRef(null);
  const video720InputRef = useRef(null);
  const video1080InputRef = useRef(null);
+ const downloadInputRef = useRef(null);
  const [loading, setLoading] = useState(false);
  const [categories, setCategories] = useState([]);
  
@@ -305,7 +306,7 @@ const AddSportsVideo = () => {
        <div className="form-row-custom stacked">
         <div className="label-text">Video Upload Type</div>
         <select name="videoType" value={formData.videoType} onChange={handleChange}>
-         <option value="Local">Local</option>
+         <option value="Local">File</option>
          <option value="URL">URL</option>
          <option value="HLS/m3u8 / MPEG-DASH / YouTube / Vimeo">HLS/m3u8 / MPEG-DASH / YouTube / Vimeo</option>
          <option value="Embed Code">Embed Code</option>
@@ -404,10 +405,14 @@ const AddSportsVideo = () => {
         </div>
        </div>
 
-       <div className="form-row-custom stacked">
-        <div className="label-text">Download URL</div>
-        <input type="text" name="downloadUrl" value={formData.downloadUrl} onChange={handleChange} />
-       </div>
+        <div className="form-row-custom stacked">
+         <div className="label-text">Download File / URL</div>
+         <div className="file-input-wrapper-standard">
+          <input type="text" name="downloadUrl" value={formData.downloadUrl} onChange={handleChange} placeholder="Choose file or enter URL" />
+          <button type="button" className="select-file-btn" onClick={() => downloadInputRef.current.click()}>Select</button>
+          <input type="file" ref={downloadInputRef} style={{ display: 'none' }} onChange={(e) => handleFileChange(e, 'downloadUrl')} />
+         </div>
+        </div>
       </div>
 
       {/* Subtitles Section */}

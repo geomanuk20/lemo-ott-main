@@ -291,7 +291,7 @@ export default function DetailsScreen({ route, navigation }) {
               const relatedResult = Array.isArray(relatedRes.data) ? relatedRes.data : [];
               const parentId = res.data?.showId ? (typeof res.data.showId === 'object' ? (res.data.showId._id || res.data.showId.id) : res.data.showId) : '';
               const finalRelated = relatedResult
-                .filter(item => item._id !== id && item._id !== parentId && item.status !== 'Inactive')
+                .filter(item => item._id !== id && item._id !== parentId && item.status === 'Active')
                 .slice(0, 6);
               setRelated(finalRelated);
             }
@@ -483,8 +483,11 @@ export default function DetailsScreen({ route, navigation }) {
       return;
     }
 
-    const videoUrl = detail.videoFile || detail.videoUrl || detail.streamUrl || detail.videoFile1080 || detail.videoFile720 || detail.videoFile480 || detail.server1Url || detail.server2Url || detail.server3Url || detail.embedUrl || '';
-    const videoType = detail.videoType || detail.streamType || 'hls';
+    const videoUrl = detail.videoFile || detail.videoUrl || detail.streamUrl || detail.videoFile1080 || detail.videoFile720 || detail.videoFile480 || detail.server1Url || detail.server2Url || detail.server3Url || detail.embedUrl || detail.embedCode || '';
+    let videoType = detail.videoType || detail.streamType || 'hls';
+    if (videoUrl && typeof videoUrl === 'string' && videoUrl.trim().startsWith('<')) {
+      videoType = 'Embed Code';
+    }
 
     console.log('[DetailsScreen] Playing Main Video:', { title: detail.title || detail.name, videoUrl, videoType });
 
@@ -506,7 +509,10 @@ export default function DetailsScreen({ route, navigation }) {
       videoId: detail._id,
       videoFile1080: detail.videoFile1080 || '',
       videoFile720: detail.videoFile720 || '',
-      videoFile480: detail.videoFile480 || ''
+      videoFile480: detail.videoFile480 || '',
+      contentType: type,
+      subtitles: detail.subtitles || [],
+      subtitlesActive: detail.subtitlesActive || 'Inactive'
     });
   };
 
@@ -564,7 +570,9 @@ export default function DetailsScreen({ route, navigation }) {
       videoId: episode._id,
       videoFile1080: episode.videoFile1080 || '',
       videoFile720: episode.videoFile720 || '',
-      videoFile480: episode.videoFile480 || ''
+      videoFile480: episode.videoFile480 || '',
+      subtitles: episode.subtitles || [],
+      subtitlesActive: episode.subtitlesActive || 'Inactive'
     });
   };
 

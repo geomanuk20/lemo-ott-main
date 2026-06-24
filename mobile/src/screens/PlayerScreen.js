@@ -19,7 +19,7 @@ import { AuthContext } from '../context/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Video, ResizeMode } from 'expo-av';
 import { WebView } from 'react-native-webview';
-import { ArrowLeft, Play, Pause, Volume2, VolumeX, MoreHorizontal } from 'lucide-react-native';
+import { ArrowLeft, Play, Pause, Volume2, VolumeX, MoreHorizontal, Subtitles } from 'lucide-react-native';
 import Svg, { Path, Text as SvgText } from 'react-native-svg';
 import client from '../api/client';
 import { formatImageUrl, ACTIVE_IP, IMAGE_URL_BASE } from '../config/api';
@@ -179,9 +179,112 @@ const parseHlsManifest = async (masterUrl) => {
   }
 };
 
+/* ── helpers to parse and resolve subtitles ── */
+const parseTimestamp = (str) => {
+  if (!str) return 0;
+  const parts = str.trim().split(':');
+  let seconds = 0;
+  if (parts.length === 3) {
+    const h = parseInt(parts[0], 10) || 0;
+    const m = parseInt(parts[1], 10) || 0;
+    const sParts = parts[2].split(/[.,]/);
+    const s = parseInt(sParts[0], 10) || 0;
+    const msStr = (sParts[1] || '0').padEnd(3, '0').slice(0, 3);
+    const ms = parseInt(msStr, 10) || 0;
+    seconds = h * 3600 + m * 60 + s + ms / 1000;
+  } else if (parts.length === 2) {
+    const m = parseInt(parts[0], 10) || 0;
+    const sParts = parts[1].split(/[.,]/);
+    const s = parseInt(sParts[0], 10) || 0;
+    const msStr = (sParts[1] || '0').padEnd(3, '0').slice(0, 3);
+    const ms = parseInt(msStr, 10) || 0;
+    seconds = m * 60 + s + ms / 1000;
+  }
+  return seconds * 1000;
+};
+
+const parseSubtitles = (text) => {
+  if (!text) return [];
+  const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+  const cues = [];
+  let currentCue = null;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) {
+      if (currentCue) {
+        cues.push(currentCue);
+        currentCue = null;
+      }
+      continue;
+    }
+
+    if (line.includes('-->')) {
+      const parts = line.split('-->');
+      if (parts.length === 2) {
+        const startStr = parts[0].trim();
+        const endStr = parts[1].trim().split(/\s+/)[0];
+        const start = parseTimestamp(startStr);
+        const end = parseTimestamp(endStr);
+        currentCue = { start, end, text: '' };
+      }
+    } else if (currentCue) {
+      // Clean up WebVTT HTML-like tags from subtitle text
+      const cleanLine = line.replace(/<[^>]*>/g, '');
+      if (currentCue.text) {
+        currentCue.text += '\n' + cleanLine;
+      } else {
+        currentCue.text = cleanLine;
+      }
+    }
+  }
+
+  if (currentCue) {
+    cues.push(currentCue);
+  }
+
+  return cues;
+};
+
+const resolveSubtitleUrl = (url) => {
+  if (!url) return '';
+  if (url.startsWith('http') || url.startsWith('data:')) return url;
+  
+  let u = url;
+  if (u.startsWith('//')) {
+    const isLocal = u.includes('localhost') || u.includes('127.0.0.1') || u.includes(ACTIVE_IP) || u.includes(':5001');
+    u = (isLocal ? 'http:' : 'https:') + u;
+    return u;
+  }
+  
+  u = u.replace(/\\/g, '/');
+
+  if (u.includes('localhost') || u.includes('127.0.0.1')) {
+    u = u.replace('localhost', ACTIVE_IP).replace('127.0.0.1', ACTIVE_IP);
+    return u;
+  }
+
+  let path = u;
+  if (path.startsWith('public/')) {
+    path = path.substring(7);
+  }
+  if (path.startsWith('upload/')) {
+    path = 'uploads/' + path.substring(7);
+  }
+  if (path.startsWith('/')) {
+    path = path.substring(1);
+  }
+  return `${IMAGE_URL_BASE}/${path}`;
+};
+
 /* ── helper to resolve video URL ── */
 const resolveVideoUrl = async (url, type, token) => {
   if (!url) return null;
+
+  // If it's raw HTML embed code, return as-is
+  if (typeof url === 'string' && url.trim().startsWith('<')) {
+    return url;
+  }
 
   // Append token to local videos if not present
   if (url.includes('/api/videos/') && !url.includes('token=')) {
@@ -221,7 +324,10 @@ const resolveVideoUrl = async (url, type, token) => {
     }
   } else {
     let u = url;
-    if (u.startsWith('//')) u = 'https:' + u;
+    if (u.startsWith('//')) {
+      const isLocal = u.includes('localhost') || u.includes('127.0.0.1') || u.includes(ACTIVE_IP) || u.includes(':5001');
+      u = (isLocal ? 'http:' : 'https:') + u;
+    }
 
     // Normalize backslashes (Windows) to forward slashes
     u = u.replace(/\\/g, '/');
@@ -264,8 +370,14 @@ export default function PlayerScreen({ route, navigation }) {
     videoType,
     videoFile1080,
     videoFile720,
-    videoFile480
+    videoFile480,
+    contentType = 'movie',
+    subtitles = [],
+    subtitlesActive = 'Inactive'
   } = route.params;
+
+  const isLive = contentType === 'live' || contentType === 'channel' || contentType === 'channels' || contentType === 'tv-channel' || contentType === 'tv-channels';
+
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
 
@@ -281,6 +393,13 @@ export default function PlayerScreen({ route, navigation }) {
   const [barWidth, setBarWidth]         = useState(1);   // measured progress-bar width
   const [logoUrl, setLogoUrl]           = useState(null);
   const [resizeMode, setResizeMode]     = useState(ResizeMode.CONTAIN);
+
+  // Subtitle states
+  const [subtitlesList, setSubtitlesList] = useState([]);
+  const [activeSubtitleTrack, setActiveSubtitleTrack] = useState(-1); // -1 means Off
+  const [currentCues, setCurrentCues] = useState([]);
+  const [activeCueText, setActiveCueText] = useState('');
+  const [showSubtitlesMenu, setShowSubtitlesMenu] = useState(false);
 
   // Pulse wave animation values for when player is paused
   const ring1Scale = useRef(new Animated.Value(1)).current;
@@ -675,6 +794,21 @@ export default function PlayerScreen({ route, navigation }) {
   /* ── resolve initial video URL ── */
   useEffect(() => {
     let active = true;
+
+    // For embed-type URLs (YouTube, Vimeo, raw HTML), skip resolution:
+    // the WebView will handle loading internally via renderEmbed().
+    const isYouTubeOrVimeoUrl = videoUrl?.includes('youtube.com')
+      || videoUrl?.includes('youtu.be')
+      || videoUrl?.includes('youtube-nocookie.com')
+      || videoUrl?.includes('vimeo.com')
+      || (typeof videoUrl === 'string' && videoUrl.trim().startsWith('<'));
+
+    if (isYouTubeOrVimeoUrl || videoType === 'Embed Code') {
+      // No resolution needed — WebView renders directly from videoUrl
+      setLoading(false);
+      return;
+    }
+
     const resolve = async () => {
       setLoading(true);
       const u = await resolveVideoUrl(videoUrl, videoType, token);
@@ -722,6 +856,74 @@ export default function PlayerScreen({ route, navigation }) {
     };
     fetchQualities();
   }, [resolvedUrl]);
+
+  /* ── format subtitles tracks on load ── */
+  useEffect(() => {
+    if (subtitlesActive === 'Active' && subtitles && subtitles.length > 0) {
+      const formatted = subtitles.map(sub => ({
+        language: sub.language,
+        url: resolveSubtitleUrl(sub.url)
+      }));
+      setSubtitlesList(formatted);
+      if (formatted.length > 0) {
+        setActiveSubtitleTrack(0); // Auto-select first track
+      }
+    } else {
+      setSubtitlesList([]);
+      setActiveSubtitleTrack(-1);
+    }
+  }, [subtitles, subtitlesActive]);
+
+  /* ── fetch and parse active subtitle track ── */
+  useEffect(() => {
+    let active = true;
+    const loadSubtitles = async () => {
+      if (activeSubtitleTrack === -1 || !subtitlesList[activeSubtitleTrack]) {
+        setCurrentCues([]);
+        setActiveCueText('');
+        return;
+      }
+      try {
+        const trackUrl = subtitlesList[activeSubtitleTrack].url;
+        console.log('[PlayerScreen] Loading subtitles from:', trackUrl);
+        const res = await fetch(trackUrl);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const text = await res.text();
+        if (active) {
+          const parsed = parseSubtitles(text);
+          console.log(`[PlayerScreen] Parsed ${parsed.length} cues.`);
+          setCurrentCues(parsed);
+        }
+      } catch (err) {
+        console.warn('[PlayerScreen] Failed to load subtitles:', err);
+        if (active) {
+          setCurrentCues([]);
+          setActiveCueText('');
+        }
+      }
+    };
+
+    loadSubtitles();
+    return () => {
+      active = false;
+    };
+  }, [activeSubtitleTrack, subtitlesList]);
+
+  /* ── sync active subtitle cue with playback position ── */
+  useEffect(() => {
+    if (activeSubtitleTrack === -1 || currentCues.length === 0 || !status.positionMillis) {
+      setActiveCueText('');
+      return;
+    }
+
+    const pos = status.positionMillis;
+    const match = currentCues.find(cue => pos >= cue.start && pos <= cue.end);
+    if (match) {
+      setActiveCueText(match.text);
+    } else {
+      setActiveCueText('');
+    }
+  }, [status.positionMillis, currentCues, activeSubtitleTrack]);
 
   const handleLoad = async () => {
     setLoading(false);
@@ -919,6 +1121,13 @@ export default function PlayerScreen({ route, navigation }) {
     const now = Date.now();
     const DOUBLE_TAP_DELAY = 280;
 
+    if (isLive) {
+      if (!isAdPlaying) {
+        setShowControls(v => !v);
+      }
+      return;
+    }
+
     if (now - lastTapTime.current < DOUBLE_TAP_DELAY && currentSkipDirection.current === 'left') {
       tapCount.current += 1;
       clearTimeout(tapTimer.current);
@@ -963,6 +1172,13 @@ export default function PlayerScreen({ route, navigation }) {
     const now = Date.now();
     const DOUBLE_TAP_DELAY = 280;
 
+    if (isLive) {
+      if (!isAdPlaying) {
+        setShowControls(v => !v);
+      }
+      return;
+    }
+
     if (now - lastTapTime.current < DOUBLE_TAP_DELAY && currentSkipDirection.current === 'right') {
       tapCount.current += 1;
       clearTimeout(tapTimer.current);
@@ -1003,58 +1219,174 @@ export default function PlayerScreen({ route, navigation }) {
   };
 
   /* ─── detect embedded URLs ─── */
-  const getYtId  = (u) => { const m = u?.match(/(?:youtu\.be\/|v=|embed\/)([^#&?]{11})/); return m?.[1]; };
+  const getYtId  = (u) => {
+    if (!u) return null;
+    // Match video ID from various YouTube URL formats
+    const m = u.match(/(?:youtu\.be\/|[?&]v=|\/embed\/|\/live\/|\/shorts\/|\/v\/)([A-Za-z0-9_-]{11})/);
+    return m?.[1] || null;
+  };
   const getViId  = (u) => { const m = u?.match(/vimeo\.com\/(?:video\/)?(\d+)/); return m?.[1]; };
 
   const isMuxVideo = videoType === 'MUX_PLAYER'
     || videoUrl?.includes('mux.com')
     || (!videoUrl?.includes('.') && videoUrl?.length > 15);
 
-  const isEmbed = !isMuxVideo && (
-    videoType === 'Embed Code'
-    || videoUrl?.includes('youtube.com')
-    || videoUrl?.includes('youtu.be')
-    || videoUrl?.includes('vimeo.com')
-    || videoUrl?.trim().startsWith('<')
-  );
+  const isEmbed = !isMuxVideo && 
+    !(resolvedUrl?.includes('.m3u8') || resolvedUrl?.includes('manifest/hls_live')) && 
+    (
+      videoType === 'Embed Code'
+      || videoUrl?.includes('youtube.com')
+      || videoUrl?.includes('youtu.be')
+      || videoUrl?.includes('youtube-nocookie.com')
+      || videoUrl?.includes('vimeo.com')
+      || videoUrl?.trim().startsWith('<')
+    );
 
   const renderEmbed = () => {
     const ytId = getYtId(videoUrl);
     const viId = getViId(videoUrl);
-    let src = ytId ? `https://www.youtube.com/embed/${ytId}?autoplay=1&controls=1&rel=0`
-             : viId ? `https://player.vimeo.com/video/${viId}?autoplay=1`
-             : videoUrl?.includes('youtube.com/embed/') || videoUrl?.includes('player.vimeo.com/') ? videoUrl
-             : null;
 
-    if (!src && (videoType === 'Embed Code' || videoUrl?.trim().startsWith('<'))) {
-      const html = `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><style>*{margin:0;padding:0;box-sizing:border-box}body,html{width:100%;height:100%;background:#000;display:flex;justify-content:center;align-items:center;overflow:hidden}iframe,video,object,embed{width:100%!important;height:100%!important;border:none}</style></head><body>${videoUrl}</body></html>`;
+    // ── Raw HTML embed code (iframe snippet from admin) ──
+    if (!ytId && !viId && (videoType === 'Embed Code' || videoUrl?.trim().startsWith('<'))) {
+      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><style>*{margin:0;padding:0;box-sizing:border-box}body,html{width:100%;height:100%;background:#000;display:flex;justify-content:center;align-items:center;overflow:hidden}iframe,video,object,embed{width:100%!important;height:100%!important;border:none}</style></head><body>${videoUrl}</body></html>`;
       return (
-        <WebView 
-          style={[StyleSheet.absoluteFill, { backgroundColor: '#000000' }]} 
+        <WebView
+          style={[StyleSheet.absoluteFill, { backgroundColor: '#000000' }]}
           containerStyle={{ backgroundColor: '#000000' }}
-          source={{ html }} 
-          javaScriptEnabled 
-          domStorageEnabled 
-          allowsFullscreenVideo 
-          onLoadStart={() => setLoading(true)} 
-          onLoadEnd={() => setLoading(false)} 
+          source={{ html }}
+          javaScriptEnabled
+          domStorageEnabled
+          allowsFullscreenVideo
+          allowsInlineMediaPlayback={true}
+          mediaPlaybackRequiresUserAction={false}
+          onLoadStart={() => setLoading(true)}
+          onLoadEnd={() => setLoading(false)}
         />
       );
     }
-    if (!src) return null;
-    return (
-      <WebView 
-        style={[StyleSheet.absoluteFill, { backgroundColor: '#000000' }]} 
-        containerStyle={{ backgroundColor: '#000000' }}
-        source={{ uri: src }} 
-        javaScriptEnabled 
-        domStorageEnabled 
-        allowsFullscreenVideo 
-        onLoadStart={() => setLoading(true)} 
-        onLoadEnd={() => setLoading(false)} 
-      />
-    );
+
+    // ── YouTube via full HTML page (most reliable approach) ──
+    if (ytId) {
+      // Extract si sharing token if present (needed for some live streams)
+      const siMatch = videoUrl?.match(/[?&]si=([^&]+)/);
+      const siParam = siMatch ? `&si=${siMatch[1]}` : '';
+
+      const embedHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%;
+      background: #000;
+      overflow: hidden;
+    }
+    iframe {
+      width: 100%; height: 100%;
+      border: none;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <iframe
+    src="https://www.youtube.com/embed/${ytId}?autoplay=1&controls=1&rel=0&playsinline=1&enablejsapi=1&modestbranding=1${siParam}"
+    allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+    allowfullscreen
+  ></iframe>
+</body>
+</html>`;
+
+      return (
+        <WebView
+          style={[StyleSheet.absoluteFill, { backgroundColor: '#000000' }]}
+          containerStyle={{ backgroundColor: '#000000' }}
+          source={{ html: embedHtml, baseUrl: 'https://www.youtube.com' }}
+          userAgent="Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+          javaScriptEnabled
+          domStorageEnabled
+          allowsFullscreenVideo
+          allowsInlineMediaPlayback={true}
+          mediaPlaybackRequiresUserAction={false}
+          mixedContentMode="always"
+          onLoadStart={() => setLoading(true)}
+          onLoadEnd={() => setLoading(false)}
+        />
+      );
+    }
+
+    // ── Vimeo ──
+    if (viId) {
+      const vimeoHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
+    iframe { width: 100%; height: 100%; border: none; display: block; }
+  </style>
+</head>
+<body>
+  <iframe
+    src="https://player.vimeo.com/video/${viId}?autoplay=1&dnt=1"
+    allow="autoplay; fullscreen; picture-in-picture"
+    allowfullscreen
+  ></iframe>
+</body>
+</html>`;
+
+      return (
+        <WebView
+          style={[StyleSheet.absoluteFill, { backgroundColor: '#000000' }]}
+          containerStyle={{ backgroundColor: '#000000' }}
+          source={{ html: vimeoHtml, baseUrl: 'https://player.vimeo.com' }}
+          javaScriptEnabled
+          domStorageEnabled
+          allowsFullscreenVideo
+          allowsInlineMediaPlayback={true}
+          mediaPlaybackRequiresUserAction={false}
+          onLoadStart={() => setLoading(true)}
+          onLoadEnd={() => setLoading(false)}
+        />
+      );
+    }
+
+    // ── Already an embed URL (youtube.com/embed/ or player.vimeo.com/) ──
+    if (videoUrl?.includes('youtube.com/embed/') || videoUrl?.includes('player.vimeo.com/')) {
+      const directEmbedHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <style>* { margin: 0; padding: 0; } html, body { width: 100%; height: 100%; background: #000; overflow: hidden; } iframe { width: 100%; height: 100%; border: none; }</style>
+</head>
+<body>
+  <iframe src="${videoUrl}" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+</body>
+</html>`;
+      return (
+        <WebView
+          style={[StyleSheet.absoluteFill, { backgroundColor: '#000000' }]}
+          containerStyle={{ backgroundColor: '#000000' }}
+          source={{ html: directEmbedHtml, baseUrl: 'https://www.youtube.com' }}
+          javaScriptEnabled
+          domStorageEnabled
+          allowsFullscreenVideo
+          allowsInlineMediaPlayback={true}
+          mediaPlaybackRequiresUserAction={false}
+          onLoadStart={() => setLoading(true)}
+          onLoadEnd={() => setLoading(false)}
+        />
+      );
+    }
+
+    return null;
   };
+
 
   /* ─── safe-area aware padding ─── */
   const pt = Math.max(10, insets.top);
@@ -1066,64 +1398,66 @@ export default function PlayerScreen({ route, navigation }) {
       {/* Metro recompile trigger */}
 
       {/* ── Video layer ── */}
-      {isEmbed ? (
-        renderEmbed()
-      ) : resolvedUrl ? (
-        <View style={{ width, height, position: 'absolute', top: 0, left: 0 }}>
-          <Video
-            ref={videoRef}
-            source={{ uri: resolvedUrl }}
-            style={{ width: '100%', height: '100%' }}
-            resizeMode={resizeMode}
-            useNativeControls={false}
-            shouldPlay={isAdPlaying ? false : shouldPlayNextState}
-            onPlaybackStatusUpdate={s => setStatus(() => s)}
-            progressUpdateIntervalMillis={100}
-            onLoadStart={() => setLoading(true)}
-            onLoad={handleLoad}
-            onError={e => {
-              console.error('[PlayerScreen] Video error:', e);
-              setLoading(false);
-              shouldSeekRef.current = false;
-              showAlert(
-                'Playback Error',
-                'Failed to load the video in the selected quality. Please check your internet connection.'
-              );
-            }}
-          />
-          {/* Logo Watermark (Top Right) */}
-          <View style={[styles.watermarkContainer, { top: pt + 6, right: ph }]} pointerEvents="none">
-            {logoUrl ? (
-              <Image 
-                source={{ uri: logoUrl }} 
-                style={styles.watermarkImage} 
-                resizeMode="contain" 
-              />
-            ) : (
-              <Text style={styles.watermarkText}>
-                LEMO<Text style={{ color: '#b3d332' }}>OTT</Text>
-              </Text>
+      {(resolvedUrl || isEmbed) ? (
+        isEmbed ? (
+          renderEmbed()
+        ) : (
+          <View style={{ width, height, position: 'absolute', top: 0, left: 0 }}>
+            <Video
+              ref={videoRef}
+              source={{ uri: resolvedUrl }}
+              style={{ width: '100%', height: '100%' }}
+              resizeMode={resizeMode}
+              useNativeControls={false}
+              shouldPlay={isAdPlaying ? false : shouldPlayNextState}
+              onPlaybackStatusUpdate={s => setStatus(() => s)}
+              progressUpdateIntervalMillis={100}
+              onLoadStart={() => setLoading(true)}
+              onLoad={handleLoad}
+              onError={e => {
+                console.error('[PlayerScreen] Video error:', e);
+                setLoading(false);
+                shouldSeekRef.current = false;
+                showAlert(
+                  'Playback Error',
+                  'Failed to load the video in the selected quality. Please check your internet connection.'
+                );
+              }}
+            />
+            {/* Logo Watermark (Top Right) */}
+            <View style={[styles.watermarkContainer, { top: pt + 6, right: ph }]} pointerEvents="none">
+              {logoUrl ? (
+                <Image 
+                  source={{ uri: logoUrl }} 
+                  style={styles.watermarkImage} 
+                  resizeMode="contain" 
+                />
+              ) : (
+                <Text style={styles.watermarkText}>
+                  LEMO<Text style={{ color: '#b3d332' }}>OTT</Text>
+                </Text>
+              )}
+            </View>
+
+            {/* Floating Aspect Ratio Button */}
+            {showControls && !isAdPlaying && (
+              <TouchableOpacity 
+                onPress={() => {
+                  setResizeMode(prev => {
+                    if (prev === ResizeMode.CONTAIN) return ResizeMode.STRETCH;
+                    if (prev === ResizeMode.STRETCH) return ResizeMode.COVER;
+                    return ResizeMode.CONTAIN;
+                  });
+                }}
+                style={[styles.aspectRatioBtn, { position: 'absolute', top: pt + 55, left: ph, zIndex: 30 }]}
+              >
+                <Text style={styles.aspectRatioText}>
+                  {resizeMode === ResizeMode.CONTAIN ? 'FIT' : resizeMode === ResizeMode.STRETCH ? 'STRETCH' : 'ZOOM'}
+                </Text>
+              </TouchableOpacity>
             )}
           </View>
-
-          {/* Floating Aspect Ratio Button */}
-          {showControls && !isAdPlaying && (
-            <TouchableOpacity 
-              onPress={() => {
-                setResizeMode(prev => {
-                  if (prev === ResizeMode.CONTAIN) return ResizeMode.STRETCH;
-                  if (prev === ResizeMode.STRETCH) return ResizeMode.COVER;
-                  return ResizeMode.CONTAIN;
-                });
-              }}
-              style={[styles.aspectRatioBtn, { position: 'absolute', top: pt + 55, left: ph, zIndex: 30 }]}
-            >
-              <Text style={styles.aspectRatioText}>
-                {resizeMode === ResizeMode.CONTAIN ? 'FIT' : resizeMode === ResizeMode.STRETCH ? 'STRETCH' : 'ZOOM'}
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
+        )
       ) : null}
 
       {/* ── Tap interceptor with Left/Right Double-tap zones ── */}
@@ -1206,17 +1540,19 @@ export default function PlayerScreen({ route, navigation }) {
           <View style={[styles.bottomBar, { paddingBottom: pb, paddingHorizontal: ph }]}>
 
             {/* Progress bar */}
-            <TouchableOpacity
-              activeOpacity={1}
-              onPress={seekByTouch}
-              onLayout={e => setBarWidth(e.nativeEvent.layout.width)}
-              style={styles.seekBarHit}
-            >
-              <View style={styles.seekTrack}>
-                <View style={[styles.seekFill, { width: `${progress}%` }]} />
-                <View style={[styles.seekThumb, { left: `${progress}%` }]} />
-              </View>
-            </TouchableOpacity>
+            {!isLive && (
+              <TouchableOpacity
+                activeOpacity={1}
+                onPress={seekByTouch}
+                onLayout={e => setBarWidth(e.nativeEvent.layout.width)}
+                style={styles.seekBarHit}
+              >
+                <View style={styles.seekTrack}>
+                  <View style={[styles.seekFill, { width: `${progress}%` }]} />
+                  <View style={[styles.seekThumb, { left: `${progress}%` }]} />
+                </View>
+              </TouchableOpacity>
+            )}
 
             {/* Controls row */}
             <View style={styles.ctrlRow}>
@@ -1228,18 +1564,28 @@ export default function PlayerScreen({ route, navigation }) {
                     : <Play  color="#b3d332" size={20} fill="#b3d332" />}
                 </TouchableOpacity>
 
-                <TouchableOpacity onPress={() => seek(-10000)} style={styles.skipBtn}>
-                  <Text style={styles.skipTxt}>◂10</Text>
-                </TouchableOpacity>
+                {!isLive && (
+                  <>
+                    <TouchableOpacity onPress={() => seek(-10000)} style={styles.skipBtn}>
+                      <Text style={styles.skipTxt}>◂10</Text>
+                    </TouchableOpacity>
 
-                <TouchableOpacity onPress={() => seek(10000)} style={styles.skipBtn}>
-                  <Text style={styles.skipTxt}>10▸</Text>
-                </TouchableOpacity>
+                    <TouchableOpacity onPress={() => seek(10000)} style={styles.skipBtn}>
+                      <Text style={styles.skipTxt}>10▸</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
 
-
-                <Text style={styles.timeTxt}>
-                  {fmt(status.positionMillis)} / {fmt(status.durationMillis)}
-                </Text>
+                {isLive ? (
+                  <View style={styles.liveIndicatorRow}>
+                    <View style={styles.liveDot} />
+                    <Text style={styles.liveIndicatorText}>LIVE</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.timeTxt}>
+                    {fmt(status.positionMillis)} / {fmt(status.durationMillis)}
+                  </Text>
+                )}
 
                 <TouchableOpacity onPress={toggleMute} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                   {muted
@@ -1250,6 +1596,15 @@ export default function PlayerScreen({ route, navigation }) {
 
               {/* RIGHT */}
               <View style={styles.ctrlRight}>
+                {subtitlesList && subtitlesList.length > 0 && (
+                  <TouchableOpacity 
+                    onPress={() => setShowSubtitlesMenu(true)} 
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Subtitles color={activeSubtitleTrack !== -1 ? '#b3d332' : '#fff'} size={20} />
+                  </TouchableOpacity>
+                )}
+
                 {qualityOptions && qualityOptions.length > 1 && (
                   <TouchableOpacity 
                     onPress={() => setShowQualityMenu(true)} 
@@ -1259,9 +1614,11 @@ export default function PlayerScreen({ route, navigation }) {
                   </TouchableOpacity>
                 )}
 
-                <TouchableOpacity onPress={cycleSpeed} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <Text style={styles.speedTxt}>{speed === 1.0 ? '1' : speed}x</Text>
-                </TouchableOpacity>
+                {!isLive && (
+                  <TouchableOpacity onPress={cycleSpeed} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Text style={styles.speedTxt}>{speed === 1.0 ? '1' : speed}x</Text>
+                  </TouchableOpacity>
+                )}
 
                 <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                   <PipIcon />
@@ -1315,6 +1672,73 @@ export default function PlayerScreen({ route, navigation }) {
                     </TouchableOpacity>
                   );
                 })}
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      )}
+
+      {/* ── Subtitles Overlay ── */}
+      {!isEmbed && activeCueText ? (
+        <View 
+          style={[
+            styles.subtitleContainer, 
+            { bottom: showControls ? 100 : 40 }
+          ]} 
+          pointerEvents="none"
+        >
+          <Text style={styles.subtitleText}>{activeCueText}</Text>
+        </View>
+      ) : null}
+
+      {/* ── Subtitles Menu Overlay ── */}
+      {showSubtitlesMenu && (
+        <TouchableWithoutFeedback onPress={() => setShowSubtitlesMenu(false)}>
+          <View style={styles.modalBackdrop}>
+            <TouchableWithoutFeedback>
+              <View style={[styles.subtitlesMenuContainer, { bottom: pb + 56, right: ph + 16 }]}>
+                <TouchableOpacity
+                  style={styles.menuItem}
+                  onPress={() => {
+                    setActiveSubtitleTrack(-1);
+                    setShowSubtitlesMenu(false);
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Text style={styles.checkIcon}>
+                      {activeSubtitleTrack === -1 ? '✓ ' : '   '}
+                    </Text>
+                    <Text style={[
+                      styles.menuItemText,
+                      activeSubtitleTrack === -1 && styles.menuItemActiveText
+                    ]}>
+                      Off
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+
+                {subtitlesList.map((track, idx) => (
+                  <TouchableOpacity
+                    key={idx}
+                    style={styles.menuItem}
+                    onPress={() => {
+                      setActiveSubtitleTrack(idx);
+                      setShowSubtitlesMenu(false);
+                    }}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Text style={styles.checkIcon}>
+                        {activeSubtitleTrack === idx ? '✓ ' : '   '}
+                      </Text>
+                      <Text style={[
+                        styles.menuItemText,
+                        activeSubtitleTrack === idx && styles.menuItemActiveText
+                      ]}>
+                        {track.language || `Track ${idx + 1}`}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
               </View>
             </TouchableWithoutFeedback>
           </View>
@@ -1709,6 +2133,43 @@ const styles = StyleSheet.create({
     elevation: 10,
     zIndex: 100,
   },
+  subtitlesMenuContainer: {
+    position: 'absolute',
+    width: 150,
+    backgroundColor: 'rgba(18, 18, 18, 0.96)',
+    borderRadius: 10,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 10,
+    zIndex: 100,
+  },
+  subtitleContainer: {
+    position: 'absolute',
+    left: '5%',
+    right: '5%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 50,
+  },
+  subtitleText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '700',
+    textAlign: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    overflow: 'hidden',
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: -1, height: 1 },
+    textShadowRadius: 3,
+  },
   menuItem: {
     width: '100%',
     paddingVertical: 8,
@@ -1776,6 +2237,29 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 10,
     fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  liveIndicatorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 59, 48, 0.15)',
+    borderColor: 'rgba(255, 59, 48, 0.3)',
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+    gap: 5,
+  },
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#ff3b30',
+  },
+  liveIndicatorText: {
+    color: '#ff3b30',
+    fontSize: 10,
+    fontWeight: '900',
     letterSpacing: 0.5,
   },
 });

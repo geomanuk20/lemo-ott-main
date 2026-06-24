@@ -3,7 +3,7 @@ echo "Staging all files..."
 git add .
 
 echo "Committing changes..."
-git commit -m "fix: resolve refund policy and terms of service display issues, add scroll-to-top handler, and update mobile app layout"
+git commit -m "fix: resolve live tv mobile playback issue, status inactive filtering on mobile & backend, web youtube bypass"
 
 echo "Pushing to GitHub..."
 git push origin main

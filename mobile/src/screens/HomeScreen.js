@@ -42,7 +42,9 @@ const isSliderActive = (slide, menuSettings) => {
   if (!menuSettings || !slide) return true;
   const postType = slide.postType;
   if (postType === 'Movies' && menuSettings.movies?.toUpperCase() === 'OFF') return false;
+  if (postType === 'Short Film' && menuSettings.shortFilms?.toUpperCase() === 'OFF') return false;
   if (postType === 'TV Shows' && menuSettings.shows?.toUpperCase() === 'OFF') return false;
+  if (postType === 'Short Web Series' && menuSettings.webSeries?.toUpperCase() === 'OFF') return false;
   if (postType === 'Sports' && menuSettings.sports?.toUpperCase() === 'OFF') return false;
   if (postType === 'Live TV' && menuSettings.liveTv?.toUpperCase() === 'OFF') return false;
 
@@ -678,7 +680,6 @@ export default function HomeScreen({ navigation }) {
                   experienceRendered = true;
                   return (
                     <React.Fragment key={key}>
-                      {showExp && renderExperienceSection()}
                       <View style={styles.sectionContainer}>
                         <View style={styles.sectionHeader}>
                           <Text style={styles.sectionTitle}>{title}</Text>
@@ -692,12 +693,40 @@ export default function HomeScreen({ navigation }) {
                           contentContainerStyle={styles.listContent}
                         />
                       </View>
+                      {showExp && renderExperienceSection()}
                     </React.Fragment>
                   );
                 }
               }
-              if (type === 'Shows' || type === 'Short Web Series') {
-                const filtered = data.shows.filter(item => isItemActive(item, menuSettings));
+              if (type === 'Shows') {
+                const tvShows = data.shows.filter(s => s.contentType !== 'Short Web Series' && s.contentType !== 'short-web-series');
+                const filtered = tvShows.filter(item => isItemActive(item, menuSettings));
+                if (filtered.length > 0) {
+                  const showExp = !experienceRendered;
+                  experienceRendered = true;
+                  return (
+                    <React.Fragment key={key}>
+                      <View style={styles.sectionContainer}>
+                        <View style={styles.sectionHeader}>
+                          <Text style={styles.sectionTitle}>{title}</Text>
+                        </View>
+                        <FlatList
+                          data={filtered.slice(0, section.limit || 20)}
+                          renderItem={({ item }) => renderMediaCard({ item, type: 'show' })}
+                          keyExtractor={(item) => item._id}
+                          horizontal
+                          showsHorizontalScrollIndicator={false}
+                          contentContainerStyle={styles.listContent}
+                        />
+                      </View>
+                      {showExp && renderExperienceSection()}
+                    </React.Fragment>
+                  );
+                }
+              }
+              if (type === 'Short Web Series') {
+                const webSeries = data.shows.filter(s => s.contentType === 'Short Web Series' || s.contentType === 'short-web-series');
+                const filtered = webSeries.filter(item => isItemActive(item, menuSettings));
                 if (filtered.length > 0) {
                   const showExp = !experienceRendered;
                   experienceRendered = true;
@@ -823,13 +852,28 @@ export default function HomeScreen({ navigation }) {
                 </View>
               )}
               {renderExperienceSection()}
-              {data.shows.filter(item => isItemActive(item, menuSettings)).length > 0 && (!menuSettings || menuSettings.shows?.toUpperCase() !== 'OFF' || menuSettings.webSeries?.toUpperCase() !== 'OFF') && (
+              {data.shows.filter(s => s.contentType !== 'Short Web Series' && s.contentType !== 'short-web-series').filter(item => isItemActive(item, menuSettings)).length > 0 && (!menuSettings || menuSettings.shows?.toUpperCase() !== 'OFF') && (
                 <View style={styles.sectionContainer}>
                   <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>Trending Web Series</Text>
+                    <Text style={styles.sectionTitle}>TV Shows</Text>
                   </View>
                   <FlatList
-                    data={data.shows.filter(item => isItemActive(item, menuSettings))}
+                    data={data.shows.filter(s => s.contentType !== 'Short Web Series' && s.contentType !== 'short-web-series').filter(item => isItemActive(item, menuSettings))}
+                    renderItem={({ item }) => renderMediaCard({ item, type: 'show' })}
+                    keyExtractor={(item) => item._id}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.listContent}
+                  />
+                </View>
+              )}
+              {data.shows.filter(s => s.contentType === 'Short Web Series' || s.contentType === 'short-web-series').filter(item => isItemActive(item, menuSettings)).length > 0 && (!menuSettings || menuSettings.webSeries?.toUpperCase() !== 'OFF') && (
+                <View style={styles.sectionContainer}>
+                  <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>Short Web Series</Text>
+                  </View>
+                  <FlatList
+                    data={data.shows.filter(s => s.contentType === 'Short Web Series' || s.contentType === 'short-web-series').filter(item => isItemActive(item, menuSettings))}
                     renderItem={({ item }) => renderMediaCard({ item, type: 'show' })}
                     keyExtractor={(item) => item._id}
                     horizontal

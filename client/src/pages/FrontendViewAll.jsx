@@ -6,14 +6,18 @@ import FrontendLayout from '../components/FrontendLayout';
 import { formatImageUrl } from '../utils/image';
 
 const isActive = (status) => {
-  if (status === undefined || status === null) return true;
+  // Require explicitly 'Active' — null/undefined/Inactive all fail
+  if (!status) return false;
   if (typeof status === 'boolean') return status;
   const str = String(status).toLowerCase().trim();
-  return str === 'active' || str === 'true' || str === '1';
+  return str === 'active';
 };
 
 const isItemActive = (item, menuSettings) => {
-  if (!menuSettings || !item) return true;
+  if (!item) return false;
+  // Require Active status first
+  if (!isActive(item.status)) return false;
+  if (!menuSettings) return true;
   
   let contentType = item.contentType;
   if (!contentType) {
@@ -35,6 +39,7 @@ const isItemActive = (item, menuSettings) => {
 
   return true;
 };
+
 
 const FrontendViewAll = () => {
  const { type, title } = useParams();
