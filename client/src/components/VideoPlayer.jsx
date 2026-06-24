@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useRef, forwardRef, isValidElement } from 'react';
-import MuxPlayer from '@mux/mux-player-react';
+import React, { useState, useEffect, useRef, forwardRef, isValidElement, useMemo } from 'react';
 import { createPlayer } from '@videojs/react';
 import { VideoSkin, videoFeatures } from '@videojs/react/video';
 import { HlsVideo } from '@videojs/react/media/hls-video';
@@ -85,7 +84,7 @@ const HtmlScriptExecutor = ({ html }) => {
   );
 };
 
-function CentralControlsOverlay() {
+function CentralControlsOverlay({ isLive }) {
   const paused = Player.usePlayer((s) => s.paused);
   const play = Player.usePlayer((s) => s.play);
   const pause = Player.usePlayer((s) => s.pause);
@@ -100,6 +99,26 @@ function CentralControlsOverlay() {
     e.stopPropagation();
     const now = Date.now();
     const last = lastClickRef.current;
+
+    // Disable skip/seek double-tap actions if this is a live stream
+    if (isLive) {
+      if (now - last.time < 450) {
+        return;
+      }
+      lastClickRef.current = { time: now, count: 1, side, amount: 0 };
+      setTimeout(() => {
+        const currentLast = lastClickRef.current;
+        if (currentLast.side === side && currentLast.count === 1 && Date.now() - currentLast.time >= 250) {
+          if (paused) {
+            if (play) play();
+          } else {
+            if (pause) pause();
+          }
+          lastClickRef.current = { time: 0, count: 0, side: null, amount: 0 };
+        }
+      }, 260);
+      return;
+    }
 
     // Check if within double/triple click time threshold (450ms)
     if (last.side === side && now - last.time < 450) {
@@ -496,6 +515,7 @@ function CentralControlsOverlay() {
 
 // helper to convert hh:mm:ss to seconds
 const timeToSeconds = (timeStr) => {
+
   if (!timeStr) return 0;
   const parts = String(timeStr).split(':').map(Number);
   if (parts.length === 3) {
@@ -581,6 +601,243 @@ function AdsController({ isAdPlaying, adsConfig, playedAdsRef, triggerAd, vastPr
   return null;
 }
 
+// Custom Subtitles Dropdown that intercepts native CC button clicks
+function SubtitlesDropdown({ processedSubs, activeTrackIdx, setActiveTrackIdx, containerRef }) {
+  const paused = Player.usePlayer((s) => s.paused);
+  const controlsVisible = Player.usePlayer((s) => s.controlsVisible);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [dropdownStyle, setDropdownStyle] = useState({ display: 'none' });
+  const dropdownRef = useRef(null);
+
+  const findCcButton = () => {
+    if (!containerRef.current) return null;
+    return containerRef.current.querySelector(
+      '.vjs-captions-button, .vjs-subs-caps-button, .media-button--captions, [part="captions-button"], vds-captions-button, .vds-captions-button'
+    );
+  };
+
+  useEffect(() => {
+    let ccButton = findCcButton();
+
+    const handleCcClick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setShowDropdown(prev => !prev);
+    };
+
+    if (ccButton) {
+      ccButton.addEventListener('click', handleCcClick, true);
+    }
+
+    const observer = new MutationObserver(() => {
+      const currentCcButton = findCcButton();
+      if (currentCcButton !== ccButton) {
+        if (ccButton) {
+          ccButton.removeEventListener('click', handleCcClick, true);
+        }
+        ccButton = currentCcButton;
+        if (ccButton) {
+          ccButton.addEventListener('click', handleCcClick, true);
+        }
+      }
+    });
+
+    if (containerRef.current) {
+      observer.observe(containerRef.current, { childList: true, subtree: true });
+    }
+
+    return () => {
+      observer.disconnect();
+      if (ccButton) {
+        ccButton.removeEventListener('click', handleCcClick, true);
+      }
+    };
+  }, [containerRef]);
+
+  useEffect(() => {
+    if (!showDropdown || !controlsVisible) {
+      setDropdownStyle({ display: 'none' });
+      return;
+    }
+
+    const ccButton = findCcButton();
+    if (!ccButton || !containerRef.current) {
+      setDropdownStyle({ display: 'none' });
+      return;
+    }
+
+    const containerRect = containerRef.current.getBoundingClientRect();
+    const buttonRect = ccButton.getBoundingClientRect();
+
+    const rightOffset = containerRect.right - buttonRect.right;
+    const bottomOffset = containerRect.bottom - buttonRect.top + 8;
+
+    setDropdownStyle({
+      position: 'absolute',
+      bottom: `${bottomOffset}px`,
+      right: `${rightOffset}px`,
+      zIndex: 1000,
+      display: 'block'
+    });
+  }, [showDropdown, controlsVisible, containerRef]);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      const ccButton = findCcButton();
+      if (
+        dropdownRef.current && 
+        !dropdownRef.current.contains(e.target) &&
+        (!ccButton || !ccButton.contains(e.target))
+      ) {
+        setShowDropdown(false);
+      }
+    };
+
+    if (showDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showDropdown]);
+
+  useEffect(() => {
+    if (!controlsVisible && !paused) {
+      setShowDropdown(false);
+    }
+  }, [controlsVisible, paused]);
+
+  const isSubActive = activeTrackIdx !== -1;
+  const shouldShowMenu = showDropdown && (controlsVisible || paused);
+
+  return (
+    <>
+      {isSubActive && (
+        <style dangerouslySetInnerHTML={{ __html: `
+          .vjs-captions-button,
+          .vjs-subs-caps-button,
+          .media-button--captions,
+          [part="captions-button"],
+          vds-captions-button,
+          .vds-captions-button {
+            color: #b3d332 !important;
+          }
+          .vjs-captions-button svg,
+          .vjs-subs-caps-button svg,
+          .media-button--captions svg,
+          [part="captions-button"] svg,
+          vds-captions-button svg,
+          .vds-captions-button svg,
+          .vjs-captions-button svg path,
+          .vjs-subs-caps-button svg path,
+          .media-button--captions svg path,
+          [part="captions-button"] svg path,
+          vds-captions-button svg path,
+          .vds-captions-button svg path {
+            fill: #b3d332 !important;
+            stroke: #b3d332 !important;
+          }
+        ` }} />
+      )}
+      {shouldShowMenu && (
+        <div 
+          ref={dropdownRef} 
+          style={dropdownStyle}
+          className="subtitles-dropdown-container"
+        >
+          <style dangerouslySetInnerHTML={{ __html: `
+            .subtitles-dropdown-container {
+              animation: subDropdownFadeIn 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+            }
+            @keyframes subDropdownFadeIn {
+              from {
+                opacity: 0;
+                transform: translateY(8px);
+              }
+              to {
+                opacity: 1;
+                transform: translateY(0);
+              }
+            }
+            .subtitles-dropdown-item {
+              padding: 8px 16px;
+              cursor: pointer;
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              transition: background 0.2s, color 0.2s;
+            }
+            .subtitles-dropdown-item:hover {
+              background: rgba(255, 255, 255, 0.12) !important;
+              color: #b3d332;
+            }
+          ` }} />
+          <div style={{
+            background: 'rgba(20, 20, 20, 0.95)',
+            border: '1px solid rgba(255, 255, 255, 0.15)',
+            borderRadius: '8px',
+            padding: '8px 0',
+            minWidth: '140px',
+            boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+            backdropFilter: 'blur(10px)',
+            color: '#fff',
+            fontFamily: 'sans-serif',
+            fontSize: '0.85rem'
+          }}>
+            <div style={{
+              padding: '4px 12px 8px 12px',
+              fontWeight: 600,
+              color: '#888',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+              marginBottom: '4px'
+            }}>
+              Subtitles
+            </div>
+            
+            <div 
+              onClick={() => {
+                setActiveTrackIdx(-1);
+                setShowDropdown(false);
+              }}
+              className="subtitles-dropdown-item"
+              style={{
+                background: activeTrackIdx === -1 ? 'rgba(255, 255, 255, 0.1)' : 'transparent'
+              }}
+            >
+              <span>Off</span>
+              {activeTrackIdx === -1 && (
+                <span style={{ color: '#b3d332', fontSize: '0.9rem' }}>✓</span>
+              )}
+            </div>
+
+            {processedSubs.map((sub, idx) => {
+              const isSelected = activeTrackIdx === idx;
+              return (
+                <div 
+                  key={idx}
+                  onClick={() => {
+                    setActiveTrackIdx(idx);
+                    setShowDropdown(false);
+                  }}
+                  className="subtitles-dropdown-item"
+                  style={{
+                    background: isSelected ? 'rgba(255, 255, 255, 0.1)' : 'transparent'
+                  }}
+                >
+                  <span>{sub.language || `Track ${idx + 1}`}</span>
+                  {isSelected && (
+                    <span style={{ color: '#b3d332', fontSize: '0.9rem' }}>✓</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 // ================================================================
 // Main Video Player
 // ================================================================
@@ -590,7 +847,7 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
   const playerRef = useRef(null);
 
   // Read active video player configuration directly from environment variables (.env)
-  const activePlayer = import.meta.env.VITE_ACTIVE_PLAYER || 'MUX_PLAYER';
+  const activePlayer = import.meta.env.VITE_ACTIVE_PLAYER || 'VIDEO_JS';
 
   // Gating & Playback Ads Configuration state
   const [adsConfig, setAdsConfig] = useState(null);
@@ -603,6 +860,9 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
   const playedAdsRef = useRef(new Set());
   const timerRef = useRef(null);
   const [aspectRatioMode, setAspectRatioMode] = useState('contain'); // 'contain' | 'fill' | 'cover'
+
+  // Subtitles dropdown and active track states
+  const [activeTrackIdx, setActiveTrackIdx] = useState(-1);
 
   // Rating overlay states
   const [showRatingOverlay, setShowRatingOverlay] = useState(false);
@@ -1223,77 +1483,19 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
   const isAutoplayEnabled = playerSettings?.autoplay === 'YES';
   const isRewindForwardEnabled = playerSettings?.rewindForward !== 'NO';
 
-  // Helper to extract playback ID if it's a Mux stream
-  const getPlaybackId = (url) => {
-    if (!url) return null;
-    const trimmed = url.trim();
-    // Support raw 46-character Mux playback IDs directly
-    if (/^[a-zA-Z0-9]{46}$/.test(trimmed)) {
-      return trimmed;
-    }
-    const match = trimmed.match(/(?:stream\.mux\.com|player\.mux\.com)\/([a-zA-Z0-9]+)/);
-    if (match && match[1]) return match[1];
-    return null;
-  };
-
-  const playbackId = getPlaybackId(src);
-  const [signedToken, setSignedToken] = useState(null);
-  const [loadingToken, setLoadingToken] = useState(false);
-
-  useEffect(() => {
-    if (playbackId) {
-      setLoadingToken(true);
-      fetch(`/api/mux/sign-token?playbackId=${playbackId}`)
-        .then(res => {
-          if (!res.ok) throw new Error('Token API failed');
-          return res.json();
-        })
-        .then(data => {
-          setSignedToken(data.token || null);
-        })
-        .catch(err => {
-          console.error('Error fetching Mux signed token:', err);
-          setSignedToken(null);
-        })
-        .finally(() => {
-          setLoadingToken(false);
-        });
-    } else {
-      setSignedToken(null);
-      setLoadingToken(false);
-    }
-  }, [playbackId]);
+  const playbackId = null;
+  const signedToken = null;
+  const loadingToken = false;
 
   const [resolvedYoutubeLiveSrc, setResolvedYoutubeLiveSrc] = useState(null);
   const [resolvingYoutubeLive, setResolvingYoutubeLive] = useState(false);
 
+  // Bypass resolving YouTube Live streams on the web app because direct playback
+  // of manifest.googlevideo.com manifests fails due to browser CORS policies.
+  // Using the standard iframe embed handles playback cleanly on the web.
   useEffect(() => {
     setResolvedYoutubeLiveSrc(null);
-    if (!src) return;
-
-    const isYt = src.includes('youtube.com') || src.includes('youtu.be');
-    if (isYt) {
-      setResolvingYoutubeLive(true);
-      const host = window.location.hostname || 'localhost';
-      const backendUrl = `http://${host}:5001/api/youtube/live-m3u8?url=${encodeURIComponent(src.trim())}`;
-      fetch(backendUrl)
-        .then(res => {
-          if (!res.ok) throw new Error('Not a live stream or resolution failed');
-          return res.json();
-        })
-        .then(data => {
-          if (data.m3u8Url) {
-            console.log('Resolved YouTube Live HLS stream:', data.m3u8Url);
-            setResolvedYoutubeLiveSrc(data.m3u8Url);
-          }
-        })
-        .catch(err => {
-          console.log('YouTube Live HLS resolution skipped/failed:', err.message);
-        })
-        .finally(() => {
-          setResolvingYoutubeLive(false);
-        });
-    }
+    setResolvingYoutubeLive(false);
   }, [src]);
 
   const getStreamSrc = () => {
@@ -1344,8 +1546,112 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
   const embedInfo = getEmbedInfo(src);
   const isHtmlEmbed = embedInfo.isEmbed && !resolvedYoutubeLiveSrc;
 
-  // Filter subtitles that have valid URLs
-  const activeSubs = (subtitles || []).filter(sub => sub && sub.url && sub.url.trim() !== '');
+  // Filter subtitles that have valid URLs and use fallback if empty
+  const activeSubs = useMemo(() => {
+    if (subtitlesActive !== 'Active') {
+      return [];
+    }
+    const rawSubs = (subtitles || []).filter(sub => sub && sub.url && sub.url.trim() !== '');
+    return rawSubs.length > 0 
+      ? rawSubs 
+      : [
+          { url: '/subtitles.vtt', language: 'English' },
+          { url: '/subtitles_ml.vtt', language: 'Malayalam' }
+        ];
+  }, [JSON.stringify(subtitles), subtitlesActive]);
+
+  const [processedSubs, setProcessedSubs] = useState(activeSubs);
+
+  useEffect(() => {
+    setProcessedSubs(activeSubs);
+
+    let active = true;
+    const blobUrlsToClean = [];
+
+    const processSubtitles = async () => {
+      const results = await Promise.all(
+        activeSubs.map(async (sub) => {
+          if (sub.url) {
+            const isExternal = sub.url.startsWith('http://') || sub.url.startsWith('https://');
+            const isSrt = sub.url.split('?')[0].toLowerCase().endsWith('.srt');
+            const isVtt = sub.url.split('?')[0].toLowerCase().endsWith('.vtt');
+
+            if (isSrt || isVtt || isExternal) {
+              try {
+                const fetchUrl = isExternal 
+                  ? `/api/subtitle-proxy?url=${encodeURIComponent(sub.url)}`
+                  : sub.url;
+
+                const res = await fetch(fetchUrl);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                let text = await res.text();
+                
+                if (isSrt) {
+                  // Convert SRT to VTT format on-the-fly
+                  let vttText = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+                  if (!vttText.startsWith('WEBVTT')) {
+                    vttText = 'WEBVTT\n\n' + vttText;
+                  }
+                  vttText = vttText.replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2');
+                  text = vttText;
+                }
+
+                const blob = new Blob([text], { type: 'text/vtt' });
+                const blobUrl = URL.createObjectURL(blob);
+                blobUrlsToClean.push(blobUrl);
+
+                return { ...sub, url: blobUrl };
+              } catch (err) {
+                console.error(`Failed to load/convert subtitle from ${sub.url}:`, err);
+                return sub;
+              }
+            }
+          }
+          return sub;
+        })
+      );
+
+      if (active) {
+        setProcessedSubs(results);
+      }
+    };
+
+    processSubtitles();
+
+    return () => {
+      active = false;
+      blobUrlsToClean.forEach(url => {
+        try {
+          URL.revokeObjectURL(url);
+        } catch (e) {}
+      });
+    };
+  }, [activeSubs]);
+
+  // Find index of the first English subtitle, or fallback to index 0
+  const defaultIdx = useMemo(() => {
+    const idx = processedSubs.findIndex(sub => {
+      const lang = (sub.language || '').toLowerCase();
+      return lang.includes('english') || lang === 'en';
+    });
+    return idx !== -1 ? idx : 0;
+  }, [processedSubs]);
+
+  useEffect(() => {
+    if (subtitlesActive === 'Active' && processedSubs.length > 0) {
+      setActiveTrackIdx(defaultIdx);
+    } else {
+      setActiveTrackIdx(-1);
+    }
+  }, [processedSubs, defaultIdx, subtitlesActive]);
+
+  const getLangCode = (langName) => {
+    if (!langName) return 'en';
+    const name = langName.toLowerCase().trim();
+    if (name.includes('malayalam') || name === 'ml') return 'ml';
+    if (name.includes('english') || name === 'en') return 'en';
+    return name.substring(0, 2);
+  };
 
   const getViewerUserId = () => {
     if (userId) return userId;
@@ -1396,7 +1702,7 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
     "--rendition-menu-button": "inline-flex",
     "--audio-track-menu-button": "inline-flex",
     "--captions-button": "inline-flex",
-    "--pip-button": "inline-flex",
+    "--pip-button": "none",
     "--fullscreen-button": "inline-flex",
     "--volume-range": "inline-flex",
     "--time-range": "inline-flex"
@@ -1546,6 +1852,86 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
     };
   }, [activePlayer]);
 
+  // Sync activeTrackIdx with HTML5 video textTracks mode by matching language/label
+  useEffect(() => {
+    const videoEl = containerRef.current?.querySelector('video');
+    if (!videoEl || !videoEl.textTracks) return;
+
+    let isSyncing = false;
+
+    const syncTracks = () => {
+      if (isSyncing) return;
+      isSyncing = true;
+
+      const tracks = videoEl.textTracks;
+      const selectedSub = activeTrackIdx !== -1 ? processedSubs[activeTrackIdx] : null;
+      const selectedLang = selectedSub ? getLangCode(selectedSub.language) : null;
+      const selectedLabel = selectedSub ? (selectedSub.language || 'English') : null;
+
+      for (let i = 0; i < tracks.length; i++) {
+        const track = tracks[i];
+        if (track.kind === 'subtitles' || track.kind === 'captions') {
+          const isMatch = selectedSub && (
+            track.label === selectedLabel || 
+            track.language === selectedLang
+          );
+          if (isMatch && subtitlesActive === 'Active') {
+            track.mode = 'showing';
+          } else {
+            track.mode = 'disabled';
+          }
+        }
+      }
+      isSyncing = false;
+    };
+
+    const syncStateFromTracks = () => {
+      if (isSyncing) return;
+      isSyncing = true;
+
+      const tracks = videoEl.textTracks;
+      let foundActiveIdx = -1;
+
+      for (let i = 0; i < tracks.length; i++) {
+        const track = tracks[i];
+        if ((track.kind === 'subtitles' || track.kind === 'captions') && track.mode === 'showing') {
+          const idx = processedSubs.findIndex(sub => {
+            const subLang = getLangCode(sub.language);
+            const subLabel = sub.language || 'English';
+            return track.label === subLabel || track.language === subLang;
+          });
+          if (idx !== -1) {
+            foundActiveIdx = idx;
+            break;
+          }
+        }
+      }
+
+      if (foundActiveIdx !== activeTrackIdx) {
+        setActiveTrackIdx(foundActiveIdx);
+      }
+      isSyncing = false;
+    };
+
+    syncTracks();
+
+    videoEl.addEventListener('loadedmetadata', syncTracks);
+    if (videoEl.textTracks) {
+      videoEl.textTracks.addEventListener('addtrack', syncTracks);
+      videoEl.textTracks.addEventListener('change', syncStateFromTracks);
+    }
+
+    return () => {
+      videoEl.removeEventListener('loadedmetadata', syncTracks);
+      if (videoEl.textTracks) {
+        videoEl.textTracks.removeEventListener('addtrack', syncTracks);
+        videoEl.textTracks.removeEventListener('change', syncStateFromTracks);
+      }
+    };
+  }, [activeTrackIdx, processedSubs, subtitlesActive]);
+
+
+
   const renderSecurityOverlay = () => (
     <div style={{
       position: 'absolute',
@@ -1580,6 +1966,13 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
         display: none !important;
         visibility: hidden !important;
       }
+    }
+    mux-player {
+      --pip-button: none !important;
+      --bottom-pip-button: none !important;
+    }
+    mux-player::part(pip-button), mux-player::part(pip), .media-button--pip {
+      display: none !important;
     }
   `;
 
@@ -1660,9 +2053,100 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
       background: rgba(255, 255, 255, 0.1);
       color: #fff;
     }
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    /* Subtitles custom styling: small font size & transparent background */
+    ::cue {
+      background: transparent !important;
+      background-color: transparent !important;
+      color: #ffffff !important;
+      font-size: 14px !important;
+      text-shadow: 
+        1px 1px 2px #000, 
+        -1px -1px 2px #000, 
+        1px -1px 2px #000, 
+        -1px 1px 2px #000,
+        0px 2px 4px rgba(0,0,0,0.8) !important;
+    }
+    video::-webkit-media-text-track-display {
+      background: transparent !important;
+      background-color: transparent !important;
+    }
+    video::-webkit-media-text-track-display-backdrop {
+      background: transparent !important;
+      background-color: transparent !important;
+    }
+    video::-webkit-media-text-track-container {
+      background: transparent !important;
+      background-color: transparent !important;
+    }
+    .video-js .vjs-text-track-cue {
+      background-color: transparent !important;
+      background: transparent !important;
+    }
+    .video-js .vjs-text-track-cue > div {
+      background-color: transparent !important;
+      background: transparent !important;
+      font-size: 14px !important;
+      text-shadow: 
+        1px 1px 2px #000, 
+        -1px -1px 2px #000, 
+        1px -1px 2px #000, 
+        -1px 1px 2px #000,
+        0px 2px 4px rgba(0,0,0,0.8) !important;
+    }
   `;
 
-  const combinedSecurityAndRatingStyles = securityStyles + ratingStyles;
+  const liveStyles = getNormalizedContentType() === 'live' ? `
+    /* Hide seek bar/timeline, duration, progress control, and time group elements for Live TV */
+    .vjs-progress-control,
+    .vjs-current-time,
+    .vjs-duration,
+    .vjs-time-divider,
+    .vjs-remaining-time,
+    .time-slider,
+    .media-time-slider,
+    .media-time-layout,
+    .media-time-group,
+    .media-duration,
+    .media-time,
+    .vds-time-slider,
+    .vds-time-layout,
+    .vds-time-group,
+    .vds-duration,
+    .vds-time,
+    .vds-slider,
+    media-time-slider,
+    media-time-layout,
+    media-time-group,
+    media-duration,
+    media-time,
+    vds-time-slider,
+    vds-time-layout,
+    vds-time-group,
+    vds-duration,
+    vds-time,
+    vds-slider,
+    mux-player::part(time-slider),
+    mux-player::part(time-display),
+    mux-player::part(duration-display) {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
+  ` : '';
+
+  const combinedSecurityAndRatingStyles = securityStyles + ratingStyles + liveStyles;
 
   // --- RENDERING PIPELINE ---
 
@@ -1701,101 +2185,6 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
     );
   }
 
-  // 1. Render Mux Player if playback ID is present and activePlayer is MUX_PLAYER
-  if (activePlayer === 'MUX_PLAYER' && playbackId) {
-    return (
-      <div ref={containerRef} style={containerStyle} onContextMenu={(e) => e.preventDefault()}>
-        <style dangerouslySetInnerHTML={{ __html: combinedSecurityAndRatingStyles }} />
-        <MuxPlayer
-          ref={playerRef}
-          playbackId={playbackId}
-          tokens={signedToken ? { playback: signedToken } : undefined}
-          accentColor={accentColor}
-          playsInline
-          autoPlay={isAutoplayEnabled ? 'any' : false}
-          playbackEngine="mse"
-          forwardSeekOffset={10}
-          backwardSeekOffset={10}
-          playbackRates={[0.5, 1, 1.25, 1.5, 2]}
-          onEnded={onEnded}
-          onPlay={(e) => {
-            if (isAdPlaying) {
-              try {
-                e.target.pause();
-              } catch (err) {}
-            }
-          }}
-          onTimeUpdate={(e) => {
-            handlePlayerTimeUpdate(e.target.currentTime, e.target.duration);
-          }}
-          style={muxPlayerStyle}
-          metadata={metadata}
-          fullscreenElement="lemo-premium-player-container"
-        />
-        {/* Aspect Ratio Toggle Button */}
-        <button 
-          onClick={(e) => {
-            e.stopPropagation();
-            setAspectRatioMode(prev => {
-              if (prev === 'contain') return 'fill';
-              if (prev === 'fill') return 'cover';
-              return 'contain';
-            });
-          }}
-          className="premium-aspect-ratio-btn"
-          style={{
-            position: 'absolute',
-            top: '20px',
-            left: '20px',
-            zIndex: 10,
-            background: 'rgba(0,0,0,0.6)',
-            border: '1px solid rgba(255,255,255,0.2)',
-            color: '#fff',
-            padding: '6px 12px',
-            borderRadius: '20px',
-            fontSize: '0.75rem',
-            fontWeight: 800,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            backdropFilter: 'blur(8px)',
-            transition: 'all 0.3s'
-          }}
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-            <rect width="18" height="18" x="3" y="3" rx="2" />
-            {aspectRatioMode === 'fill' && <path d="M7 7h10v10H7z" fill="currentColor"/>}
-            {aspectRatioMode === 'cover' && <path d="M3 12h18M12 3v18"/>}
-          </svg>
-          {aspectRatioMode === 'contain' ? 'FIT' : aspectRatioMode === 'fill' ? 'STRETCH' : 'ZOOM'}
-        </button>
-
-        {/* Floating Watermark Layer */}
-        {playerSettings?.watermark === 'YES' && playerSettings?.watermarkLogo && (
-          <a 
-            href={playerSettings.watermarkUrl && playerSettings.watermarkUrl !== '#' ? playerSettings.watermarkUrl : undefined}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={`premium-player-watermark position-${(playerSettings.watermarkPosition || 'Top Right').toLowerCase().replace(' ', '-')}`}
-            style={getWatermarkStyle(playerSettings.watermarkPosition)}
-          >
-            <img 
-              src={getWatermarkUrl(playerSettings.watermarkLogo)} 
-              alt="Watermark" 
-              style={{ maxHeight: '35px', opacity: 0.7 }}
-            />
-          </a>
-        )}
-        {/* Ad Overlay */}
-        {isAdPlaying && adMediaUrl && renderAdOverlay()}
-        {renderRatingOverlay()}
-        {renderUserWatermark()}
-        {isWindowBlurred && renderSecurityOverlay()}
-      </div>
-    );
-  }
-
   // 2. Render V10 @videojs/react Player (HLS, DASH, MP4, etc.)
   return (
     <Player.Provider>
@@ -1812,6 +2201,7 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
         >
           <style dangerouslySetInnerHTML={{ __html: combinedSecurityAndRatingStyles }} />
           <HlsVideo 
+            key={`${getStreamSrc()}_${processedSubs.map(s => s.url).join(',')}`}
             src={getStreamSrc()} 
             playsInline 
             crossOrigin="anonymous"
@@ -1822,20 +2212,20 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
             }}
             style={playerStyle}
           >
-            {subtitlesActive === 'Active' && activeSubs.map((sub, idx) => (
+            {subtitlesActive === 'Active' && processedSubs.map((sub, idx) => (
               <track
                 key={idx}
                 kind="subtitles"
                 src={sub.url}
-                srcLang={sub.language ? sub.language.toLowerCase().substring(0, 2) : 'en'}
+                srcLang={getLangCode(sub.language)}
                 label={sub.language || 'English'}
-                default={idx === 0}
+                default={idx === defaultIdx}
               />
             ))}
           </HlsVideo>
 
           {/* Central controls overlay (Big play/pause, backward/forward skip) */}
-          <CentralControlsOverlay />
+          <CentralControlsOverlay isLive={getNormalizedContentType() === 'live'} />
 
           {/* AdsController */}
           {userShouldSeeAds && adsConfig && (
@@ -1887,6 +2277,8 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
             {aspectRatioMode === 'contain' ? 'FIT' : aspectRatioMode === 'fill' ? 'STRETCH' : 'ZOOM'}
           </button>
 
+
+
           {/* Floating Watermark Layer */}
           {playerSettings?.watermark === 'YES' && playerSettings?.watermarkLogo && (
             <a 
@@ -1909,6 +2301,14 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
           {renderRatingOverlay()}
           {renderUserWatermark()}
           {isWindowBlurred && renderSecurityOverlay()}
+
+          {/* Subtitles Custom Dropdown */}
+          <SubtitlesDropdown 
+            processedSubs={processedSubs}
+            activeTrackIdx={activeTrackIdx}
+            setActiveTrackIdx={setActiveTrackIdx}
+            containerRef={containerRef}
+          />
         </VideoSkin>
       </div>
     </Player.Provider>
