@@ -29,7 +29,8 @@ import {
   Image,
   List,
   CheckCircle2,
-  XCircle
+  XCircle,
+  Radio
 } from 'lucide-react';
 import { formatBrandingUrl } from '../utils/branding';
 
@@ -117,6 +118,7 @@ const Sidebar = () => {
         subItems: [
           { name: 'TV Category', icon: <Layers size={16} />, path: '/admin/live-tv/category' },
           { name: 'TV Channel', icon: <Tv size={16} />, path: '/admin/live-tv/channel' },
+          { name: 'Lemo Live Stream', icon: <Radio size={16} />, path: '/admin/live-tv/stream' },
         ]
       },
     ] : []),

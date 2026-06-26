@@ -231,6 +231,7 @@ const Asset = require('./models/Asset');
 const Experience = require('./models/Experience');
 const Rating = require('./models/Rating');
 const Submission = require('./models/Submission');
+const LiveStreamSettings = require('./models/LiveStreamSettings');
 
 const isAdminRequest = async (req) => {
   try {
@@ -2934,6 +2935,104 @@ app.put('/api/general-settings', async (req, res) => {
     res.status(400).json({ message: err.message });
   }
 });
+
+
+// Active Live Stream Public Route (Frontend)
+app.get('/api/live-stream/active', async (req, res) => {
+  try {
+    const settings = await LiveStreamSettings.findOne();
+    if (settings) {
+      return res.json({
+        isLive: settings.isLive,
+        isScheduled: settings.isScheduled || false,
+        scheduledTime: settings.scheduledTime || null,
+        streamTitle: settings.streamTitle,
+        streamCategory: settings.streamCategory,
+        viewers: settings.isLive ? settings.viewers : 0,
+        streamUrl: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
+        poster: settings.streamPoster || 'https://images.unsplash.com/photo-1542204172-e7052809f852?w=800&q=80',
+        chatEnabled: settings.chatEnabled !== false
+      });
+    }
+    res.json({ isLive: false, isScheduled: false });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Live Stream Settings Routes
+app.get('/api/live-stream/settings', async (req, res) => {
+  try {
+    const isAdmin = await isAdminRequest(req);
+    if (!isAdmin) {
+      return res.status(403).json({ message: 'Access Denied' });
+    }
+    let settings = await LiveStreamSettings.findOne();
+    if (!settings) {
+      const defaultKey = `live_lemo_${crypto.randomBytes(8).toString('hex')}`;
+      settings = new LiveStreamSettings({
+        streamKey: defaultKey
+      });
+      await settings.save();
+    }
+    res.json(settings);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.put('/api/live-stream/settings', async (req, res) => {
+  try {
+    const isAdmin = await isAdminRequest(req);
+    if (!isAdmin) {
+      return res.status(403).json({ message: 'Access Denied' });
+    }
+    const updateData = { ...req.body };
+    delete updateData._id;
+    delete updateData.__v;
+    delete updateData.createdAt;
+    delete updateData.updatedAt;
+
+    let settings = await LiveStreamSettings.findOne();
+    if (!settings) {
+      const defaultKey = `live_lemo_${crypto.randomBytes(8).toString('hex')}`;
+      settings = new LiveStreamSettings({
+        ...updateData,
+        streamKey: defaultKey
+      });
+    } else {
+      Object.assign(settings, updateData);
+    }
+    
+    const savedSettings = await settings.save();
+    res.json(savedSettings);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+app.post('/api/live-stream/regenerate-key', async (req, res) => {
+  try {
+    const isAdmin = await isAdminRequest(req);
+    if (!isAdmin) {
+      return res.status(403).json({ message: 'Access Denied' });
+    }
+    let settings = await LiveStreamSettings.findOne();
+    const newKey = `live_lemo_${crypto.randomBytes(8).toString('hex')}`;
+    if (!settings) {
+      settings = new LiveStreamSettings({
+        streamKey: newKey
+      });
+    } else {
+      settings.streamKey = newKey;
+    }
+    await settings.save();
+    res.json({ streamKey: newKey });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 
 const seedGeneralSettings = async () => {
   try {

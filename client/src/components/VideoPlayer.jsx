@@ -1540,6 +1540,34 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
       return { isEmbed: true, type: 'vimeo', src: embedUrl };
     }
 
+    // Twitch
+    const twitchReg = /(?:twitch\.tv\/)(?:videos\/)?([a-zA-Z0-9_]+)/;
+    const twitchMatch = trimmed.match(twitchReg);
+    if (twitchMatch && twitchMatch[1]) {
+      const isVod = trimmed.includes('/videos/');
+      const channelOrVideoId = twitchMatch[1];
+      const hostname = window.location.hostname || 'localhost';
+      const embedUrl = isVod 
+        ? `https://player.twitch.tv/?video=${channelOrVideoId}&parent=${hostname}&autoplay=true`
+        : `https://player.twitch.tv/?channel=${channelOrVideoId}&parent=${hostname}&autoplay=true&muted=false`;
+      return { isEmbed: true, type: 'twitch', src: embedUrl };
+    }
+
+    // Kick
+    const kickReg = /(?:kick\.com\/)([a-zA-Z0-9_]+)/;
+    const kickMatch = trimmed.match(kickReg);
+    if (kickMatch && kickMatch[1]) {
+      const channelId = kickMatch[1];
+      const embedUrl = `https://player.kick.com/${channelId}?autoplay=true&muted=false`;
+      return { isEmbed: true, type: 'kick', src: embedUrl };
+    }
+
+    // Facebook
+    if (trimmed.includes('facebook.com') || trimmed.includes('fb.watch')) {
+      const embedUrl = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(trimmed)}&show_text=0&autoplay=true`;
+      return { isEmbed: true, type: 'facebook', src: embedUrl };
+    }
+
     return { isEmbed: false, type: null, src: url };
   };
 

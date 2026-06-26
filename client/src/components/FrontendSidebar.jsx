@@ -15,17 +15,36 @@ const FrontendSidebar = ({
   const location = useLocation();
   const [isAccountOpen, setIsAccountOpen] = React.useState(false);
   const [isLoggedIn, setIsLoggedIn] = React.useState(!!localStorage.getItem('token'));
+  const [isLiveStreamActive, setIsLiveStreamActive] = React.useState(false);
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   React.useEffect(() => {
     const handleStorageChange = () => {
       setIsLoggedIn(!!localStorage.getItem('token'));
     };
+
+    const checkLiveStream = async () => {
+      try {
+        const res = await fetch('/api/live-stream/active');
+        if (res.ok) {
+          const data = await res.json();
+          setIsLiveStreamActive(!!data.isLive);
+        }
+      } catch (err) {
+        console.error('Error fetching active live stream state:', err);
+      }
+    };
+
     window.addEventListener('storage', handleStorageChange);
     window.addEventListener('profileUpdate', handleStorageChange);
+    checkLiveStream();
+
+    const interval = setInterval(checkLiveStream, 20000);
+
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('profileUpdate', handleStorageChange);
+      clearInterval(interval);
     };
   }, []);
 
@@ -124,7 +143,25 @@ const FrontendSidebar = ({
               <Link to="/sports" className={location.pathname === '/sports' ? 'active' : ''} onClick={() => setIsMenuOpen(false)}>SPORTS</Link>
             )}
             {(!menuSettings || menuSettings.liveTv?.toUpperCase() !== 'OFF') && (
-              <Link to="/live-tv" className={location.pathname === '/live-tv' ? 'active' : ''} onClick={() => setIsMenuOpen(false)}>LIVE TV</Link>
+              <Link 
+                to="/live-tv" 
+                className={location.pathname === '/live-tv' ? 'active' : ''} 
+                onClick={() => setIsMenuOpen(false)}
+                style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+              >
+                LIVE TV
+                {isLiveStreamActive && (
+                  <span style={{
+                    width: '6px',
+                    height: '6px',
+                    background: '#ff4d4d',
+                    borderRadius: '50%',
+                    boxShadow: '0 0 8px #ff4d4d',
+                    display: 'inline-block',
+                    animation: 'pulseLive 1.5s infinite'
+                  }}></span>
+                )}
+              </Link>
             )}
             {(!menuSettings || menuSettings.shortFilms?.toUpperCase() !== 'OFF') && (
               <Link to="/short-films" className={location.pathname === '/short-films' ? 'active' : ''} onClick={() => setIsMenuOpen(false)}>SHORT FILMS</Link>
@@ -184,6 +221,11 @@ const FrontendSidebar = ({
         .fe-sidebar-links-v a:nth-child(5) { transition-delay: 0.8s; }
 
         .fe-sidebar-overlay-v { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.7); z-index: 9999; backdrop-filter: blur(4px); }
+        @keyframes pulseLive {
+          0% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.4); opacity: 0.6; }
+          100% { transform: scale(1); opacity: 1; }
+        }
       ` }} />
     </>
   );

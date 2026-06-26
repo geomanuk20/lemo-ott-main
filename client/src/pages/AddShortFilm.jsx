@@ -414,15 +414,16 @@ const AddShortFilm = () => {
          <input type="file" ref={trailerInputRef} style={{ display: 'none' }} accept="video/*" onChange={(e) => handleVideoFileChange(e, 'trailerUrl')} />
         </div>
        </div>
-       <div className="video-source-row">
-        <div className="video-source-label">Video Upload Type</div>
-        <select name="videoType" value={formData.videoType} onChange={handleChange}>
-         <option value="Local">File</option>
-         <option value="URL">URL</option>
-         <option value="HLS/m3u8 / MPEG-DASH / YouTube / Vimeo">HLS/m3u8 / MPEG-DASH / YouTube / Vimeo</option>
-         <option value="Embed Code">Embed Code</option>
-        </select>
-       </div>
+        <div className="video-source-row">
+         <div className="video-source-label">Video Upload Type</div>
+         <select name="videoType" value={formData.videoType} onChange={handleChange}>
+          <option value="Local">File</option>
+          <option value="URL">URL</option>
+          <option value="LemoOTT Live">LemoOTT Live</option>
+          <option value="HLS/m3u8 / MPEG-DASH / YouTube / Vimeo">HLS/m3u8 / MPEG-DASH / YouTube / Vimeo</option>
+          <option value="Embed Code">Embed Code</option>
+         </select>
+        </div>
        <div className="form-row-custom stacked">
        <div className="form-group">
         <label>Video Quality</label>
@@ -478,7 +479,7 @@ const AddShortFilm = () => {
         </div>
        )}
 
-       {formData.videoType === 'HLS/m3u8 / MPEG-DASH / YouTube / Vimeo' && (
+       {(formData.videoType === 'HLS/m3u8 / MPEG-DASH / YouTube / Vimeo' || formData.videoType === 'LemoOTT Live') && (
         <div className="form-group">
          <label>HLS / Streaming URL*</label>
          <input type="text" name="videoFile" value={formData.videoFile} onChange={handleChange} placeholder="https://..." />

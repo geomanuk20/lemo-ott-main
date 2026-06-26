@@ -42,6 +42,9 @@ const FrontendNavbar = ({
   const [scrolled, setScrolled] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token'));
+  const [isLiveStreamActive, setIsLiveStreamActive] = useState(false);
+  const [scheduledStream, setScheduledStream] = useState(null);
+  const [showBanner, setShowBanner] = useState(false);
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   useEffect(() => {
@@ -53,14 +56,45 @@ const FrontendNavbar = ({
       setIsLoggedIn(!!localStorage.getItem('token'));
     };
 
+    const checkLiveStream = async () => {
+      try {
+        const res = await fetch('/api/live-stream/active');
+        if (res.ok) {
+          const data = await res.json();
+          setIsLiveStreamActive(!!data.isLive);
+          
+          if (!data.isLive && data.isScheduled && data.scheduledTime) {
+            setScheduledStream({
+              title: data.streamTitle,
+              time: data.scheduledTime,
+              category: data.streamCategory
+            });
+            const dismissed = sessionStorage.getItem('dismiss_schedule_banner');
+            if (!dismissed) {
+              setShowBanner(true);
+            }
+          } else {
+            setScheduledStream(null);
+            setShowBanner(false);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching active live stream state:', err);
+      }
+    };
+
     window.addEventListener('scroll', handleScroll);
     window.addEventListener('storage', handleStorageChange);
     window.addEventListener('profileUpdate', handleStorageChange);
+    checkLiveStream();
+
+    const interval = setInterval(checkLiveStream, 20000);
 
     return () => {
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('profileUpdate', handleStorageChange);
+      clearInterval(interval);
     };
   }, []);
 
@@ -79,7 +113,39 @@ const FrontendNavbar = ({
 
   return (
     <>
-      <nav className={`fe-navbar-v ${isTransparent && !scrolled ? 'transparent' : 'scrolled'} ${isSearchOpen ? 'hidden' : ''}`}>
+      {showBanner && scheduledStream && (
+        <div className="fe-schedule-banner">
+          <div className="banner-content">
+            <span className="banner-icon">📅</span>
+            <span className="banner-text">
+              Upcoming Live: <strong>{scheduledStream.title}</strong> scheduled for{' '}
+              <span className="highlight-time">
+                {new Date(scheduledStream.time).toLocaleString([], {
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+              </span>
+            </span>
+            <Link to="/live-tv" className="banner-link">View Details</Link>
+          </div>
+          <button 
+            className="banner-close" 
+            onClick={() => {
+              setShowBanner(false);
+              sessionStorage.setItem('dismiss_schedule_banner', 'true');
+            }}
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
+      <nav 
+        className={`fe-navbar-v ${isTransparent && !scrolled ? 'transparent' : 'scrolled'} ${isSearchOpen ? 'hidden' : ''}`}
+        style={showBanner && scheduledStream ? { top: '38px' } : {}}
+      >
         <div className="fe-nav-left">
           <Link to="/" className={`fe-logo-v ${isMenuOpen ? 'hidden' : ''}`}>
             {formatBrandingUrl(settings?.siteLogo) ? (
@@ -102,7 +168,24 @@ const FrontendNavbar = ({
               <Link to="/sports" className={location.pathname === '/sports' ? 'active' : ''}>SPORTS</Link>
             )}
             {(!menuSettings || menuSettings.liveTv?.toUpperCase() !== 'OFF') && (
-              <Link to="/live-tv" className={location.pathname === '/live-tv' ? 'active' : ''}>LIVE TV</Link>
+              <Link 
+                to="/live-tv" 
+                className={location.pathname === '/live-tv' ? 'active' : ''}
+                style={{ display: 'flex', alignItems: 'center', gap: '5px' }}
+              >
+                LIVE TV
+                {isLiveStreamActive && (
+                  <span style={{
+                    width: '6px',
+                    height: '6px',
+                    background: '#ff4d4d',
+                    borderRadius: '50%',
+                    boxShadow: '0 0 8px #ff4d4d',
+                    display: 'inline-block',
+                    animation: 'pulseLive 1.5s infinite'
+                  }}></span>
+                )}
+              </Link>
             )}
             {(!menuSettings || menuSettings.shortFilms?.toUpperCase() !== 'OFF') && (
               <Link to="/short-films" className={location.pathname === '/short-films' ? 'active' : ''}>SHORT FILMS</Link>
@@ -330,6 +413,78 @@ const FrontendNavbar = ({
         .fe-search-badge-v.category-tv-channel {
           color: #ff4d4d;
           border-color: rgba(255, 77, 77, 0.3);
+        }
+        .fe-schedule-banner {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          background: linear-gradient(90deg, #12141a 0%, #1c1e24 100%);
+          border-bottom: 2px solid #b3d332;
+          color: #fff;
+          z-index: 13000;
+          padding: 8px 20px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          font-size: 0.82rem;
+          box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+          animation: slideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+          height: 38px;
+          box-sizing: border-box;
+        }
+        @keyframes slideDown {
+          from { transform: translateY(-100%); }
+          to { transform: translateY(0); }
+        }
+        .fe-schedule-banner .banner-content {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+        .fe-schedule-banner .banner-icon {
+          font-size: 1rem;
+        }
+        .fe-schedule-banner .highlight-time {
+          color: #b3d332;
+          font-weight: 700;
+          text-shadow: 0 0 10px rgba(179,211,50,0.3);
+          margin-left: 5px;
+        }
+        .fe-schedule-banner .banner-link {
+          background: #b3d332;
+          color: #000;
+          text-decoration: none;
+          padding: 2px 10px;
+          border-radius: 4px;
+          font-size: 0.75rem;
+          font-weight: 700;
+          transition: 0.3s;
+          margin-left: 10px;
+        }
+        .fe-schedule-banner .banner-link:hover {
+          background: #fff;
+          transform: translateY(-1px);
+        }
+        .fe-schedule-banner .banner-close {
+          background: none;
+          border: none;
+          color: rgba(255,255,255,0.6);
+          cursor: pointer;
+          padding: 4px;
+          display: flex;
+          align-items: center;
+          transition: 0.3s;
+        }
+        .fe-schedule-banner .banner-close:hover {
+          color: #ff4d4d;
+        }
+
+        @keyframes pulseLive {
+          0% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.4); opacity: 0.6; }
+          100% { transform: scale(1); opacity: 1; }
         }
       ` }} />
     </>

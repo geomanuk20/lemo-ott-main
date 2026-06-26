@@ -303,15 +303,16 @@ const AddSportsVideo = () => {
         )}
        </div>
 
-       <div className="form-row-custom stacked">
-        <div className="label-text">Video Upload Type</div>
-        <select name="videoType" value={formData.videoType} onChange={handleChange}>
-         <option value="Local">File</option>
-         <option value="URL">URL</option>
-         <option value="HLS/m3u8 / MPEG-DASH / YouTube / Vimeo">HLS/m3u8 / MPEG-DASH / YouTube / Vimeo</option>
-         <option value="Embed Code">Embed Code</option>
-        </select>
-       </div>
+        <div className="form-row-custom stacked">
+         <div className="label-text">Video Upload Type</div>
+         <select name="videoType" value={formData.videoType} onChange={handleChange}>
+          <option value="Local">File</option>
+          <option value="URL">URL</option>
+          <option value="LemoOTT Live">LemoOTT Live</option>
+          <option value="HLS/m3u8 / MPEG-DASH / YouTube / Vimeo">HLS/m3u8 / MPEG-DASH / YouTube / Vimeo</option>
+          <option value="Embed Code">Embed Code</option>
+         </select>
+        </div>
 
        <div className="form-row-custom stacked">
         <div className="label-text">Video Quality</div>
@@ -370,7 +371,7 @@ const AddSportsVideo = () => {
         </div>
        )}
 
-       {formData.videoType === 'HLS/m3u8 / MPEG-DASH / YouTube / Vimeo' && (
+       {(formData.videoType === 'HLS/m3u8 / MPEG-DASH / YouTube / Vimeo' || formData.videoType === 'LemoOTT Live') && (
         <div className="video-file-group">
          <p className="hint-text" style={{ marginBottom: '15px' }}>(Supported : MP4, YouTube, Vimeo, HLS / m3u8 URL. If you are using external files then those files have to be CORS enabled otherwise they will not work.)</p>
          <div className="form-row-custom stacked">

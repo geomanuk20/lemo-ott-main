@@ -459,6 +459,7 @@ const EditNewRelease = () => {
         <select name="videoType" value={formData.videoType} onChange={handleChange}>
          <option value="Local">File</option>
          <option value="URL">URL</option>
+         <option value="LemoOTT Live">LemoOTT Live</option>
          <option value="HLS/m3u8 / MPEG-DASH / YouTube / Vimeo">HLS/m3u8 / MPEG-DASH / YouTube / Vimeo</option>
          <option value="Embed Code">Embed Code</option>
         </select>
@@ -516,7 +517,7 @@ const EditNewRelease = () => {
         </div>
        )}
 
-       {formData.videoType === 'HLS/m3u8 / MPEG-DASH / YouTube / Vimeo' && (
+       {(formData.videoType === 'HLS/m3u8 / MPEG-DASH / YouTube / Vimeo' || formData.videoType === 'LemoOTT Live') && (
         <div className="form-group">
          <label>HLS / Streaming URL*</label>
          <input type="text" name="videoFile" value={formData.videoFile} onChange={handleChange} placeholder="https://..." />

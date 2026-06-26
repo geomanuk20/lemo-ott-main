@@ -1232,6 +1232,7 @@ export default function PlayerScreen({ route, navigation }) {
     || (!videoUrl?.includes('.') && videoUrl?.length > 15);
 
   const isEmbed = !isMuxVideo && 
+    videoType !== 'LemoOTT Live' &&
     !(resolvedUrl?.includes('.m3u8') || resolvedUrl?.includes('manifest/hls_live')) && 
     (
       videoType === 'Embed Code'
@@ -1239,6 +1240,10 @@ export default function PlayerScreen({ route, navigation }) {
       || videoUrl?.includes('youtu.be')
       || videoUrl?.includes('youtube-nocookie.com')
       || videoUrl?.includes('vimeo.com')
+      || videoUrl?.includes('twitch.tv')
+      || videoUrl?.includes('kick.com')
+      || videoUrl?.includes('facebook.com')
+      || videoUrl?.includes('fb.watch')
       || videoUrl?.trim().startsWith('<')
     );
 
@@ -1246,9 +1251,46 @@ export default function PlayerScreen({ route, navigation }) {
     const ytId = getYtId(videoUrl);
     const viId = getViId(videoUrl);
 
-    // ── Raw HTML embed code (iframe snippet from admin) ──
-    if (!ytId && !viId && (videoType === 'Embed Code' || videoUrl?.trim().startsWith('<'))) {
-      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><style>*{margin:0;padding:0;box-sizing:border-box}body,html{width:100%;height:100%;background:#000;display:flex;justify-content:center;align-items:center;overflow:hidden}iframe,video,object,embed{width:100%!important;height:100%!important;border:none}</style></head><body>${videoUrl}</body></html>`;
+    // ── Raw HTML embed code (iframe snippet from admin) or Twitch/Facebook/Kick raw URLs ──
+    if (!ytId && !viId && (
+      videoType === 'Embed Code' 
+      || videoUrl?.trim().startsWith('<') 
+      || videoUrl?.includes('twitch.tv') 
+      || videoUrl?.includes('kick.com') 
+      || videoUrl?.includes('facebook.com') 
+      || videoUrl?.includes('fb.watch')
+    )) {
+      let finalEmbedCode = videoUrl;
+
+      // Convert raw URLs to iframe tags for WebView compatibility
+      if (videoUrl && !videoUrl.trim().startsWith('<')) {
+        const trimmed = videoUrl.trim();
+        if (trimmed.includes('twitch.tv')) {
+          const twitchReg = /(?:twitch\.tv\/)(?:videos\/)?([a-zA-Z0-9_]+)/;
+          const twitchMatch = trimmed.match(twitchReg);
+          if (twitchMatch && twitchMatch[1]) {
+            const isVod = trimmed.includes('/videos/');
+            const channelOrVideoId = twitchMatch[1];
+            const embedSrc = isVod 
+              ? `https://player.twitch.tv/?video=${channelOrVideoId}&parent=localhost&autoplay=true`
+              : `https://player.twitch.tv/?channel=${channelOrVideoId}&parent=localhost&autoplay=true&muted=false`;
+            finalEmbedCode = `<iframe src="${embedSrc}" width="100%" height="100%" allowfullscreen="true" scrolling="no" frameborder="0"></iframe>`;
+          }
+        } else if (trimmed.includes('kick.com')) {
+          const kickReg = /(?:kick\.com\/)([a-zA-Z0-9_]+)/;
+          const kickMatch = trimmed.match(kickReg);
+          if (kickMatch && kickMatch[1]) {
+            const channelId = kickMatch[1];
+            const embedSrc = `https://player.kick.com/${channelId}?autoplay=true&muted=false`;
+            finalEmbedCode = `<iframe src="${embedSrc}" width="100%" height="100%" allowfullscreen="true" scrolling="no" frameborder="0"></iframe>`;
+          }
+        } else if (trimmed.includes('facebook.com') || trimmed.includes('fb.watch')) {
+          const embedSrc = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(trimmed)}&show_text=0&autoplay=true`;
+          finalEmbedCode = `<iframe src="${embedSrc}" width="100%" height="100%" allowfullscreen="true" scrolling="no" frameborder="0" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"></iframe>`;
+        }
+      }
+
+      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><style>*{margin:0;padding:0;box-sizing:border-box}body,html{width:100%;height:100%;background:#000;display:flex;justify-content:center;align-items:center;overflow:hidden}iframe,video,object,embed{width:100%!important;height:100%!important;border:none}</style></head><body>${finalEmbedCode}</body></html>`;
       return (
         <WebView
           style={[StyleSheet.absoluteFill, { backgroundColor: '#000000' }]}

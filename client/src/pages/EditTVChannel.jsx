@@ -18,7 +18,7 @@ const EditTVChannel = () => {
   category: '',
   tvAccess: 'Paid',
   status: 'Active',
-  streamType: 'HLS/m3u8 / MPEG-DASH / YouTube / Vimeo',
+  streamType: 'LemoOTT Live',
   server1Url: '',
   server2Url: '',
   server3Url: '',
@@ -186,7 +186,11 @@ const EditTVChannel = () => {
        <label>Stream Type</label>
        <div className="select-wrapper full">
         <select name="streamType" value={formData.streamType} onChange={handleChange}>
+         <option value="LemoOTT Live">LemoOTT Live</option>
          <option value="HLS/m3u8 / MPEG-DASH / YouTube / Vimeo">HLS/m3u8 / MPEG-DASH / YouTube / Vimeo</option>
+         <option value="Twitch">Twitch</option>
+         <option value="Facebook Live">Facebook Live</option>
+         <option value="Kick">Kick</option>
          <option value="Embed Code">Embed Code</option>
         </select>
         <ChevronDown className="select-arrow" size={16} />

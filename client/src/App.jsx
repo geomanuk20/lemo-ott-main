@@ -40,6 +40,7 @@ import TVCategory from './pages/TVCategory';
 import TVChannels from './pages/TVChannels';
 import AddTVChannel from './pages/AddTVChannel';
 import EditTVChannel from './pages/EditTVChannel';
+import LiveStreamDashboard from './pages/LiveStreamDashboard';
 import Slider from './pages/Slider';
 import AddSlider from './pages/AddSlider';
 import EditSlider from './pages/EditSlider';
@@ -486,6 +487,7 @@ function App() {
           <Route path="live-tv/channel" element={<TVChannels />} />
           <Route path="live-tv/channel/add" element={<AddTVChannel />} />
           <Route path="live-tv/channel/edit/:id" element={<EditTVChannel />} />
+          <Route path="live-tv/stream" element={<LiveStreamDashboard />} />
           <Route path="home/slider" element={<Slider />} />
           <Route path="home/slider/add" element={<AddSlider />} />
           <Route path="home/slider/edit/:id" element={<EditSlider />} />

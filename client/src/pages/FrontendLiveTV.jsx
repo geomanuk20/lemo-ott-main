@@ -39,7 +39,43 @@ const FrontendLiveTV = () => {
    try {
     const res = await fetch('/api/tv-channels');
     const data = await res.json();
-    setChannels(Array.isArray(data) ? data.filter(c => c.status === 'Active') : []);
+    let fetchedChannels = Array.isArray(data) ? data.filter(c => c.status === 'Active') : [];
+    
+    // Fetch active native live stream
+    try {
+      const activeStreamRes = await fetch('/api/live-stream/active');
+      const activeStream = await activeStreamRes.json();
+      if (activeStream) {
+        if (activeStream.isLive) {
+          const nativeStreamCard = {
+            _id: 'lemo-live',
+            name: activeStream.streamTitle,
+            logo: activeStream.poster || 'https://images.unsplash.com/photo-1542204172-e7052809f852?w=800&q=80',
+            tvAccess: 'free',
+            category: { name: activeStream.streamCategory },
+            isNativeStream: true,
+            viewers: activeStream.viewers
+          };
+          fetchedChannels = [nativeStreamCard, ...fetchedChannels];
+        } else if (activeStream.isScheduled && activeStream.scheduledTime) {
+          const scheduledStreamCard = {
+            _id: 'lemo-live',
+            name: activeStream.streamTitle,
+            logo: activeStream.poster || 'https://images.unsplash.com/photo-1542204172-e7052809f852?w=800&q=80',
+            tvAccess: 'free',
+            category: { name: activeStream.streamCategory },
+            isNativeStream: true,
+            isScheduled: true,
+            scheduledTime: activeStream.scheduledTime
+          };
+          fetchedChannels = [scheduledStreamCard, ...fetchedChannels];
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching active native stream:', err);
+    }
+    
+    setChannels(fetchedChannels);
    } catch (err) {
     console.error('Error fetching channels:', err);
    } finally {
@@ -76,26 +112,61 @@ const FrontendLiveTV = () => {
       <div className="fe-loader"><Loader size="small" /></div>
      ) : (
       <div className="movies-grid">
-       {channels.map((channel) => {
-        const quality = 'FULL HD';
-        const prefix = '1080P';
-        const suffix = 'FHD';
+        {channels.map((channel) => {
+         const quality = 'FULL HD';
+         const prefix = '1080P';
+         const suffix = 'FHD';
 
-        return (
-         <Link to={`/details/live/${channel._id}`} key={channel._id} className="fe-movie-card-new">
+         if (channel.isScheduled) {
+           return (
+            <div 
+              key={channel._id} 
+              className="fe-movie-card-new native-live-card scheduled-card"
+              style={{ cursor: 'default' }}
+            >
+              <div className="card-image-wrapper" style={{ border: '2px dashed #b3d332', opacity: 0.85 }}>
+               {formatImageUrl(channel) && <img src={formatImageUrl(channel)} alt={channel.name} style={{ filter: 'brightness(0.6) grayscale(30%)' }} />}
+               <div className="fe-live-badge-v" style={{ background: '#b3d332', boxShadow: '0 0 15px rgba(179, 211, 50, 0.6)', color: '#000' }}>
+                <span>SCHEDULED</span>
+               </div>
+              </div>
+              <div className="card-info-new">
+               <div className="card-meta-top">
+                <span className="age-badge" style={{ color: '#b3d332', borderColor: '#b3d332' }}>
+                 📅 UPCOMING
+                </span>
+                <span className="year-text" style={{ color: '#b3d332', fontWeight: '800' }}>
+                 {new Date(channel.scheduledTime).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                </span>
+               </div>
+               <span className="genre-text-red" style={{ color: '#b3d332' }}>
+                 Starts at {new Date(channel.scheduledTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+               </span>
+              <h3 className="movie-title-v">{channel.name}</h3>
+             </div>
+            </div>
+           );
+         }
+
+         return (
+          <Link 
+            to={`/details/live/${channel._id}`} 
+            key={channel._id} 
+            className={`fe-movie-card-new ${channel.isNativeStream ? 'native-live-card' : ''}`}
+          >
           <div className="card-image-wrapper">
            {formatImageUrl(channel) && <img src={formatImageUrl(channel)} alt={channel.name} />}
-           {(((channel.tvAccess || '').toLowerCase() === 'paid' || (channel.access || '').toLowerCase() === 'paid')) && (
+           {(!channel.isNativeStream && (((channel.tvAccess || '').toLowerCase() === 'paid' || (channel.access || '').toLowerCase() === 'paid'))) && (
             <div className="fe-premium-indicator-v">
              <Crown size={14} fill="currentColor" />
             </div>
            )}
            <div className="card-overlay-hover">
             <div className="fe-premium-badge-v">
-             <span className="badge-prefix-v">{prefix}</span>
-             <span className="badge-suffix-v">{suffix}</span>
+             <span className="badge-prefix-v">{channel.isNativeStream ? 'NATIVE' : prefix}</span>
+             <span className="badge-suffix-v">{channel.isNativeStream ? 'STREAM' : suffix}</span>
             </div>
-            <div className="fe-live-badge-v">
+            <div className="fe-live-badge-v" style={channel.isNativeStream ? { background: '#ef4444', boxShadow: '0 0 15px rgba(239, 68, 68, 0.6)' } : {}}>
              <div className="live-dot-v"></div>
              <span>LIVE</span>
             </div>
@@ -104,10 +175,14 @@ const FrontendLiveTV = () => {
           </div>
           <div className="card-info-new">
            <div className="card-meta-top">
-            <span className="age-badge">{channel.tvAccess || 'PAID'}</span>
-            <span className="year-text">BROADCAST</span>
+            <span className="age-badge" style={channel.isNativeStream ? { color: '#ef4444', borderColor: '#ef4444' } : {}}>
+             {channel.isNativeStream ? '🔴 ONLINE' : (channel.tvAccess || 'PAID')}
+            </span>
+            <span className="year-text" style={channel.isNativeStream ? { color: '#b3d332', fontWeight: '800' } : {}}>
+             {channel.isNativeStream ? `${channel.viewers || 120} WATCHING` : 'BROADCAST'}
+            </span>
            </div>
-           <span className="genre-text-red">{channel.category?.name || 'Entertainment'}</span>
+           <span className="genre-text-red">{channel.isNativeStream ? 'LEMO Live Broadcast' : (channel.category?.name || 'Entertainment')}</span>
            <h3 className="movie-title-v">{channel.name}</h3>
           </div>
          </Link>
@@ -128,6 +203,7 @@ const FrontendLiveTV = () => {
     .fe-movies-content { position: relative; z-index: 10; padding: 60px 10%; background: #050505; margin-top: 45vh; min-height: 60vh; box-shadow: 0 -20px 60px rgba(0,0,0,0.5); border-top: 1px solid rgba(255,255,255,0.05); }
     .movies-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 40px; }
     .fe-movie-card-new { display: flex; flex-direction: column; transition: 0.3s; text-decoration: none; }
+    .fe-movie-card-new.native-live-card .card-image-wrapper { border: 2px solid #b3d332; box-shadow: 0 0 20px rgba(179,211,50,0.4); }
     .card-image-wrapper { position: relative; aspect-ratio: 16/9; border-radius: 4px; overflow: hidden; margin-bottom: 15px; background: #f0f0f0; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
     .card-image-wrapper img { width: 100%; height: 100%; object-fit: cover; transition: 0.5s; }
     .card-overlay-hover { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); display: flex; flex-direction: column; justify-content: flex-end; align-items: center; padding: 20px; opacity: 0; transition: 0.3s; z-index: 5; }

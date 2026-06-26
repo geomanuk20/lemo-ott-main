@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
  Play, 
@@ -125,6 +125,63 @@ const FrontendDetails = () => {
  const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
  const [isRatingSubmitting, setIsRatingSubmitting] = useState(false);
  const user = JSON.parse(localStorage.getItem('user') || '{}');
+ const [chatMessages, setChatMessages] = useState([]);
+ const [chatInput, setChatInput] = useState('');
+ const chatEndRef = useRef(null);
+
+  useEffect(() => {
+    let chatInterval = null;
+    if (activeVideoUrl && id === 'lemo-live') {
+      setChatMessages([
+        { id: 1, user: 'Lemo Bot', text: 'Welcome to LEMO Live TV! Chat is now connected.', color: '#b3d332', system: true },
+        { id: 2, user: 'MalluGamer', text: 'LEMO OTT Live is finally here! 🔥', color: '#ff4757' }
+      ]);
+
+      const userPool = [
+        { name: "MalluGamer", color: "#ff4757" },
+        { name: "LemoFan99", color: "#2ed573" },
+        { name: "RetroOtt", color: "#1e90ff" },
+        { name: "TechyGeek", color: "#ffa502" },
+        { name: "Arun_Kumar", color: "#ff6b81" },
+        { name: "Nikhil_K", color: "#9b59b6" },
+        { name: "CinemaLover", color: "#1abc9c" },
+        { name: "ott_watcher", color: "#34495e" }
+      ];
+
+      const chatPool = [
+        "Best streaming platform! 👍",
+        "Stream is super smooth!",
+        "Lemo OTT native player has 0 lag!",
+        "Love from Kochi! ❤",
+        "This playback quality is outstanding",
+        "POGGERS!",
+        "Is this 1080p 60fps?",
+        "Malayalam stream rocks!",
+        "Amazing live stream manager panel"
+      ];
+
+      chatInterval = setInterval(() => {
+        const randUser = userPool[Math.floor(Math.random() * userPool.length)];
+        const randText = chatPool[Math.floor(Math.random() * chatPool.length)];
+        setChatMessages(prev => [
+          ...prev.slice(-35),
+          { id: Date.now() + Math.random(), user: randUser.name, text: randText, color: randUser.color }
+        ]);
+      }, 3500);
+    } else {
+      setChatMessages([]);
+    }
+
+    return () => {
+      if (chatInterval) clearInterval(chatInterval);
+    };
+  }, [activeVideoUrl, id]);
+
+  useEffect(() => {
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [chatMessages]);
 
   const handlePlayVideo = (url, targetEpisode = null) => {
     // Ensure user is signed in to play ANY video
@@ -203,35 +260,65 @@ const FrontendDetails = () => {
    }, [data, cleanType]);
 
  useEffect(() => {
-  const fetchDetails = async () => {
-    setLoading(true);
-    try {
-     let normalizedType = type ? type.toLowerCase().trim() : '';
-     let endpoint = '';
-      if (normalizedType === 'movie' || normalizedType === 'movies' || normalizedType === 'short-film' || normalizedType === 'new-release') {
-       endpoint = `/api/movies/${id}`;
-      } else if (normalizedType === 'show' || normalizedType === 'shows' || normalizedType === 'series' || normalizedType === 'short-web-series') {
-       endpoint = `/api/shows/${id}`;
-      } else if (normalizedType === 'sports' || normalizedType === 'sport') {
-       endpoint = `/api/sports-videos/${id}`;
-      } else if (normalizedType === 'live' || normalizedType === 'channel' || normalizedType === 'channels' || normalizedType === 'tv-channel' || normalizedType === 'tv-channels') {
-       endpoint = `/api/tv-channels/${id}`;
-      } else if (normalizedType === 'new-releases') {
-       endpoint = `/api/new-releases/${id}`;
-      } else if (normalizedType === 'episode' || normalizedType === 'episodes') {
-       endpoint = `/api/episodes/${id}`;
-      } else if (normalizedType === 'season' || normalizedType === 'seasons') {
-       endpoint = `/api/seasons/${id}`;
-      }
-  
-      let response = await fetch(`${endpoint}`);
+   const fetchDetails = async () => {
+     setLoading(true);
+     try {
+      let normalizedType = type ? type.toLowerCase().trim() : '';
+      let endpoint = '';
       let result = null;
-      if (response.ok) {
-       try {
-        result = await response.json();
-       } catch (err) {
-        console.error('Error parsing details JSON:', err);
-       }
+
+      if (id === 'lemo-live') {
+        try {
+          const res = await fetch('/api/live-stream/active');
+          if (res.ok) {
+            const activeStream = await res.json();
+            if (activeStream && activeStream.isLive) {
+              result = {
+                _id: 'lemo-live',
+                name: activeStream.streamTitle,
+                category: { name: activeStream.streamCategory },
+                genres: [activeStream.streamCategory],
+                language: 'Malayalam',
+                server1Url: activeStream.streamUrl,
+                tvAccess: 'free',
+                logo: activeStream.poster,
+                status: 'Active',
+                contentType: 'Live TV',
+                chatEnabled: activeStream.chatEnabled !== false
+              };
+            } else {
+              navigate('/live-tv', { replace: true });
+              return;
+            }
+          }
+        } catch (err) {
+          console.error('Error fetching mock live stream:', err);
+        }
+      } else {
+        if (normalizedType === 'movie' || normalizedType === 'movies' || normalizedType === 'short-film' || normalizedType === 'new-release') {
+         endpoint = `/api/movies/${id}`;
+        } else if (normalizedType === 'show' || normalizedType === 'shows' || normalizedType === 'series' || normalizedType === 'short-web-series') {
+         endpoint = `/api/shows/${id}`;
+        } else if (normalizedType === 'sports' || normalizedType === 'sport') {
+         endpoint = `/api/sports-videos/${id}`;
+        } else if (normalizedType === 'live' || normalizedType === 'channel' || normalizedType === 'channels' || normalizedType === 'tv-channel' || normalizedType === 'tv-channels') {
+         endpoint = `/api/tv-channels/${id}`;
+        } else if (normalizedType === 'new-releases') {
+         endpoint = `/api/new-releases/${id}`;
+        } else if (normalizedType === 'episode' || normalizedType === 'episodes') {
+         endpoint = `/api/episodes/${id}`;
+        } else if (normalizedType === 'season' || normalizedType === 'seasons') {
+         endpoint = `/api/seasons/${id}`;
+        }
+   
+        let response = await fetch(`${endpoint}`);
+        if (response.ok) {
+         try {
+          result = await response.json();
+         } catch (err) {
+          console.error('Error parsing details JSON:', err);
+         }
+        }
       }
 
       // Universal fallback chain: if initial request fails or returns null/error, query other resource collections.
@@ -1211,6 +1298,51 @@ const FrontendDetails = () => {
             </div>
            </div>
           )}
+
+          {/* Right: Live Chat Sidebar (for Native Live Stream) */}
+          {id === 'lemo-live' && data?.chatEnabled !== false && (
+            <div className="fe-cinema-sidebar-v fe-live-chat-sidebar">
+              <h3>Live Stream Chat</h3>
+              <div className="fe-chat-messages-container">
+                {chatMessages.map((msg) => (
+                  <div key={msg.id} className="fe-chat-message-row">
+                    {!msg.system && (
+                      <span 
+                        className="fe-chat-username" 
+                        style={{ color: msg.color || '#fff' }}
+                      >
+                        {msg.user}:
+                      </span>
+                    )}
+                    <span className={msg.system ? 'fe-chat-text system-msg' : 'fe-chat-text'}>{msg.text}</span>
+                  </div>
+                ))}
+                <div ref={chatEndRef} />
+              </div>
+              <form 
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!chatInput.trim()) return;
+                  setChatMessages(prev => [
+                    ...prev,
+                    { id: Date.now() + Math.random(), user: user.name || 'Anonymous User', text: chatInput, color: '#b3d332' }
+                  ]);
+                  setChatInput('');
+                }}
+                className="fe-chat-input-bar"
+              >
+                <input 
+                  type="text" 
+                  value={chatInput} 
+                  onChange={(e) => setChatInput(e.target.value)} 
+                  placeholder="Send a chat message..."
+                />
+                <button type="submit" className="fe-btn-send-chat">
+                  Send
+                </button>
+              </form>
+            </div>
+          )}
          </div>
         </div>
        </div>
@@ -1353,6 +1485,83 @@ const FrontendDetails = () => {
     .fe-sidebar-episode-info-v .ep-num-v { font-size: 0.7rem; font-weight: 800; color: #b3d332; text-transform: uppercase; margin-bottom: 3px; }
     .fe-sidebar-episode-info-v h4 { font-size: 0.85rem; font-weight: 700; color: #fff; margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.3; }
     .fe-sidebar-episode-item-v.active h4 { color: #b3d332; }
+
+    /* Live Chat Sidebar Styling */
+    .fe-live-chat-sidebar {
+      background: #0b0c0f !important;
+      border: 1px solid #1a1a1a !important;
+    }
+    .fe-chat-messages-container {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding-right: 5px;
+      scrollbar-width: thin;
+      scrollbar-color: #222 #000;
+      margin-bottom: 15px;
+      text-align: left;
+    }
+    .fe-chat-messages-container::-webkit-scrollbar {
+      width: 4px;
+    }
+    .fe-chat-messages-container::-webkit-scrollbar-thumb {
+      background: #222;
+      border-radius: 2px;
+    }
+    .fe-chat-message-row {
+      font-size: 0.85rem;
+      line-height: 1.4;
+      word-wrap: break-word;
+    }
+    .fe-chat-username {
+      font-weight: 800;
+      margin-right: 6px;
+      font-size: 0.82rem;
+    }
+    .fe-chat-text {
+      color: #e2e8f0;
+    }
+    .fe-chat-text.system-msg {
+      color: #888;
+      font-style: italic;
+    }
+    .fe-chat-input-bar {
+      display: flex;
+      gap: 8px;
+      background: #12141a;
+      border: 1px solid #1f222b;
+      padding: 8px;
+      border-radius: 8px;
+    }
+    .fe-chat-input-bar input {
+      flex: 1;
+      background: #090a0f;
+      border: 1px solid #2d313f;
+      border-radius: 4px;
+      color: #fff;
+      padding: 6px 10px;
+      font-size: 0.8rem;
+      outline: none;
+    }
+    .fe-chat-input-bar input:focus {
+      border-color: #b3d332;
+    }
+    .fe-btn-send-chat {
+      background: #b3d332;
+      color: #000;
+      border: none;
+      font-weight: 800;
+      font-size: 0.75rem;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    .fe-btn-send-chat:hover {
+      background: #a2c02c;
+    }
 
     .fe-details-page-v { background: #000; min-height: 100vh; padding-top: 100px; color: #fff; }
     
