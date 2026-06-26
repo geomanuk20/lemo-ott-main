@@ -202,9 +202,10 @@ const FrontendLiveTV = () => {
     
     .fe-movies-content { position: relative; z-index: 10; padding: 60px 10%; background: #050505; margin-top: 45vh; min-height: 60vh; box-shadow: 0 -20px 60px rgba(0,0,0,0.5); border-top: 1px solid rgba(255,255,255,0.05); }
     .movies-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 40px; }
+    .channels-grid-container { width: 100%; }
     .fe-movie-card-new { display: flex; flex-direction: column; transition: 0.3s; text-decoration: none; }
     .fe-movie-card-new.native-live-card .card-image-wrapper { border: 2px solid #b3d332; box-shadow: 0 0 20px rgba(179,211,50,0.4); }
-    .card-image-wrapper { position: relative; aspect-ratio: 16/9; border-radius: 4px; overflow: hidden; margin-bottom: 15px; background: #f0f0f0; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+    .card-image-wrapper { position: relative; aspect-ratio: 16/9; border-radius: 4px; overflow: hidden; margin-bottom: 15px; background: #111; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
     .card-image-wrapper img { width: 100%; height: 100%; object-fit: cover; transition: 0.5s; }
     .card-overlay-hover { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); display: flex; flex-direction: column; justify-content: flex-end; align-items: center; padding: 20px; opacity: 0; transition: 0.3s; z-index: 5; }
     .fe-movie-card-new:hover .card-overlay-hover { opacity: 1; }
@@ -222,7 +223,7 @@ const FrontendLiveTV = () => {
     .badge-suffix-v { background: #fff; color: #000; font-size: 0.7rem; font-weight: 800; padding: 0 5px; display: flex; align-items: center; }
     .fe-premium-indicator-v { position: absolute; top: 12px; right: 12px; background: linear-gradient(135deg, #ffca28 0%, #ff8f00 100%); color: #000; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 8; box-shadow: 0 4px 15px rgba(255,143,0,0.4); border: 1px solid rgba(255,255,255,0.2); }
     
-    .fe-live-badge-v { position: absolute; top: 15px; right: 15px; background: #b3d332; color: #fff; font-size: 0.65rem; font-weight: 900; padding: 4px 10px; border-radius: 4px; display: flex; align-items: center; gap: 6px; box-shadow: 0 0 15px rgba(179,211,50,0.5); }
+    .fe-live-badge-v { position: absolute; top: 10px; right: 10px; background: #b3d332; color: #fff; font-size: 0.65rem; font-weight: 900; padding: 4px 10px; border-radius: 4px; display: flex; align-items: center; gap: 6px; box-shadow: 0 0 15px rgba(179,211,50,0.5); }
     .live-dot-v { width: 6px; height: 6px; background: #fff; border-radius: 50%; animation: pulseLive 1.5s infinite; }
     @keyframes pulseLive { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.5); opacity: 0.5; } 100% { transform: scale(1); opacity: 1; } }
 
@@ -233,17 +234,24 @@ const FrontendLiveTV = () => {
     @media (max-width: 1400px) { .movies-grid { grid-template-columns: repeat(3, 1fr); } .fe-loader { grid-column: span 3; } }
     @media (max-width: 992px) { .movies-grid { grid-template-columns: repeat(2, 1fr); gap: 20px; } .fe-loader { grid-column: span 2; } .hero-content h1 { font-size: 3.5rem; } }
     @media (max-width: 768px) { 
-     .movies-grid { grid-template-columns: 1fr; gap: 20px; } 
-     .fe-loader { grid-column: span 1; }
-     .fe-movies-hero { height: 40vh; min-height: 300px; background-attachment: scroll; padding: 0 25px; } 
-     .hero-content h1 { font-size: 2.8rem; letter-spacing: -1px; } 
-     .hero-content p { font-size: 1.1rem; line-height: 1.3; }
-     .fe-movies-content { padding: 40px 20px; margin-top: 40vh; } 
+     .fe-movies-hero { position: relative; height: auto; min-height: 220px; background-attachment: scroll; padding: 80px 20px 40px; background-image: url('https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=800&q=80'); }
+     .movies-grid { grid-template-columns: repeat(2, 1fr); gap: 15px; } 
+     .fe-loader { grid-column: span 2; }
+     .hero-content h1 { font-size: 2.4rem; letter-spacing: -1px; margin-bottom: 8px; } 
+     .hero-content p { font-size: 0.95rem; line-height: 1.4; }
+     .fe-movies-content { padding: 30px 15px; margin-top: 0; } 
+     .card-info-new { padding: 0; }
+     .movie-title-v { font-size: 0.85rem; }
+     .genre-text-red { font-size: 0.7rem; }
+     .age-badge { font-size: 0.55rem; }
+     .year-text { font-size: 0.65rem; }
     }
     @media (max-width: 480px) {
-     .hero-content h1 { font-size: 2.2rem; }
-     .fe-movies-hero { height: 35vh; }
-     .fe-movies-content { margin-top: 35vh; }
+     .fe-movies-hero { min-height: 180px; padding: 70px 15px 30px; }
+     .hero-content h1 { font-size: 1.8rem; }
+     .hero-content p { font-size: 0.85rem; display: none; }
+     .movies-grid { gap: 12px; }
+     .card-image-wrapper { margin-bottom: 8px; }
     }
    ` }} />
   </FrontendLayout>

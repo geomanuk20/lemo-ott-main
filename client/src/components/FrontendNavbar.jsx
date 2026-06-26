@@ -365,8 +365,13 @@ const FrontendNavbar = ({
         @media (max-width: 1024px) {
           .desktop-only { display: none !important; }
           .fe-mobile-toggle-v { display: flex; }
-          .fe-navbar-v { padding: 0 20px; height: 70px; }
-          .fe-logo-v { width: 180px; }
+          .fe-navbar-v { padding: 0 20px; height: 70px; position: fixed; background: rgba(5,5,5,0.92); backdrop-filter: blur(10px); }
+          .fe-logo-v { width: 140px; }
+        }
+        @media (max-width: 480px) {
+          .fe-navbar-v { padding: 0 15px; height: 60px; }
+          .fe-logo-v { width: 120px; }
+          .fe-nav-right { gap: 12px; }
         }
 
         /* Search Overlay */
@@ -485,6 +490,30 @@ const FrontendNavbar = ({
           0% { transform: scale(1); opacity: 1; }
           50% { transform: scale(1.4); opacity: 0.6; }
           100% { transform: scale(1); opacity: 1; }
+        }
+        @media (max-width: 768px) {
+          .fe-schedule-banner {
+            height: auto;
+            min-height: 38px;
+            padding: 6px 12px;
+            font-size: 0.75rem;
+          }
+          .fe-schedule-banner .banner-content {
+            gap: 6px;
+            flex-wrap: nowrap;
+            overflow: hidden;
+          }
+          .fe-schedule-banner .banner-text {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: calc(100vw - 120px);
+          }
+          .fe-schedule-banner .banner-link {
+            flex-shrink: 0;
+            font-size: 0.65rem;
+            padding: 2px 7px;
+          }
         }
       ` }} />
     </>

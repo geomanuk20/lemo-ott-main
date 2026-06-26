@@ -163,16 +163,19 @@ const FrontendMovies = () => {
     @media (max-width: 1400px) { .movies-grid { grid-template-columns: repeat(4, 1fr); } }
     @media (max-width: 992px) { .movies-grid { grid-template-columns: repeat(3, 1fr); gap: 20px; } .hero-content h1 { font-size: 3.5rem; } }
     @media (max-width: 768px) { 
+     .fe-movies-hero { position: relative; height: auto; min-height: 220px; background-attachment: scroll; padding: 80px 20px 40px; background-image: url('https://images.unsplash.com/photo-1485846234645-a62644f84728?w=800&q=80'); }
      .movies-grid { grid-template-columns: repeat(2, 1fr); gap: 15px; } 
-     .fe-movies-hero { height: 40vh; min-height: 300px; background-attachment: scroll; padding: 0 25px; } 
-     .hero-content h1 { font-size: 2.8rem; letter-spacing: -1px; } 
-     .hero-content p { font-size: 1.1rem; line-height: 1.3; }
-     .fe-movies-content { padding: 40px 20px; margin-top: 40vh; } 
+     .hero-content h1 { font-size: 2.4rem; letter-spacing: -1px; margin-bottom: 8px; } 
+     .hero-content p { font-size: 0.95rem; line-height: 1.4; }
+     .fe-movies-content { padding: 30px 15px; margin-top: 0; }
+     .card-info-new { padding: 0; }
+     .movie-title-v { font-size: 0.85rem; }
     }
     @media (max-width: 480px) {
-     .hero-content h1 { font-size: 2.2rem; }
-     .fe-movies-hero { height: 35vh; }
-     .fe-movies-content { margin-top: 35vh; }
+     .fe-movies-hero { min-height: 180px; padding: 70px 15px 30px; }
+     .hero-content h1 { font-size: 1.8rem; }
+     .hero-content p { display: none; }
+     .movies-grid { gap: 12px; }
     }
    ` }} />
   </FrontendLayout>
