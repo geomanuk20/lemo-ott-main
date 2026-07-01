@@ -23,7 +23,9 @@ import {
   Globe,
   MonitorPlay,
   Shield,
-  Crown
+  Crown,
+  Eye,
+  ThumbsUp
 } from 'lucide-react';
 import Loader from '../components/Loader';
 import { Link, useNavigate } from 'react-router-dom';
@@ -34,7 +36,7 @@ import { formatImageUrl } from '../utils/image';
 const isItemActive = (item, type, menuSettings) => {
   if (!item) return false;
   // Always require Active status — inactive content must never show on frontend
-  if (item.status && item.status !== 'Active') return false;
+  if (item.status && item.status.toLowerCase() !== 'active') return false;
 
   if (!menuSettings) return true;
 
@@ -89,7 +91,7 @@ const isItemActive = (item, type, menuSettings) => {
 const isSliderActive = (slide, menuSettings) => {
   if (!slide) return false;
   // Always require Active status — inactive sliders must never show on frontend
-  if (slide.status && slide.status !== 'Active') return false;
+  if (slide.status && slide.status.toLowerCase() !== 'active') return false;
 
   if (!menuSettings) return true;
 
@@ -115,12 +117,31 @@ const isSliderActive = (slide, menuSettings) => {
 
 const Home = () => {
   const navigate = useNavigate();
+  const triggerAudioActivation = () => {
+    try {
+      const audio = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA");
+      audio.play().catch(e => console.log("Audio activation blocked:", e));
+    } catch (e) {
+      console.warn("Audio activation failed:", e);
+    }
+  };
   const [sliders, setSliders] = useState([]);
   const [movies, setMovies] = useState([]);
   const [newReleases, setNewReleases] = useState([]);
   const [shows, setShows] = useState([]);
   const [sports, setSports] = useState([]);
   const [channels, setChannels] = useState([]);
+  const [shorts, setShorts] = useState([]);
+  const [activeShortPreviewIndex, setActiveShortPreviewIndex] = useState(0);
+
+  useEffect(() => {
+    if (shorts.length === 0) return;
+    const interval = setInterval(() => {
+      setActiveShortPreviewIndex(prev => (prev + 1) % Math.min(shorts.length, 15));
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [shorts.length]);
+
   const [sportsChannels, setSportsChannels] = useState([]);
   const [assets, setAssets] = useState([]);
   const [homeSections, setHomeSections] = useState([]);
@@ -185,6 +206,7 @@ const Home = () => {
         const filteredShows = (data.shows || []).filter(s => isItemActive(s, 'show', mSettings));
         const filteredSports = (data.sports || []).filter(sp => isItemActive(sp, 'sports', mSettings));
         const filteredChannels = (data.channels || []).filter(c => isItemActive(c, 'live', mSettings));
+        const filteredShorts = (data.shorts || []).filter(s => s.status && s.status.toLowerCase() === 'active');
 
         const filteredHomeSections = (data.homeSections || []).filter(sec => {
           const type = sec.sectionType;
@@ -194,6 +216,7 @@ const Home = () => {
           if (type === 'Live TV' && mSettings?.liveTv?.toUpperCase() === 'OFF') return false;
           if (type === 'Short Film' && mSettings?.shortFilms?.toUpperCase() === 'OFF') return false;
           if (type === 'Short Web Series' && mSettings?.webSeries?.toUpperCase() === 'OFF') return false;
+          if (type === 'Shorts' && mSettings?.shorts?.toUpperCase() === 'OFF') return false;
           // 'New Release', 'Language', 'Genre' sections always show
           return true;
         });
@@ -204,6 +227,7 @@ const Home = () => {
         setShows(filteredShows);
         setSports(filteredSports);
         setChannels(filteredChannels);
+        setShorts(filteredShorts);
         setAssets(data.assets || []);
         setExperiences(data.experiences || []);
         setSportsCategories(data.sportsCategories || []);
@@ -252,6 +276,7 @@ const Home = () => {
         const filteredShows = (data.shows || []).filter(s => isItemActive(s, 'show', currentMenuSettings));
         const filteredSports = (data.sports || []).filter(sp => isItemActive(sp, 'sports', currentMenuSettings));
         const filteredChannels = (data.channels || []).filter(c => isItemActive(c, 'live', currentMenuSettings));
+        const filteredShorts = (data.shorts || []).filter(s => s.status && s.status.toLowerCase() === 'active');
 
         const filteredHomeSections = (data.homeSections || []).filter(sec => {
           const type = sec.sectionType;
@@ -261,6 +286,7 @@ const Home = () => {
           if (type === 'Live TV' && currentMenuSettings?.liveTv?.toUpperCase() === 'OFF') return false;
           if (type === 'Short Film' && currentMenuSettings?.shortFilms?.toUpperCase() === 'OFF') return false;
           if (type === 'Short Web Series' && currentMenuSettings?.webSeries?.toUpperCase() === 'OFF') return false;
+          if (type === 'Shorts' && currentMenuSettings?.shorts?.toUpperCase() === 'OFF') return false;
           return true;
         });
 
@@ -272,6 +298,7 @@ const Home = () => {
         setShows(filteredShows);
         setSports(filteredSports);
         setChannels(filteredChannels);
+        setShorts(filteredShorts);
         setHomeSections(filteredHomeSections);
         
         setSportsChannels(filteredChannels.filter(c => {
@@ -703,10 +730,13 @@ const Home = () => {
           const sectionChannels = channels.slice(0, section.limit || 50);
           if (sectionChannels.length > 0) {
             contentEl = (
-              <section key={section._id} className="fe-row-v fe-landscape-row-v">
-                <div className="row-header-v">
-                  <h2 className="row-title-v">{section.title}</h2>
-                  <Link to="/view-all/live/Live TV" className="row-more-v">
+              <section key={section._id} className="fe-watch-online-v" style={{ padding: '0 5%', margin: '40px 0' }}>
+                <div className="watch-online-header-v">
+                  <div style={{ textAlign: 'left' }}>
+                    <span className="watch-online-tag-v">LIVE STREAMING</span>
+                    <h2 className="watch-online-title-v">{section.title}</h2>
+                  </div>
+                  <Link to="/view-all/live/Live TV" className="row-more-v" style={{ marginBottom: '10px' }}>
                     VIEW ALL <ChevronRight size={14} />
                   </Link>
                 </div>
@@ -814,14 +844,97 @@ const Home = () => {
               </div>
             );
           }
+        } else if (section.sectionType === 'Shorts') {
+          const sectionShorts = shorts.slice(0, section.limit || 15);
+          if (sectionShorts.length > 0) {
+            contentEl = (
+              <section key={section._id} className="fe-watch-online-v" style={{ padding: '0 5%', margin: '40px 0' }}>
+                <div className="watch-online-header-v">
+                  <div style={{ textAlign: 'left' }}>
+                    <span className="watch-online-tag-v">VERTICAL SHORTS</span>
+                    <h2 className="watch-online-title-v">{section.title}</h2>
+                  </div>
+                  <Link to="/shorts" state={{ initialShorts: shorts }} className="row-more-v" style={{ marginBottom: '10px' }} onClick={triggerAudioActivation}>
+                    WATCH SHORTS <ChevronRight size={14} />
+                  </Link>
+                </div>
+                <div className="fe-shorts-list-v">
+                  {sectionShorts.map((s, idx) => (
+                    <div 
+                      key={s._id} 
+                      className="fe-short-card-v"
+                      onClick={() => {
+                        triggerAudioActivation();
+                        navigate('/shorts', { state: { shortId: s._id, initialShorts: shorts } });
+                      }}
+                    >
+                      <div className="fe-short-poster-v">
+                        {s.thumbnailUrl && idx !== activeShortPreviewIndex ? (
+                          <img src={s.thumbnailUrl} alt={s.title} />
+                        ) : (
+                          <video 
+                            src={s.videoUrl} 
+                            muted 
+                            loop 
+                            playsInline 
+                            className="fe-short-card-video-fallback" 
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                            ref={el => {
+                              if (el) {
+                                if (idx === activeShortPreviewIndex) {
+                                  el.play().catch(() => {});
+                                } else {
+                                  el.pause();
+                                  el.currentTime = 0;
+                                }
+                              }
+                            }}
+                          />
+                        )}
+                        {((s.access || '').toLowerCase() === 'paid') && (
+                          <div className="fe-premium-indicator-v">
+                            <Crown size={12} fill="currentColor" />
+                          </div>
+                        )}
+                        
+                        <div className="fe-short-stats-badges">
+                          <span className="fe-stat-badge">
+                            <Eye size={10} style={{ marginRight: '3px' }} />
+                            {s.views || 0}
+                          </span>
+                          <span className="fe-stat-badge likes">
+                            <ThumbsUp size={10} style={{ marginRight: '3px' }} />
+                            {s.likes || 0}
+                          </span>
+                        </div>
+
+                        <div className="fe-short-info-overlay">
+                          <h3 className="fe-short-title">{s.title}</h3>
+                        </div>
+
+                        <div className="fe-short-hover-play">
+                          <div className="fe-short-play-btn">
+                            <Play size={18} fill="white" color="white" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            );
+          }
         } else if (section.sectionType === 'Short Film') {
           const shortFilms = movies.filter(m => m.contentType === 'Short Film').slice(0, section.limit || 15);
           if (shortFilms.length > 0) {
             contentEl = (
-              <div key={section._id} className="fe-row-v fe-featured-row-v">
-                <div className="row-header-v">
-                  <h2 className="row-title-v">{section.title}</h2>
-                  <Link to="/view-all/short-film/Short Films" className="row-more-v">
+              <section key={section._id} className="fe-watch-online-v" style={{ padding: '0 5%', margin: '40px 0' }}>
+                <div className="watch-online-header-v">
+                  <div style={{ textAlign: 'left' }}>
+                    <span className="watch-online-tag-v">SHORT FILMS</span>
+                    <h2 className="watch-online-title-v">{section.title}</h2>
+                  </div>
+                  <Link to="/view-all/short-film/Short Films" className="row-more-v" style={{ marginBottom: '10px' }}>
                     VIEW ALL <ChevronRight size={14} />
                   </Link>
                 </div>
@@ -883,7 +996,7 @@ const Home = () => {
                     </div>
                   ))}
                 </div>
-              </div>
+              </section>
             );
           }
         } else if (section.sectionType === 'Short Web Series') {
@@ -1195,6 +1308,34 @@ const Home = () => {
     __html: `
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
     .frontend-wrapper { background: #050505; color: #fff; min-height: 100vh; font-family: 'Inter', sans-serif; overflow-x: hidden; }
+    
+    /* Shorts row styling */
+    .fe-shorts-list-v { display: flex; gap: 24px; overflow-x: auto; padding: 20px 0; scrollbar-width: none; }
+    .fe-shorts-list-v::-webkit-scrollbar { display: none; }
+    .fe-short-card-v { flex-shrink: 0; width: 200px; cursor: pointer; transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+    .fe-short-card-v:hover { transform: translateY(-8px); }
+    .fe-short-poster-v { width: 100%; aspect-ratio: 9/16; border-radius: 16px; overflow: hidden; background: #0b0c10; position: relative; border: 1px solid rgba(255,255,255,0.06); box-shadow: 0 10px 30px rgba(0,0,0,0.5); transition: box-shadow 0.4s ease; }
+    .fe-short-card-v:hover .fe-short-poster-v { border-color: rgba(179, 211, 50, 0.3); box-shadow: 0 15px 35px rgba(179, 211, 50, 0.15), 0 0 20px rgba(179, 211, 50, 0.2); }
+    .fe-short-poster-v img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1); }
+    .fe-short-card-v:hover .fe-short-poster-v img { transform: scale(1.06); }
+    
+    /* Stats Badges */
+    .fe-short-stats-badges { position: absolute; top: 12px; left: 12px; right: 12px; display: flex; justify-content: space-between; z-index: 10; }
+    .fe-stat-badge { display: inline-flex; align-items: center; background: rgba(15, 15, 15, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); color: rgba(255,255,255,0.9); font-size: 0.68rem; font-weight: 700; padding: 4px 8px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); transition: all 0.2s ease; }
+    .fe-stat-badge.likes { color: #b3d332; border-color: rgba(179, 211, 50, 0.2); background: rgba(179, 211, 50, 0.1); }
+    
+    /* Bottom Title Overlay */
+    .fe-short-info-overlay { position: absolute; bottom: 0; left: 0; right: 0; padding: 40px 14px 14px; background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.3) 60%, transparent 100%); z-index: 5; }
+    .fe-short-title { color: #fff; font-size: 0.85rem; font-weight: 700; margin: 0; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
+    
+    /* Hover Play Indicator */
+    .fe-short-hover-play { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.25); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease; z-index: 8; }
+    .fe-short-card-v:hover .fe-short-hover-play { opacity: 1; }
+    .fe-short-play-btn { width: 44px; height: 44px; background: #b3d332; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(179,211,50,0.4); transform: scale(0.8); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+    .fe-short-card-v:hover .fe-short-play-btn { transform: scale(1); }
+
+    .fe-hover-content-v { display: flex; flex-direction: column; align-items: flex-start; text-align: left; width: 100%; }
+
     .fe-loading-v { position: fixed; top: 0; left: 0; width: 100%; height: 100vh; background: #000; display: flex; align-items: center; justify-content: center; z-index: 999999; }
     .ios-spinner-v { position: relative; width: 60px; height: 60px; }
     .spoke-v { position: absolute; left: 28px; top: 0; width: 4px; height: 16px; background: #ffffff !important; border-radius: 10px; transform-origin: 2px 30px; animation: ios-fade 0.8s linear infinite; opacity: 0; }
@@ -1228,8 +1369,8 @@ const Home = () => {
     .fe-hero-slide-v { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; visibility: hidden; transition: 1.5s ease-in-out; display: flex; align-items: center; padding: 0 80px 0 140px; z-index: 1; }
     .fe-hero-slide-v.active { opacity: 1; visibility: visible; z-index: 2; }
     .fe-hero-bg-v { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
-    .fe-hero-bg-v img, .fe-hero-video-v { width: 100vw; height: 100dvh; object-fit: cover; object-position: center; pointer-events: none; }
-    .fe-hero-overlay-v { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to top, #000 0%, transparent 60%), linear-gradient(to right, rgba(0,0,0,0.9) 0%, transparent 70%), rgba(0,0,0,0.2); z-index: 2; pointer-events: none; }
+    .fe-hero-bg-v img, .fe-hero-video-v { width: 100%; height: 100%; object-fit: cover; object-position: center; pointer-events: none; }
+    .fe-hero-overlay-v { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: none; z-index: 2; pointer-events: none; }
     .fe-hero-content-v { max-width: 700px; z-index: 10; transform: translateY(60px); opacity: 0; transition: 0.8s 0.5s ease-out; margin-top: 0; position: relative; }
     .fe-hero-slide-v.active .fe-hero-content-v { transform: translateY(0); opacity: 1; }
     .fe-hero-tag-v { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
