@@ -47,7 +47,7 @@ const Slider = () => {
  };
 
  const handleStatusToggle = async (id, currentStatus) => {
-  const newStatus = currentStatus === 'Active' ? 'Inactive' : 'Active';
+  const newStatus = (currentStatus && currentStatus.toLowerCase() === 'active') ? 'Inactive' : 'Active';
   try {
    const res = await fetch(`${API_URL}/${id}`, {
     method: 'PUT',
@@ -143,7 +143,7 @@ const Slider = () => {
           <label className="switch">
            <input 
             type="checkbox" 
-            checked={slider.status === 'Active'} 
+            checked={slider.status && slider.status.toLowerCase() === 'active'} 
             onChange={() => handleStatusToggle(slider._id, slider.status)}
            />
            <span className="slider-round"></span>
@@ -189,8 +189,8 @@ const Slider = () => {
     .slider-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(500px, 1fr)); gap: 30px; }
     
     .slider-card-premium { background: #1a1a1a; border-radius: 12px; overflow: hidden; border: 1px solid #222; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
-    .slider-img-container { aspect-ratio: 21/9; width: 100%; background: #111; overflow: hidden; }
-    .slider-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s; }
+    .slider-img-container { aspect-ratio: 16/9; width: 100%; background: #111; overflow: hidden; }
+    .slider-img { width: 100%; height: 100%; object-fit: contain; transition: transform 0.3s; }
     .slider-card-premium:hover .slider-img { transform: scale(1.05); }
 
     .slider-info { padding: 15px 20px; }

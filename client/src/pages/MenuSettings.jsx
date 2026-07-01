@@ -19,7 +19,8 @@ const MenuSettings = () => {
   sports: 'ON',
   liveTv: 'ON',
   shortFilms: 'ON',
-  webSeries: 'ON'
+  webSeries: 'ON',
+  shorts: 'ON'
  });
 
  useEffect(() => {
@@ -140,6 +141,14 @@ const MenuSettings = () => {
      <div className="form-row-full-v">
       <label>Web Series</label>
       <select name="webSeries" value={formData.webSeries} onChange={handleChange}>
+       <option value="ON">ON</option>
+       <option value="OFF">OFF</option>
+      </select>
+     </div>
+
+     <div className="form-row-full-v">
+      <label>Shorts</label>
+      <select name="shorts" value={formData.shorts || 'ON'} onChange={handleChange}>
        <option value="ON">ON</option>
        <option value="OFF">OFF</option>
       </select>

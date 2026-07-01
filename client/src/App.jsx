@@ -13,6 +13,9 @@ import AddMovie from './pages/AddMovie';
 import ShortFilms from './pages/ShortFilms';
 import AddShortFilm from './pages/AddShortFilm';
 import EditShortFilm from './pages/EditShortFilm';
+import Shorts from './pages/Shorts';
+import AddShort from './pages/AddShort';
+import EditShort from './pages/EditShort';
 import NewRelease from './pages/NewRelease';
 import AddNewRelease from './pages/AddNewRelease';
 import EditNewRelease from './pages/EditNewRelease';
@@ -105,6 +108,7 @@ import FrontendShortFilms from './pages/FrontendShortFilms';
 import FrontendWebSeries from './pages/FrontendWebSeries';
 import FrontendSubmission from './pages/FrontendSubmission';
 import AdminSubmissions from './pages/AdminSubmissions';
+import FrontendShorts from './pages/FrontendShorts';
 
 
 
@@ -425,6 +429,7 @@ function App() {
         <Route path="/details/:type/:id" element={<FrontendDetails />} />
         <Route path="/view-all/:type/:title" element={<FrontendViewAll />} />
         <Route path="/submission" element={<FrontendSubmission />} />
+        <Route path="/shorts" element={<FrontendShorts />} />
 
         
         {/* Dynamic Static Pages */}
@@ -458,6 +463,9 @@ function App() {
           <Route path="short-films" element={<ShortFilms />} />
           <Route path="short-films/add" element={<AddShortFilm />} />
           <Route path="short-films/edit/:id" element={<EditShortFilm />} />
+          <Route path="shorts" element={<Shorts />} />
+          <Route path="shorts/add" element={<AddShort />} />
+          <Route path="shorts/edit/:id" element={<EditShort />} />
           <Route path="short-web-series" element={<ShortWebSeries />} />
           <Route path="short-web-series/add" element={<AddShortWebSeries />} />
           <Route path="short-web-series/edit/:id" element={<EditShortWebSeries />} />

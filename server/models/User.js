@@ -26,6 +26,8 @@ const UserSchema = new mongoose.Schema({
   isDeleted: { type: Boolean, default: false },
   resetToken: { type: String, default: null },
   resetTokenExpiry: { type: Date, default: null },
+  timeoutUntil: { type: Date, default: null },
+  isBannedFromChat: { type: Boolean, default: false },
   watchlist: [{
     contentId: { type: mongoose.Schema.Types.ObjectId, required: true },
     contentType: { type: String, enum: ['movie', 'show', 'sports', 'live'], required: true }

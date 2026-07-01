@@ -232,6 +232,8 @@ const Experience = require('./models/Experience');
 const Rating = require('./models/Rating');
 const Submission = require('./models/Submission');
 const LiveStreamSettings = require('./models/LiveStreamSettings');
+const LiveChatMessage = require('./models/LiveChatMessage');
+const Short = require('./models/Short');
 
 const isAdminRequest = async (req) => {
   try {
@@ -328,7 +330,8 @@ const menuSettingsSchema = new mongoose.Schema({
   sports: { type: String, default: 'ON' },
   liveTv: { type: String, default: 'ON' },
   shortFilms: { type: String, default: 'ON' },
-  webSeries: { type: String, default: 'ON' }
+  webSeries: { type: String, default: 'ON' },
+  shorts: { type: String, default: 'ON' }
 });
 const MenuSettings = mongoose.model('MenuSettings', menuSettingsSchema);
 // jwt already declared at top
@@ -414,7 +417,12 @@ const diskStorage = multer.diskStorage({
     cb(null, tmpDir);
   },
   filename: (req, file, cb) => {
-    cb(null, `${Date.now()}_${file.originalname}`);
+    const ext = path.extname(file.originalname);
+    const baseName = path.basename(file.originalname, ext);
+    const sanitizedBase = baseName
+      .replace(/[^a-zA-Z0-9]/g, '_')
+      .substring(0, 40);
+    cb(null, `${Date.now()}_${sanitizedBase}${ext}`);
   }
 });
 const localUpload = multer({ storage: diskStorage });
@@ -429,6 +437,15 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use('/uploads', express.static('uploads'));
 app.use('/upload', express.static('uploads')); // Alias for legacy support
+
+// HLS Live Stream static files (served from uploads/hls/)
+const HLS_DIR = path.join(__dirname, 'uploads', 'hls');
+if (!require('fs').existsSync(HLS_DIR)) require('fs').mkdirSync(HLS_DIR, { recursive: true });
+app.use('/hls', (req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Cache-Control', 'no-cache');
+  next();
+}, express.static(HLS_DIR));
 
 // YouTube Live HLS Stream Extractor Endpoint
 app.get('/api/youtube/live-m3u8', async (req, res) => {
@@ -2420,6 +2437,22 @@ app.listen(PORT, () => {
 
 connectDB();
 
+// Start RTMP Media Server (requires node-media-server to be installed)
+try {
+  const { createRtmpServer } = require('./rtmpServer');
+  const nms = createRtmpServer(LiveStreamSettings);
+  nms.run();
+  console.log('[RTMP] Node Media Server started on port 1935');
+  console.log('[RTMP] HLS output will be at: /hls/live/<streamKey>/index.m3u8');
+} catch (err) {
+  if (err.code === 'MODULE_NOT_FOUND' && err.message.includes('node-media-server')) {
+    console.warn('[RTMP] node-media-server not installed. Run: npm install node-media-server');
+    console.warn('[RTMP] RTMP ingest from OBS is DISABLED until package is installed.');
+  } else {
+    console.error('[RTMP] Failed to start RTMP server:', err.message);
+  }
+}
+
 // Coupon Routes
 app.get('/api/coupons', async (req, res) => {
   try {
@@ -2942,23 +2975,52 @@ app.get('/api/live-stream/active', async (req, res) => {
   try {
     const settings = await LiveStreamSettings.findOne();
     if (settings) {
+      // Build HLS URL: prefer real RTMP-ingested HLS, fallback to test stream
+      let streamUrl = null;
+      let streamReady = false;
+
+      if (settings.isLive) {
+        if (settings.serverType === 'custom') {
+          let customUrl = settings.playbackUrl || '';
+          if (settings.streamKey) {
+            customUrl = customUrl.replace(/{streamKey}/g, settings.streamKey).replace(/{key}/g, settings.streamKey);
+          }
+          streamUrl = customUrl;
+          streamReady = !!streamUrl;
+        } else {
+          // Local mode - verify local file exists
+          if (settings.streamKey) {
+            const hlsPath = require('path').join(__dirname, 'uploads', 'hls', 'live', settings.streamKey, 'index.m3u8');
+            const hlsExists = require('fs').existsSync(hlsPath);
+            if (hlsExists) {
+              const serverBase = process.env.SERVER_URL || `http://localhost:${process.env.PORT || 5001}`;
+              streamUrl = `${serverBase}/hls/live/${settings.streamKey}/index.m3u8`;
+              streamReady = true;
+            }
+          }
+        }
+      }
+
       return res.json({
         isLive: settings.isLive,
+        streamReady,
         isScheduled: settings.isScheduled || false,
         scheduledTime: settings.scheduledTime || null,
         streamTitle: settings.streamTitle,
         streamCategory: settings.streamCategory,
         viewers: settings.isLive ? settings.viewers : 0,
-        streamUrl: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
+        streamUrl,
         poster: settings.streamPoster || 'https://images.unsplash.com/photo-1542204172-e7052809f852?w=800&q=80',
-        chatEnabled: settings.chatEnabled !== false
+        chatEnabled: settings.chatEnabled !== false,
+        startedAt: settings.startedAt
       });
     }
-    res.json({ isLive: false, isScheduled: false });
+    res.json({ isLive: false, streamReady: false, isScheduled: false });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
+
 
 // Live Stream Settings Routes
 app.get('/api/live-stream/settings', async (req, res) => {
@@ -3000,7 +3062,13 @@ app.put('/api/live-stream/settings', async (req, res) => {
         ...updateData,
         streamKey: defaultKey
       });
+      if (settings.isLive) {
+        settings.startedAt = new Date();
+      }
     } else {
+      if (updateData.isLive !== undefined && updateData.isLive !== settings.isLive) {
+        settings.startedAt = updateData.isLive ? new Date() : null;
+      }
       Object.assign(settings, updateData);
     }
     
@@ -3028,6 +3096,376 @@ app.post('/api/live-stream/regenerate-key', async (req, res) => {
     }
     await settings.save();
     res.json({ streamKey: newKey });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+
+// Shorts CRUD Routes
+app.get('/api/shorts', async (req, res) => {
+  try {
+    const shorts = await Short.find().sort({ createdAt: -1 });
+    
+    // Check if user is logged in to populate hasLiked boolean
+    let userId = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.split(' ')[1];
+        const decoded = jwt.verify(token, JWT_SECRET);
+        userId = decoded.id;
+      } catch (_) {}
+    }
+
+    const modifiedShorts = shorts.map(short => {
+      const obj = short.toObject();
+      obj.hasLiked = userId && short.likedBy ? short.likedBy.some(id => id.toString() === userId.toString()) : false;
+      return obj;
+    });
+
+    res.json(modifiedShorts);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// POST /api/shorts/:id/like - Toggle like on a vertical short (ensures 1 like per user maximum)
+app.post('/api/shorts/:id/like', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Authentication required to like shorts.' });
+    }
+    const token = authHeader.split(' ')[1];
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch (_) {
+      return res.status(401).json({ message: 'Session expired. Please sign in again.' });
+    }
+
+    const short = await Short.findById(req.params.id);
+    if (!short) {
+      return res.status(404).json({ message: 'Short not found.' });
+    }
+
+    if (!short.likedBy) {
+      short.likedBy = [];
+    }
+
+    const userIdStr = decoded.id.toString();
+    const userIndex = short.likedBy.findIndex(id => id.toString() === userIdStr);
+
+    let liked = false;
+    if (userIndex > -1) {
+      // Already liked: remove the like (unlike)
+      short.likedBy.splice(userIndex, 1);
+      short.likes = Math.max(0, (short.likes || 1) - 1);
+      liked = false;
+    } else {
+      // First like: record it
+      short.likedBy.push(decoded.id);
+      short.likes = (short.likes || 0) + 1;
+      liked = true;
+    }
+
+    await short.save();
+    res.json({ likes: short.likes, hasLiked: liked });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// POST /api/shorts/:id/view - Increment views on a vertical short
+app.post('/api/shorts/:id/view', async (req, res) => {
+  try {
+    const short = await Short.findByIdAndUpdate(
+      req.params.id,
+      { $inc: { views: 1 } },
+      { new: true }
+    );
+    if (!short) return res.status(404).json({ message: 'Short not found' });
+    res.json({ views: short.views });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.get('/api/shorts/:id', async (req, res) => {
+  try {
+    const short = await Short.findById(req.params.id);
+    if (!short) return res.status(404).json({ message: 'Short not found' });
+    res.json(short);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.post('/api/shorts', async (req, res) => {
+  try {
+    const isAdmin = await isAdminRequest(req);
+    if (!isAdmin) {
+      return res.status(403).json({ message: 'Access Denied' });
+    }
+    const short = new Short(req.body);
+    await short.save();
+    res.status(201).json(short);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+app.put('/api/shorts/:id', async (req, res) => {
+  try {
+    const isAdmin = await isAdminRequest(req);
+    if (!isAdmin) {
+      return res.status(403).json({ message: 'Access Denied' });
+    }
+    const short = await Short.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json(short);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+app.delete('/api/shorts/:id', async (req, res) => {
+  try {
+    const isAdmin = await isAdminRequest(req);
+    if (!isAdmin) {
+      return res.status(403).json({ message: 'Access Denied' });
+    }
+    await Short.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Short deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// POST /api/shorts/import - Import Shorts
+app.post('/api/shorts/import', async (req, res) => {
+  try {
+    const { shorts } = req.body;
+    if (!shorts || !Array.isArray(shorts)) {
+      return res.status(400).json({ message: 'Shorts array is required' });
+    }
+
+    let importedCount = 0;
+    let updatedCount = 0;
+    let errorCount = 0;
+    const errors = [];
+
+    for (let i = 0; i < shorts.length; i++) {
+      const item = shorts[i];
+      try {
+        const title = item.title || item.Title;
+        if (!title) {
+          errorCount++;
+          errors.push(`Row ${i + 1}: Title is required.`);
+          continue;
+        }
+
+        let shortItem = await Short.findOne({
+          title: { $regex: new RegExp('^' + title.trim().replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') }
+        });
+
+        const shortData = {
+          title: title.trim(),
+          description: item.description || item.Description || '',
+          videoUrl: item.videoUrl || item.VideoUrl || '',
+          thumbnailUrl: item.thumbnailUrl || item.ThumbnailUrl || item.thumbnail || item.Thumbnail || '',
+          access: item.access || item.Access || 'Free',
+          status: item.status || item.Status || 'Active',
+          views: parseInt(item.views || item.Views) || 0,
+          likes: parseInt(item.likes || item.Likes) || 0
+        };
+
+        if (shortItem) {
+          Object.assign(shortItem, shortData);
+          await shortItem.save();
+          updatedCount++;
+        } else {
+          shortItem = new Short(shortData);
+          await shortItem.save();
+          importedCount++;
+        }
+      } catch (err) {
+        console.error('Error importing short item:', item, err);
+        errorCount++;
+        errors.push(`Row ${i + 1}: ${err.message}`);
+      }
+    }
+
+    res.json({
+      message: 'Shorts import completed',
+      importedCount,
+      updatedCount,
+      errorCount,
+      errors
+    });
+  } catch (err) {
+    console.error('[SERVER ERROR] POST /api/shorts/import:', err);
+    res.status(500).json({ message: 'Server error during import' });
+  }
+});
+
+
+// Live Stream Chat Routes
+app.get('/api/live-chat/messages', async (req, res) => {
+  try {
+    const messages = await LiveChatMessage.find()
+      .sort({ createdAt: -1 })
+      .limit(50);
+    res.json(messages.reverse());
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.post('/api/live-chat/messages', async (req, res) => {
+  try {
+    const { user, userId, text, color, system, isAdmin } = req.body;
+    if (!text) {
+      return res.status(400).json({ message: 'Text is required' });
+    }
+
+    // Check if user is admin/sub-admin securely
+    let finalIsAdmin = false;
+    const isRequestAdmin = await isAdminRequest(req);
+    if (isRequestAdmin) {
+      finalIsAdmin = true;
+    }
+
+    let userDoc = null;
+    if (userId) {
+      userDoc = await User.findById(userId);
+      if (userDoc && ['admin', 'sub-admin'].includes(userDoc.role)) {
+        finalIsAdmin = true;
+      }
+    }
+
+    if (isAdmin) {
+      finalIsAdmin = true;
+    }
+
+    // Check if the user is banned or timed out from chat (admins are immune)
+    if (userDoc && !finalIsAdmin) {
+      if (userDoc.isBannedFromChat) {
+        return res.status(403).json({ message: 'You have been permanently banned from live stream chat.' });
+      }
+      if (userDoc.timeoutUntil && new Date(userDoc.timeoutUntil) > new Date()) {
+        const remainingSecs = Math.ceil((new Date(userDoc.timeoutUntil).getTime() - Date.now()) / 1000);
+        return res.status(403).json({ message: `You are temporarily timed out from chat. Try again in ${remainingSecs} seconds.` });
+      }
+    }
+
+    // Assign appropriate color based on admin status
+    let finalColor = color || '#ffffff';
+    if (finalIsAdmin) {
+      finalColor = '#b3d332'; // Brand neon green for admin
+    } else {
+      // Override neon green for non-admin to prevent identity spoofing
+      if (finalColor === '#b3d332') {
+        const colors = [
+          '#3498db', // Blue
+          '#e74c3c', // Red
+          '#9b59b6', // Purple
+          '#f1c40f', // Yellow
+          '#e67e22', // Orange
+          '#1abc9c', // Teal
+          '#a0aec0', // Grey
+          '#f687b3', // Pink
+          '#4fd1c5'  // Light Teal
+        ];
+        const username = user || 'Anonymous User';
+        let hash = 0;
+        for (let i = 0; i < username.length; i++) {
+          hash = username.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const index = Math.abs(hash) % colors.length;
+        finalColor = colors[index];
+      }
+    }
+
+    const newMessage = new LiveChatMessage({
+      user: user || 'Anonymous User',
+      userId,
+      text,
+      color: finalColor,
+      system: system || false,
+      isAdmin: finalIsAdmin
+    });
+    const savedMsg = await newMessage.save();
+    res.status(201).json(savedMsg);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Timeout user from chat
+app.post('/api/live-chat/timeout', async (req, res) => {
+  try {
+    const isAdmin = await isAdminRequest(req);
+    if (!isAdmin) {
+      return res.status(403).json({ message: 'Access Denied' });
+    }
+    const { userId, durationSeconds } = req.body;
+    if (!userId || !durationSeconds) {
+      return res.status(400).json({ message: 'userId and durationSeconds are required' });
+    }
+    const timeoutDate = new Date(Date.now() + durationSeconds * 1000);
+    const userDoc = await User.findByIdAndUpdate(userId, { timeoutUntil: timeoutDate }, { new: true });
+    if (!userDoc) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.json({ message: `User timed out successfully`, timeoutUntil: timeoutDate });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Ban user from chat
+app.post('/api/live-chat/ban', async (req, res) => {
+  try {
+    const isAdmin = await isAdminRequest(req);
+    if (!isAdmin) {
+      return res.status(403).json({ message: 'Access Denied' });
+    }
+    const { userId } = req.body;
+    if (!userId) {
+      return res.status(400).json({ message: 'userId is required' });
+    }
+    const userDoc = await User.findByIdAndUpdate(userId, { isBannedFromChat: true }, { new: true });
+    if (!userDoc) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.json({ message: 'User permanently banned from chat' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.delete('/api/live-chat/messages/:id', async (req, res) => {
+  try {
+    const isAdmin = await isAdminRequest(req);
+    if (!isAdmin) {
+      return res.status(403).json({ message: 'Access Denied' });
+    }
+    await LiveChatMessage.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Message deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.post('/api/live-chat/clear', async (req, res) => {
+  try {
+    const isAdmin = await isAdminRequest(req);
+    if (!isAdmin) {
+      return res.status(403).json({ message: 'Access Denied' });
+    }
+    await LiveChatMessage.deleteMany({});
+    res.json({ message: 'Chat cleared successfully' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -4698,7 +5136,7 @@ app.get('/api/sliders', async (req, res) => {
   console.log('GET /api/sliders request received');
   try {
     const isAdmin = await isAdminRequest(req);
-    const query = isAdmin ? {} : { status: 'Active' };
+    const query = isAdmin ? {} : { status: { $regex: /^active$/i } };
     // Aggressive timeout and lean query to handle large payloads
     const sliders = await Slider.find(query)
       .sort({ createdAt: -1 })
@@ -4831,9 +5269,9 @@ app.get('/api/home-aggregated', async (req, res) => {
   try {
     const [
       sliders, movies, assets, experiences, shows, 
-      newReleases, sports, channels, sportsCategories, settings, homeSections, menuSettings
+      newReleases, sports, channels, sportsCategories, settings, homeSections, menuSettings, shorts
     ] = await Promise.all([
-      Slider.find({ status: 'Active' }).sort({ createdAt: -1 }).lean().maxTimeMS(5000),
+      Slider.find({ status: { $regex: /^active$/i } }).sort({ createdAt: -1 }).lean().maxTimeMS(5000),
       Movie.find({ status: 'Active' }).sort({ createdAt: -1 }).limit(20).lean().maxTimeMS(5000),
       Asset.find().lean().maxTimeMS(5000),
       Experience.find({ status: 'Active' }).sort({ order: 1 }).lean().maxTimeMS(5000),
@@ -4844,7 +5282,8 @@ app.get('/api/home-aggregated', async (req, res) => {
       SportsCategory.find().lean().maxTimeMS(5000),
       GeneralSettings.findOne().lean().maxTimeMS(5000),
       HomeSection.find({ status: 'Active' }).sort({ order: 1 }).lean().maxTimeMS(5000),
-      MenuSettings.findOne().lean().maxTimeMS(5000)
+      MenuSettings.findOne().lean().maxTimeMS(5000),
+      Short.find({ status: 'Active' }).sort({ createdAt: -1 }).limit(20).lean().maxTimeMS(5000)
     ]);
 
     let filteredSliders = sliders;
@@ -4853,6 +5292,7 @@ app.get('/api/home-aggregated', async (req, res) => {
     let filteredNewReleases = newReleases;
     let filteredSports = sports;
     let filteredChannels = channels;
+    let filteredShorts = shorts;
 
     if (menuSettings) {
       const moviesOff = menuSettings.movies?.toUpperCase() === 'OFF';
@@ -4861,6 +5301,7 @@ app.get('/api/home-aggregated', async (req, res) => {
       const webSeriesOff = menuSettings.webSeries?.toUpperCase() === 'OFF';
       const sportsOff = menuSettings.sports?.toUpperCase() === 'OFF';
       const liveTvOff = menuSettings.liveTv?.toUpperCase() === 'OFF';
+      const shortsOff = menuSettings.shorts?.toUpperCase() === 'OFF';
 
       // Filter sliders
       filteredSliders = sliders.filter(slide => {
@@ -4914,7 +5355,29 @@ app.get('/api/home-aggregated', async (req, res) => {
       if (liveTvOff) {
         filteredChannels = [];
       }
+
+      // Filter shorts
+      if (shortsOff) {
+        filteredShorts = [];
+      }
     }
+
+    // Populate hasLiked property for vertical shorts if user is authenticated
+    let userId = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.split(' ')[1];
+        const decoded = jwt.verify(token, JWT_SECRET);
+        userId = decoded.id;
+      } catch (_) {}
+    }
+
+    const processedShorts = filteredShorts.map(short => {
+      const obj = { ...short };
+      obj.hasLiked = userId && short.likedBy ? short.likedBy.some(id => id.toString() === userId.toString()) : false;
+      return obj;
+    });
 
     res.json({
       sliders: filteredSliders,
@@ -4928,7 +5391,8 @@ app.get('/api/home-aggregated', async (req, res) => {
       sportsCategories,
       settings,
       homeSections,
-      menuSettings
+      menuSettings,
+      shorts: processedShorts
     });
   } catch (err) {
     console.error('Aggregated Home Error:', err);
@@ -5321,6 +5785,9 @@ app.get('/api/export/:type', async (req, res) => {
         delete obj.watchlist;
         return obj;
       });
+    } else if (type === 'shorts') {
+      const docs = await Short.find().sort({ createdAt: -1 });
+      data = docs.map(doc => doc.toObject());
     } else {
       return res.status(400).json({ message: 'Invalid export type' });
     }

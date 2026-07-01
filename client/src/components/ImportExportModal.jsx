@@ -23,7 +23,8 @@ const HEADERS_BY_TYPE = {
   'home-sections': ['title', 'sectionType', 'layout', 'limit', 'status', 'order'],
   'subscription-plans': ['planName', 'duration', 'price', 'deviceLimit', 'ads', 'streamingQuality', 'status', 'getStarted'],
   pages: ['title', 'slug', 'content', 'status'],
-  'sub-admins': ['name', 'email', 'phone', 'status', 'role', 'password']
+  'sub-admins': ['name', 'email', 'phone', 'status', 'role', 'password'],
+  shorts: ['title', 'description', 'videoUrl', 'thumbnailUrl', 'status', 'views', 'likes', 'access']
 };
 
 const LABELS = {
@@ -47,7 +48,8 @@ const LABELS = {
   'home-sections': 'Home Sections',
   'subscription-plans': 'Subscription Plans',
   pages: 'Pages',
-  'sub-admins': 'Sub Admins'
+  'sub-admins': 'Sub Admins',
+  shorts: 'Shorts'
 };
 
 const API_ENDPOINTS = {
@@ -71,7 +73,8 @@ const API_ENDPOINTS = {
   'home-sections': { import: '/api/home-sections/import', export: '/api/export/home-sections', arrayKey: 'home-sections' },
   'subscription-plans': { import: '/api/subscription-plans/import', export: '/api/export/subscription-plans', arrayKey: 'subscription-plans' },
   pages: { import: '/api/pages/import', export: '/api/export/pages', arrayKey: 'pages' },
-  'sub-admins': { import: '/api/sub-admins/import', export: '/api/export/sub-admins', arrayKey: 'sub-admins' }
+  'sub-admins': { import: '/api/sub-admins/import', export: '/api/export/sub-admins', arrayKey: 'sub-admins' },
+  shorts: { import: '/api/shorts/import', export: '/api/export/shorts', arrayKey: 'shorts' }
 };
 
 const ImportExportModal = ({ isOpen, onClose, type, onImportSuccess }) => {

@@ -748,7 +748,7 @@ const FrontendSubmission = () => {
                 <div className={`form-group-v full-width-v ${validationErrors.sliderLink ? 'has-error' : ''}`}>
                   <div className="label-row-v">
                     <label>Slider Image Drive Link <span className="req-star">*</span></label>
-                    <span className="info-side-v">(Recommended resolution : 1100x450)</span>
+                    <span className="info-side-v">(Recommended resolution : 1920x1080 / 16:9 aspect ratio)</span>
                   </div>
                   <input 
                     type="text" 

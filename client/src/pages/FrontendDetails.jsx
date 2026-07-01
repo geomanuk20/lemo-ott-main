@@ -118,6 +118,7 @@ const FrontendDetails = () => {
  const [episodes, setEpisodes] = useState([]);
  const [selectedSeasonId, setSelectedSeasonId] = useState('');
  const [activeVideoUrl, setActiveVideoUrl] = useState(null);
+ const [liveStreamReady, setLiveStreamReady] = useState(false);
  const [showNextBtn, setShowNextBtn] = useState(false);
  const [playerSettings, setPlayerSettings] = useState(null);
  const [userRating, setUserRating] = useState(0);
@@ -129,45 +130,52 @@ const FrontendDetails = () => {
  const [chatInput, setChatInput] = useState('');
  const chatEndRef = useRef(null);
 
+ // Poll for live stream readiness when isLive=true but HLS not ready yet
+ useEffect(() => {
+   if (id !== 'lemo-live') return;
+   if (liveStreamReady) return; // already ready, no need to poll
+   if (!data || !data._id) return; // data not loaded yet
+
+   const pollInterval = setInterval(async () => {
+     try {
+       const res = await fetch('/api/live-stream/active');
+       if (res.ok) {
+         const activeStream = await res.json();
+         if (activeStream && activeStream.isLive && activeStream.streamReady && activeStream.streamUrl) {
+           setLiveStreamReady(true);
+           setData(prev => prev ? { ...prev, server1Url: activeStream.streamUrl } : prev);
+           clearInterval(pollInterval);
+         } else if (!activeStream.isLive) {
+           // Stream went offline — go back to live-tv
+           navigate('/live-tv', { replace: true });
+           clearInterval(pollInterval);
+         }
+       }
+     } catch (err) {
+       console.error('[LivePoll] Error:', err);
+     }
+   }, 5000);
+
+   return () => clearInterval(pollInterval);
+ }, [id, liveStreamReady, data]);
+
+  const fetchChatMessages = async () => {
+    try {
+      const res = await fetch('/api/live-chat/messages');
+      if (res.ok) {
+        const messages = await res.json();
+        setChatMessages(messages);
+      }
+    } catch (err) {
+      console.error('Error fetching chat messages:', err);
+    }
+  };
+
   useEffect(() => {
     let chatInterval = null;
     if (activeVideoUrl && id === 'lemo-live') {
-      setChatMessages([
-        { id: 1, user: 'Lemo Bot', text: 'Welcome to LEMO Live TV! Chat is now connected.', color: '#b3d332', system: true },
-        { id: 2, user: 'MalluGamer', text: 'LEMO OTT Live is finally here! 🔥', color: '#ff4757' }
-      ]);
-
-      const userPool = [
-        { name: "MalluGamer", color: "#ff4757" },
-        { name: "LemoFan99", color: "#2ed573" },
-        { name: "RetroOtt", color: "#1e90ff" },
-        { name: "TechyGeek", color: "#ffa502" },
-        { name: "Arun_Kumar", color: "#ff6b81" },
-        { name: "Nikhil_K", color: "#9b59b6" },
-        { name: "CinemaLover", color: "#1abc9c" },
-        { name: "ott_watcher", color: "#34495e" }
-      ];
-
-      const chatPool = [
-        "Best streaming platform! 👍",
-        "Stream is super smooth!",
-        "Lemo OTT native player has 0 lag!",
-        "Love from Kochi! ❤",
-        "This playback quality is outstanding",
-        "POGGERS!",
-        "Is this 1080p 60fps?",
-        "Malayalam stream rocks!",
-        "Amazing live stream manager panel"
-      ];
-
-      chatInterval = setInterval(() => {
-        const randUser = userPool[Math.floor(Math.random() * userPool.length)];
-        const randText = chatPool[Math.floor(Math.random() * chatPool.length)];
-        setChatMessages(prev => [
-          ...prev.slice(-35),
-          { id: Date.now() + Math.random(), user: randUser.name, text: randText, color: randUser.color }
-        ]);
-      }, 3500);
+      fetchChatMessages();
+      chatInterval = setInterval(fetchChatMessages, 3000);
     } else {
       setChatMessages([]);
     }
@@ -178,8 +186,9 @@ const FrontendDetails = () => {
   }, [activeVideoUrl, id]);
 
   useEffect(() => {
-    if (chatEndRef.current) {
-      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    const container = document.querySelector('.fe-chat-messages-container');
+    if (container) {
+      container.scrollTop = container.scrollHeight;
     }
   }, [chatMessages]);
 
@@ -273,13 +282,15 @@ const FrontendDetails = () => {
           if (res.ok) {
             const activeStream = await res.json();
             if (activeStream && activeStream.isLive) {
+              const ready = activeStream.streamReady && activeStream.streamUrl;
+              setLiveStreamReady(!!ready);
               result = {
                 _id: 'lemo-live',
                 name: activeStream.streamTitle,
                 category: { name: activeStream.streamCategory },
                 genres: [activeStream.streamCategory],
                 language: 'Malayalam',
-                server1Url: activeStream.streamUrl,
+                server1Url: ready ? activeStream.streamUrl : null, // only set if HLS file exists
                 tvAccess: 'free',
                 logo: activeStream.poster,
                 status: 'Active',
@@ -803,6 +814,21 @@ const FrontendDetails = () => {
            <div className="fe-upcoming-badge-overlay-v">
              COMING SOON
            </div>
+         ) : id === 'lemo-live' && !liveStreamReady ? (
+           // Live is set but OBS hasn't connected yet — show pulsing waiting state
+           <div style={{
+             position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+             background: 'rgba(0,0,0,0.75)', gap: '14px', borderRadius: '8px'
+           }}>
+             <div style={{
+               width: '56px', height: '56px', borderRadius: '50%',
+               border: '3px solid #b3d332', borderTopColor: 'transparent',
+               animation: 'spin 1s linear infinite'
+             }} />
+             <div style={{ color: '#b3d332', fontWeight: 800, fontSize: '0.8rem', letterSpacing: '2px' }}>CONNECTING...</div>
+             <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.72rem', textAlign: 'center', padding: '0 10px' }}>Waiting for OBS to connect</div>
+           </div>
          ) : (
            <div className="fe-big-play-btn-v" onClick={() => {
             const filteredEpisodes = episodes.filter(ep => {
@@ -1305,29 +1331,79 @@ const FrontendDetails = () => {
               <h3>Live Stream Chat</h3>
               <div className="fe-chat-messages-container">
                 {chatMessages.map((msg) => (
-                  <div key={msg.id} className="fe-chat-message-row">
+                  <div 
+                    key={msg._id || msg.id} 
+                    className={msg.isAdmin ? 'fe-chat-message-row fe-admin-chat-msg' : 'fe-chat-message-row'}
+                  >
                     {!msg.system && (
-                      <span 
-                        className="fe-chat-username" 
-                        style={{ color: msg.color || '#fff' }}
-                      >
-                        {msg.user}:
-                      </span>
+                      <>
+                        {msg.isAdmin && (
+                          <span 
+                            style={{ 
+                              background: '#b3d332', 
+                              color: '#000', 
+                              padding: '1px 5px', 
+                              borderRadius: '3px', 
+                              fontSize: '0.65rem', 
+                              fontWeight: '900', 
+                              marginRight: '6px', 
+                              display: 'inline-block',
+                              letterSpacing: '0.5px',
+                              boxShadow: '0 0 6px rgba(179, 211, 50, 0.4)'
+                            }}
+                          >
+                            ADMIN
+                          </span>
+                        )}
+                        <span 
+                          className="fe-chat-username" 
+                          style={{ color: msg.isAdmin ? '#b3d332' : (msg.color || '#fff'), fontWeight: msg.isAdmin ? '800' : 'normal' }}
+                        >
+                          {msg.user}:
+                        </span>
+                      </>
                     )}
-                    <span className={msg.system ? 'fe-chat-text system-msg' : 'fe-chat-text'}>{msg.text}</span>
+                    <span 
+                      className={msg.system ? 'fe-chat-text system-msg' : 'fe-chat-text'}
+                      style={msg.isAdmin ? { color: '#d1f054', fontWeight: '500' } : {}}
+                    >
+                      {msg.text}
+                    </span>
                   </div>
                 ))}
                 <div ref={chatEndRef} />
               </div>
               <form 
-                onSubmit={(e) => {
+                onSubmit={async (e) => {
                   e.preventDefault();
                   if (!chatInput.trim()) return;
-                  setChatMessages(prev => [
-                    ...prev,
-                    { id: Date.now() + Math.random(), user: user.name || 'Anonymous User', text: chatInput, color: '#b3d332' }
-                  ]);
+                  const messageText = chatInput.trim();
                   setChatInput('');
+                  try {
+                    const token = localStorage.getItem('token');
+                    const headers = { 'Content-Type': 'application/json' };
+                    if (token) {
+                      headers['Authorization'] = `Bearer ${token}`;
+                    }
+                    const res = await fetch('/api/live-chat/messages', {
+                      method: 'POST',
+                      headers,
+                      body: JSON.stringify({
+                        user: user.name || user.email || 'Anonymous User',
+                        userId: user.id || null,
+                        text: messageText,
+                        color: '#b3d332'
+                      })
+                    });
+                    if (res.ok) {
+                      fetchChatMessages();
+                    } else if (res.status === 403) {
+                      const errorData = await res.json();
+                      alert(errorData.message);
+                    }
+                  } catch (err) {
+                    console.error('Error sending chat message:', err);
+                  }
                 }}
                 className="fe-chat-input-bar"
               >
@@ -1514,6 +1590,19 @@ const FrontendDetails = () => {
       font-size: 0.85rem;
       line-height: 1.4;
       word-wrap: break-word;
+    }
+    @keyframes adminPulseGlow {
+      0% { border-left-color: #b3d332; box-shadow: inset 3px 0 0 #b3d332, 0 0 4px rgba(179, 211, 50, 0.15); }
+      50% { border-left-color: #d1f054; box-shadow: inset 3px 0 0 #d1f054, 0 0 12px rgba(179, 211, 50, 0.45); }
+      100% { border-left-color: #b3d332; box-shadow: inset 3px 0 0 #b3d332, 0 0 4px rgba(179, 211, 50, 0.15); }
+    }
+    .fe-admin-chat-msg {
+      animation: adminPulseGlow 2s infinite ease-in-out;
+      background: rgba(179, 211, 50, 0.08) !important;
+      border-left: 3px solid #b3d332 !important;
+      padding: 6px 8px !important;
+      border-radius: 4px;
+      margin: 6px 0;
     }
     .fe-chat-username {
       font-weight: 800;

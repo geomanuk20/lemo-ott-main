@@ -66,6 +66,7 @@ const Sidebar = () => {
     { name: 'Genres', icon: <Tag size={20} />, path: '/admin/genres' },
     { name: 'Movies', icon: <Film size={20} />, path: '/admin/movies' },
     { name: 'Short Film', icon: <PlayCircle size={20} />, path: '/admin/short-films' },
+    { name: 'Shorts', icon: <Smartphone size={20} />, path: '/admin/shorts' },
     { 
       name: 'Short Web Series', 
       icon: <Tv size={20} />, 

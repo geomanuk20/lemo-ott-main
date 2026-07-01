@@ -73,6 +73,7 @@ const AddHomeSection = () => {
         <option value="Shows">Shows</option>
         <option value="Sports">Sports</option>
         <option value="Live TV">Live TV</option>
+        <option value="Shorts">Shorts</option>
        </select>
      </div>
     </div>

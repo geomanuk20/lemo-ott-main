@@ -19,17 +19,21 @@ import {
   Upload
 } from 'lucide-react';
 import Loader from '../components/Loader';
+import VideoPlayer from '../components/VideoPlayer';
 
 const API_URL = '/api/live-stream/settings';
 
 const LiveStreamDashboard = () => {
   const [streamKey, setStreamKey] = useState('');
-  const [serverUrl, setServerUrl] = useState('rtmp://live.lemoott.com/live');
+  const [serverUrl, setServerUrl] = useState('');
   const [streamTitle, setStreamTitle] = useState('Lemo OTT Live Stream');
   const [streamCategory, setStreamCategory] = useState('Entertainment');
   const [streamPoster, setStreamPoster] = useState(''); // Custom stream thumbnail/poster URL
   const [isLive, setIsLive] = useState(false);
   const [viewers, setViewers] = useState(0);
+  const [startedAt, setStartedAt] = useState(null);
+  const [serverType, setServerType] = useState('local'); // 'local' or 'custom'
+  const [playbackUrl, setPlaybackUrl] = useState('');
   
   const [showKey, setShowKey] = useState(false);
   const [copiedKey, setCopiedKey] = useState(false);
@@ -41,6 +45,7 @@ const LiveStreamDashboard = () => {
   const [isScheduled, setIsScheduled] = useState(false);
   const [scheduledTime, setScheduledTime] = useState('');
   const [chatEnabled, setChatEnabled] = useState(true);
+  const [liveStreamReady, setLiveStreamReady] = useState(false);
   
   // Custom chat & activity states
   const [chatMessages, setChatMessages] = useState([]);
@@ -126,7 +131,9 @@ const LiveStreamDashboard = () => {
       if (response.ok) {
         const data = await response.json();
         setStreamKey(data.streamKey);
+        setServerType(data.serverType || 'local');
         setServerUrl(data.serverUrl || 'rtmp://live.lemoott.com/live');
+        setPlaybackUrl(data.playbackUrl || 'http://live.lemoott.com/hls/live/{streamKey}/index.m3u8');
         setStreamTitle(data.streamTitle || 'Lemo OTT Live Stream');
         setStreamCategory(data.streamCategory || 'Entertainment');
         setStreamPoster(data.streamPoster || '');
@@ -134,6 +141,7 @@ const LiveStreamDashboard = () => {
         setViewers(data.isLive ? data.viewers || 120 : 0);
         setIsScheduled(data.isScheduled || false);
         setChatEnabled(data.chatEnabled !== false);
+        setStartedAt(data.startedAt ? new Date(data.startedAt).getTime() : null);
         if (data.scheduledTime) {
           const date = new Date(data.scheduledTime);
           const tzOffset = date.getTimezoneOffset() * 60000;
@@ -150,83 +158,75 @@ const LiveStreamDashboard = () => {
     }
   };
 
+  const fetchChatMessages = async () => {
+    try {
+      const res = await fetch('/api/live-chat/messages');
+      if (res.ok) {
+        const messages = await res.json();
+        setChatMessages(messages);
+      }
+    } catch (err) {
+      console.error('Error fetching chat messages:', err);
+    }
+  };
+
   useEffect(() => {
     fetchSettings();
   }, []);
 
   // Handle stream live effects (chat, viewers, duration)
   useEffect(() => {
+    let chatInterval = null;
+    let activityInterval = null;
+
     if (isLive) {
       startTimeRef.current = Date.now();
-      // Start duration tracker
-      if (!durationTimerRef.current) {
-        durationTimerRef.current = setInterval(() => {
-          const diff = Date.now() - startTimeRef.current;
-          const hrs = String(Math.floor(diff / 3600000)).padStart(2, '0');
-          const mins = String(Math.floor((diff % 3600000) / 60000)).padStart(2, '0');
-          const secs = String(Math.floor((diff % 60000) / 1000)).padStart(2, '0');
-          setStreamDuration(`${hrs}:${mins}:${secs}`);
-        }, 1000);
+      
+      // Start duration tracker from actual startedAt database timestamp
+      if (durationTimerRef.current) {
+        clearInterval(durationTimerRef.current);
       }
+      durationTimerRef.current = setInterval(() => {
+        const start = startedAt || startTimeRef.current;
+        const diff = Date.now() - start;
+        const hrs = String(Math.floor(diff / 3600000)).padStart(2, '0');
+        const mins = String(Math.floor((diff % 3600000) / 60000)).padStart(2, '0');
+        const secs = String(Math.floor((diff % 60000) / 1000)).padStart(2, '0');
+        setStreamDuration(`${hrs}:${mins}:${secs}`);
+      }, 1000);
 
-      // Seed initial chat messages only if empty
-      if (chatMessages.length === 0) {
-        setChatMessages([
-          { id: 1, user: 'Lemo Bot', text: 'Welcome to your Lemo OTT Native Stream Manager dashboard! Chat is now connected.', color: '#b3d332', system: true },
-          { id: 2, user: 'PixelPerfect', text: 'Live stream is up and running!', color: '#b3d332' }
-        ]);
-        setActivityEvents([
-          { id: 1, text: 'Stream goes online', time: 'Just now' }
-        ]);
-      }
+      // Clear offline messages and events
+      setChatMessages([]);
+      setActivityEvents([
+        { id: Date.now(), text: 'Stream goes online', time: 'Just now' }
+      ]);
 
-      // Interval for chat messages simulation
-      let chatInterval = null;
-      if (slowMode !== 'paused') {
-        chatInterval = setInterval(() => {
-          const currentBanned = bannedUsersRef.current;
-          const currentTimedOut = timedOutUsersRef.current;
+      // Initial fetch for chat messages
+      fetchChatMessages();
+      chatInterval = setInterval(fetchChatMessages, 3000);
 
-          let attempts = 0;
-          let randUser = userPool[Math.floor(Math.random() * userPool.length)];
-          while (attempts < 15 && (
-            currentBanned.includes(randUser.name) || 
-            (currentTimedOut[randUser.name] && Date.now() < currentTimedOut[randUser.name])
-          )) {
-            randUser = userPool[Math.floor(Math.random() * userPool.length)];
-            attempts++;
-          }
-
-          const relevantMsgs = chatPool.filter(m => m.category === 'All' || m.category === streamCategory);
-          const msgText = relevantMsgs.length > 0 
-            ? relevantMsgs[Math.floor(Math.random() * relevantMsgs.length)].text 
-            : chatPool[0].text;
-
-          setChatMessages(prev => [
-            ...prev.slice(-30), // keep last 30
-            { id: Date.now(), user: randUser.name, text: msgText, color: randUser.color }
+      // Separate interval for viewer count fluctuation & simulated activity feed
+      activityInterval = setInterval(() => {
+        // Random activity feed update
+        if (Math.random() > 0.6) {
+          const randUser = userPool[Math.floor(Math.random() * userPool.length)];
+          const action = activityPool[Math.floor(Math.random() * activityPool.length)];
+          setActivityEvents(prev => [
+            { id: Date.now(), text: `${randUser.name} ${action}`, time: 'Just now' },
+            ...prev.slice(0, 10)
           ]);
+        }
 
-          // Random activity feed update
-          if (Math.random() > 0.6) {
-            const action = activityPool[Math.floor(Math.random() * activityPool.length)];
-            setActivityEvents(prev => [
-              { id: Date.now(), text: `${randUser.name} ${action}`, time: 'Just now' },
-              ...prev.slice(0, 10)
-            ]);
-          }
-
-          // Random viewer count fluctuation
-          setViewers(prev => {
-            const offset = Math.floor(Math.random() * 21) - 10; // -10 to +10
-            return Math.max(50, prev + offset);
-          });
-
-        }, parseInt(slowMode) * 1000);
-      }
+        // Random viewer count fluctuation
+        setViewers(prev => {
+          const offset = Math.floor(Math.random() * 21) - 10; // -10 to +10
+          return Math.max(50, prev + offset);
+        });
+      }, 5000);
 
       return () => {
         if (chatInterval) clearInterval(chatInterval);
+        if (activityInterval) clearInterval(activityInterval);
       };
     } else {
       if (durationTimerRef.current) {
@@ -242,12 +242,55 @@ const LiveStreamDashboard = () => {
         { id: 1, text: 'Stream went offline', time: 'Just now' }
       ]);
     }
-  }, [isLive, streamCategory, slowMode]);
+  }, [isLive, streamCategory, startedAt]);
+
+  // Poll for live stream readiness when isLive=true but HLS not ready yet
+  useEffect(() => {
+    if (!isLive) {
+      setLiveStreamReady(false);
+      return;
+    }
+    if (liveStreamReady) return;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/live-stream/active');
+        if (res.ok) {
+          const activeStream = await res.json();
+          if (activeStream && activeStream.isLive && activeStream.streamReady) {
+            setLiveStreamReady(true);
+            clearInterval(pollInterval);
+          }
+        }
+      } catch (err) {
+        console.error('[LivePoll] Error:', err);
+      }
+    }, 5000);
+
+    // Initial check
+    const initialCheck = async () => {
+      try {
+        const res = await fetch('/api/live-stream/active');
+        if (res.ok) {
+          const activeStream = await res.json();
+          if (activeStream && activeStream.isLive && activeStream.streamReady) {
+            setLiveStreamReady(true);
+          }
+        }
+      } catch (err) {
+        console.error('[LivePoll Init] Error:', err);
+      }
+    };
+    initialCheck();
+
+    return () => clearInterval(pollInterval);
+  }, [isLive, liveStreamReady]);
 
   // Scroll chat to bottom when message arrives
   useEffect(() => {
-    if (chatEndRef.current) {
-      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    const container = document.querySelector('.chat-messages-container');
+    if (container) {
+      container.scrollTop = container.scrollHeight;
     }
   }, [chatMessages]);
 
@@ -310,7 +353,10 @@ const LiveStreamDashboard = () => {
           viewers: isLive ? viewers || 120 : 0,
           isScheduled,
           scheduledTime: isScheduled && scheduledTime ? new Date(scheduledTime).toISOString() : null,
-          chatEnabled
+          chatEnabled,
+          serverType,
+          serverUrl,
+          playbackUrl
         })
       });
       if (response.ok) {
@@ -351,7 +397,10 @@ const LiveStreamDashboard = () => {
           viewers: nextLiveStatus ? initialViewers : 0,
           isScheduled: false,
           scheduledTime: null,
-          chatEnabled
+          chatEnabled,
+          serverType,
+          serverUrl,
+          playbackUrl
         })
       });
       showNotification(nextLiveStatus ? 'Live Stream Started!' : 'Live Stream Stopped.');
@@ -361,22 +410,58 @@ const LiveStreamDashboard = () => {
     }
   };
 
-  const sendAdminChatMessage = (e) => {
+  const sendAdminChatMessage = async (e) => {
     e.preventDefault();
     if (!adminMessage.trim()) return;
-    setChatMessages(prev => [
-      ...prev,
-      { id: Date.now(), user: 'Admin (You)', text: adminMessage, color: '#b3d332', isAdmin: true }
-    ]);
+    const msgText = adminMessage.trim();
     setAdminMessage('');
+    try {
+      const token = localStorage.getItem('token');
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      const res = await fetch('/api/live-chat/messages', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          user: 'Admin (You)',
+          text: msgText,
+          color: '#b3d332',
+          system: false,
+          isAdmin: true
+        })
+      });
+      if (res.ok) {
+        fetchChatMessages();
+      }
+    } catch (err) {
+      console.error('Error sending admin chat message:', err);
+    }
   };
 
-  const deleteChatMessage = (id) => {
-    setChatMessages(prev => prev.filter(msg => msg.id !== id));
-    showNotification('Simulated chat message deleted');
+  const deleteChatMessage = async (id) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`/api/live-chat/messages/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (res.ok) {
+        setChatMessages(prev => prev.filter(msg => (msg._id || msg.id) !== id));
+        showNotification('Chat message deleted');
+      } else {
+        showNotification('Failed to delete chat message', 'error');
+      }
+    } catch (err) {
+      console.error('Error deleting chat message:', err);
+      showNotification('Failed to delete chat message', 'error');
+    }
   };
 
-  const handleUserClick = (username, msgId, e) => {
+  const handleUserClick = (username, msgId, userId, e) => {
     e.stopPropagation();
     const rect = e.currentTarget.getBoundingClientRect();
     const container = document.querySelector('.chat-messages-container');
@@ -389,35 +474,79 @@ const LiveStreamDashboard = () => {
     setActiveModUser({
       username,
       msgId,
+      userId,
       top: calculatedTop,
       left: calculatedLeft
     });
   };
 
-  const handleTimeoutUser = (username, durationSeconds) => {
-    const expireAt = Date.now() + durationSeconds * 1000;
-    setTimedOutUsers(prev => ({
-      ...prev,
-      [username]: expireAt
-    }));
-    setActiveModUser(null);
-    showNotification(`User @${username} timed out for ${durationSeconds}s`);
-    
-    setActivityEvents(prev => [
-      { id: Date.now(), text: `Admin timed out @${username} for ${durationSeconds}s`, time: 'Just now' },
-      ...prev.slice(0, 10)
-    ]);
+  const handleTimeoutUser = async (username, durationSeconds) => {
+    if (!activeModUser?.userId) {
+      showNotification('Cannot timeout anonymous user', 'error');
+      return;
+    }
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/live-chat/timeout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          userId: activeModUser.userId,
+          durationSeconds
+        })
+      });
+      if (res.ok) {
+        showNotification(`User @${username} timed out for ${durationSeconds}s`);
+        setActivityEvents(prev => [
+          { id: Date.now(), text: `Admin timed out @${username} for ${durationSeconds}s`, time: 'Just now' },
+          ...prev.slice(0, 10)
+        ]);
+        setActiveModUser(null);
+      } else {
+        const errorData = await res.json();
+        showNotification(errorData.message || 'Failed to timeout user', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      showNotification('Failed to timeout user', 'error');
+    }
   };
 
-  const handleBlockUser = (username) => {
-    setBannedUsers(prev => [...prev, username]);
-    setActiveModUser(null);
-    showNotification(`User @${username} has been blocked/banned`);
-    
-    setActivityEvents(prev => [
-      { id: Date.now(), text: `Admin blocked/banned @${username}`, time: 'Just now' },
-      ...prev.slice(0, 10)
-    ]);
+  const handleBlockUser = async (username) => {
+    if (!activeModUser?.userId) {
+      showNotification('Cannot ban anonymous user', 'error');
+      return;
+    }
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/live-chat/ban', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          userId: activeModUser.userId
+        })
+      });
+      if (res.ok) {
+        showNotification(`User @${username} has been blocked/banned`);
+        setActivityEvents(prev => [
+          { id: Date.now(), text: `Admin blocked/banned @${username}`, time: 'Just now' },
+          ...prev.slice(0, 10)
+        ]);
+        setActiveModUser(null);
+      } else {
+        const errorData = await res.json();
+        showNotification(errorData.message || 'Failed to ban user', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      showNotification('Failed to ban user', 'error');
+    }
   };
 
   const formatPosterUrl = (url) => {
@@ -507,24 +636,31 @@ const LiveStreamDashboard = () => {
           {/* Virtual RTMP Player Mock/Stream Monitor Preview */}
           <div className="stream-preview-card">
             {isLive ? (
-              <div 
-                className="preview-video-container active"
-                style={{ 
-                  backgroundImage: `linear-gradient(rgba(0,0,0,0.85), rgba(0,0,0,0.85)), url(${formatPosterUrl(streamPoster)})`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center'
-                }}
-              >
-                <div className="live-status-overlay">
-                  <div className="live-stat"><Activity size={12} color="#ff4d4d"/> 1080p 60fps</div>
-                  <div className="live-stat"><Users size={12} /> {viewers} Viewers</div>
-                  <div className="live-stat">⏳ {streamDuration}</div>
-                </div>
-                <div className="preview-loader-animation">
-                  <Flame size={48} className="live-flame" />
-                  <p>Stream Active & Processing RTMP Input</p>
-                  <span className="server-label">URL: {serverUrl}</span>
-                </div>
+              <div className="preview-video-container active">
+                {liveStreamReady ? (
+                  <VideoPlayer 
+                    src={
+                      serverType === 'custom'
+                        ? (playbackUrl || '').replace(/{streamKey}/g, streamKey).replace(/{key}/g, streamKey)
+                        : `${window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5001' : `${window.location.protocol}//${window.location.host}`}/hls/live/${streamKey}/index.m3u8`
+                    }
+                    videoTitle={streamTitle}
+                    type="live"
+                  />
+                ) : (
+                  <>
+                    <div className="live-status-overlay" style={{ zIndex: 20 }}>
+                      <div className="live-stat"><Activity size={12} color="#ff4d4d"/> 1080p 60fps</div>
+                      <div className="live-stat"><Users size={12} /> {viewers} Viewers</div>
+                      <div className="live-stat">⏳ {streamDuration}</div>
+                    </div>
+                    <div className="preview-loader-animation">
+                      <Flame size={48} className="live-flame" />
+                      <p>Stream Active & Processing RTMP Input</p>
+                      <span className="server-label">URL: {window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'rtmp://localhost:1935/live' : serverUrl}</span>
+                    </div>
+                  </>
+                )}
               </div>
             ) : (
               <div 
@@ -551,26 +687,61 @@ const LiveStreamDashboard = () => {
               <h2>RTMP Encoder Settings</h2>
             </div>
             <div className="card-body">
-              <div className="input-group-row">
-                <div className="input-block flex-3">
-                  <label>RTMP Stream Server URL</label>
-                  <div className="copyable-input-wrapper">
-                    <input 
-                      type="text" 
-                      value={serverUrl} 
-                      readOnly 
-                      className="readonly-input"
-                    />
-                    <button 
-                      onClick={() => handleCopy(serverUrl, 'url')}
-                      className="btn-copy"
-                      title="Copy Server URL"
-                    >
-                      {copiedUrl ? <Check size={16} color="#b3d332" /> : <Copy size={16} />}
-                    </button>
-                  </div>
-                </div>
-              </div>
+              {(() => {
+                 const host = window.location.hostname;
+                 const isLocalHost = host === 'localhost' || host === '127.0.0.1';
+                 const rtmpUrl = serverType === 'custom'
+                   ? (serverUrl || 'rtmp://live.lemoott.com/live')
+                   : (isLocalHost ? 'rtmp://localhost:1935/live' : `rtmp://${host}:1935/live`);
+                 const isLocalBanner = serverType === 'local' && isLocalHost;
+                 return (
+                   <>
+                     <div className="rtmp-env-banner" style={{
+                       background: isLocalBanner ? 'rgba(179,211,50,0.08)' : 'rgba(239,68,68,0.08)',
+                       border: `1px solid ${isLocalBanner ? '#b3d332' : '#ef4444'}`,
+                       borderRadius: '8px',
+                       padding: '10px 14px',
+                       marginBottom: '16px',
+                       display: 'flex',
+                       alignItems: 'center',
+                       gap: '10px',
+                       fontSize: '0.8rem',
+                       color: isLocalBanner ? '#b3d332' : '#ef4444'
+                     }}>
+                       <span style={{ fontSize: '1rem' }}>{isLocalBanner ? '🖥️' : '🌐'}</span>
+                       <span>
+                         <strong>{isLocalBanner ? 'LOCAL MODE' : 'PRODUCTION MODE'}</strong>
+                         {' — '}
+                         {serverType === 'custom'
+                           ? 'OBS → connect to your custom RTMP Stream Server URL.'
+                           : (isLocalHost
+                             ? 'OBS → connect to localhost. For remote OBS, use your server IP.'
+                             : 'OBS → connect to your server domain/IP on port 1935.')}
+                       </span>
+                     </div>
+                     <div className="input-group-row">
+                      <div className="input-block flex-3">
+                        <label>RTMP Stream Server URL</label>
+                        <div className="copyable-input-wrapper">
+                          <input 
+                            type="text" 
+                            value={rtmpUrl} 
+                            readOnly 
+                            className="readonly-input"
+                          />
+                          <button 
+                            onClick={() => handleCopy(rtmpUrl, 'url')}
+                            className="btn-copy"
+                            title="Copy Server URL"
+                          >
+                            {copiedUrl ? <Check size={16} color="#b3d332" /> : <Copy size={16} />}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
 
               <div className="input-group-row">
                 <div className="input-block flex-3">
@@ -608,7 +779,7 @@ const LiveStreamDashboard = () => {
                 </div>
               </div>
               <p className="encoder-hint">
-                <AlertCircle size={12} /> Place these values into OBS under File &gt; Settings &gt; Stream. Choose "Custom..." Service.
+                <AlertCircle size={12} /> In OBS: File → Settings → Stream → Service: Custom. Paste Server URL and Stream Key above.
               </p>
             </div>
           </div>
@@ -738,6 +909,57 @@ const LiveStreamDashboard = () => {
                 </div>
               </div>
 
+              {/* Streaming Server Configuration */}
+              <div style={{
+                marginTop: '25px',
+                paddingTop: '20px',
+                borderTop: '1px solid #2d313f'
+              }}>
+                <h3 style={{ fontSize: '1.1rem', color: '#b3d332', marginBottom: '15px', fontWeight: 600 }}>Stream Ingest Server Configuration</h3>
+                <div className="input-group-row">
+                  <div className="input-block">
+                    <label>Streaming Server Mode</label>
+                    <select 
+                      value={serverType} 
+                      onChange={(e) => setServerType(e.target.value)}
+                    >
+                      <option value="local">Local Node Media Server (Auto)</option>
+                      <option value="custom">Custom External Stream Server</option>
+                    </select>
+                  </div>
+                  {serverType === 'custom' && (
+                    <div className="input-block">
+                      <label>RTMP Stream Server URL</label>
+                      <input 
+                        type="text" 
+                        value={serverUrl}
+                        onChange={(e) => setServerUrl(e.target.value)}
+                        placeholder="e.g. rtmp://live.lemoott.com/live"
+                        required={serverType === 'custom'}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {serverType === 'custom' && (
+                  <div className="input-group-row" style={{ marginTop: '15px' }}>
+                    <div className="input-block">
+                      <label>HLS Playback URL</label>
+                      <input 
+                        type="text" 
+                        value={playbackUrl}
+                        onChange={(e) => setPlaybackUrl(e.target.value)}
+                        placeholder="e.g. http://live.lemoott.com/hls/live/{streamKey}/index.m3u8"
+                        required={serverType === 'custom'}
+                      />
+                      <p className="encoder-hint" style={{ marginTop: '6px' }}>
+                        <AlertCircle size={10} /> Tip: Use <code>{'{streamKey}'}</code> as a placeholder in the playback URL to dynamically insert the active stream key.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="form-actions">
                 <button type="submit" className="btn-save-settings" disabled={saving}>
                   {saving ? 'Saving...' : 'Update Settings'}
@@ -837,21 +1059,50 @@ const LiveStreamDashboard = () => {
                 </>
               )}
               {chatMessages.map((msg) => (
-                <div key={msg.id} className="chat-message-row">
+                <div 
+                  key={msg._id || msg.id} 
+                  className={msg.isAdmin ? 'chat-message-row admin-chat-msg' : 'chat-message-row'}
+                  style={msg.isAdmin ? { width: '100%' } : {}}
+                >
                   <div className={`chat-message ${msg.system ? 'system' : ''} ${msg.isAdmin ? 'admin-msg' : ''}`}>
                     {!msg.system && (
-                      <span 
-                        className="chat-username" 
-                        style={{ color: msg.color, cursor: 'pointer', borderBottom: '1px dashed transparent' }}
-                        title="Click for mod actions"
-                        onClick={(e) => handleUserClick(msg.user, msg.id, e)}
-                        onMouseOver={(e) => e.currentTarget.style.borderBottomColor = msg.color}
-                        onMouseOut={(e) => e.currentTarget.style.borderBottomColor = 'transparent'}
-                      >
-                        {msg.user}:
-                      </span>
+                      <>
+                        {msg.isAdmin && (
+                          <span 
+                            style={{ 
+                              background: '#b3d332', 
+                              color: '#000', 
+                              padding: '1px 5px', 
+                              borderRadius: '3px', 
+                              fontSize: '0.65rem', 
+                              fontWeight: '900', 
+                              marginRight: '6px', 
+                              display: 'inline-block',
+                              letterSpacing: '0.5px',
+                              boxShadow: '0 0 6px rgba(179, 211, 50, 0.4)'
+                            }}
+                          >
+                            ADMIN
+                          </span>
+                        )}
+                        <span 
+                          className="chat-username" 
+                          style={{ color: msg.isAdmin ? '#b3d332' : msg.color, cursor: 'pointer', borderBottom: '1px dashed transparent', fontWeight: msg.isAdmin ? '800' : 'normal' }}
+                          title="Click for mod actions"
+                          onClick={(e) => handleUserClick(msg.user, msg._id || msg.id, msg.userId, e)}
+                          onMouseOver={(e) => e.currentTarget.style.borderBottomColor = msg.isAdmin ? '#b3d332' : msg.color}
+                          onMouseOut={(e) => e.currentTarget.style.borderBottomColor = 'transparent'}
+                        >
+                          {msg.user}:
+                        </span>
+                      </>
                     )}
-                    <span className="chat-text">{msg.text}</span>
+                    <span 
+                      className="chat-text"
+                      style={msg.isAdmin ? { color: '#d1f054', fontWeight: '500' } : {}}
+                    >
+                      {msg.text}
+                    </span>
                   </div>
                 </div>
               ))}
@@ -1350,6 +1601,19 @@ const LiveStreamDashboard = () => {
           gap: 10px;
           padding: 2px 0;
           border-radius: 4px;
+        }
+        @keyframes adminPulseGlow {
+          0% { border-left-color: #b3d332; box-shadow: inset 3px 0 0 #b3d332, 0 0 4px rgba(179, 211, 50, 0.15); }
+          50% { border-left-color: #d1f054; box-shadow: inset 3px 0 0 #d1f054, 0 0 12px rgba(179, 211, 50, 0.45); }
+          100% { border-left-color: #b3d332; box-shadow: inset 3px 0 0 #b3d332, 0 0 4px rgba(179, 211, 50, 0.15); }
+        }
+        .admin-chat-msg {
+          animation: adminPulseGlow 2s infinite ease-in-out;
+          background: rgba(179, 211, 50, 0.08) !important;
+          border-left: 3px solid #b3d332 !important;
+          padding: 6px 8px !important;
+          border-radius: 4px;
+          margin: 4px 0;
         }
 
         .chat-message-row:hover .chat-delete-btn {

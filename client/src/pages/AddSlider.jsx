@@ -259,7 +259,7 @@ const AddSlider = () => {
          onChange={handleFileChange} 
         />
        </div>
-       <p className="resolution-text">(Recommended resolution : 1100x450)</p>
+       <p className="resolution-text">(Recommended resolution : 1920x1080 / 16:9 aspect ratio)</p>
        {formData.image && (
         <div className="preview-container-wide">
          <img src={formData.image} alt="Preview" className="slider-preview-img" />
@@ -517,8 +517,8 @@ const AddSlider = () => {
     .file-input-wrapper input { border-top-right-radius: 0 !important; border-bottom-right-radius: 0 !important; }
     .select-btn { background: #333; color: #fff; border: 1px solid #333; padding: 0 25px; border-top-right-radius: 4px; border-bottom-right-radius: 4px; cursor: pointer; font-weight: 600; }
     
-    .preview-container-wide { margin-top: 15px; width: 100%; aspect-ratio: 1100/450; border-radius: 6px; overflow: hidden; border: 1px solid #333; background: #111; }
-    .slider-preview-img { width: 100%; height: 100%; object-fit: cover; }
+    .preview-container-wide { margin-top: 15px; width: 100%; aspect-ratio: 16/9; border-radius: 6px; overflow: hidden; border: 1px solid #333; background: #111; }
+    .slider-preview-img { width: 100%; height: 100%; object-fit: contain; }
     
     .resolution-text { color: #666; font-size: 0.85rem; margin-top: 8px; font-weight: 500; }
     

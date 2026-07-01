@@ -193,6 +193,9 @@ const FrontendNavbar = ({
             {(!menuSettings || menuSettings.webSeries?.toUpperCase() !== 'OFF') && (
               <Link to="/web-series" className={location.pathname === '/web-series' ? 'active' : ''}>WEB SERIES</Link>
             )}
+            {(!menuSettings || menuSettings.shorts?.toUpperCase() !== 'OFF') && (
+              <Link to="/shorts" className={location.pathname === '/shorts' ? 'active' : ''}>SHORTS</Link>
+            )}
           </div>
         )}
         <div className="fe-nav-right">
@@ -365,7 +368,7 @@ const FrontendNavbar = ({
         @media (max-width: 1024px) {
           .desktop-only { display: none !important; }
           .fe-mobile-toggle-v { display: flex; }
-          .fe-navbar-v { padding: 0 20px; height: 70px; position: fixed; background: rgba(5,5,5,0.92); backdrop-filter: blur(10px); }
+          .fe-navbar-v { padding: 0 20px; height: 70px; position: fixed; background: rgba(5,5,5,0.92); }
           .fe-logo-v { width: 140px; }
         }
         @media (max-width: 480px) {
