@@ -28,6 +28,20 @@ const FrontendShorts = () => {
   const [overlayState, setOverlayState] = useState({ index: null, type: null });
   const containerRef = useRef(null);
   const videoRefs = useRef({});
+  const scrollTimeoutRef = useRef(null);
+  const isScrollingRef = useRef(false);
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     try {
@@ -94,28 +108,31 @@ const FrontendShorts = () => {
   useEffect(() => {
     if (shorts.length === 0) return;
     
-    // Pause all videos
-    Object.values(videoRefs.current).forEach(vid => {
+    shorts.forEach((_, idx) => {
+      const vid = videoRefs.current[idx];
       if (vid) {
-        vid.pause();
+        if (idx === currentIndex) {
+          vid.muted = isMuted; // Match current mute state
+          vid.play().catch(e => {
+            if (e.name === 'NotAllowedError') {
+              console.log('Autoplay with sound blocked, trying muted:', e);
+              vid.muted = true;
+              setIsMuted(true);
+              vid.play().catch(err => console.log('Autoplay failed completely:', err));
+            } else {
+              console.log('Play request interrupted or aborted, ignoring mute fallback:', e);
+            }
+          });
+        } else {
+          vid.pause();
+          try {
+            vid.currentTime = 0;
+          } catch (err) {
+            // Ignore error if metadata is not loaded yet
+          }
+        }
       }
     });
-
-    // Play active index video
-    const activeVideo = videoRefs.current[currentIndex];
-    if (activeVideo) {
-      activeVideo.muted = isMuted; // Match current mute state
-      activeVideo.play().catch(e => {
-        if (e.name === 'NotAllowedError') {
-          console.log('Autoplay with sound blocked, trying muted:', e);
-          activeVideo.muted = true;
-          setIsMuted(true);
-          activeVideo.play().catch(err => console.log('Autoplay failed completely:', err));
-        } else {
-          console.log('Play request interrupted or aborted, ignoring mute fallback:', e);
-        }
-      });
-    }
   }, [currentIndex, shorts]);
 
   // Handle view count update on active slide scroll (counts after 1.5s preview stay)
@@ -139,35 +156,112 @@ const FrontendShorts = () => {
   }, [currentIndex, shorts.length]);
 
   const handleScroll = (e) => {
-    if (!containerRef.current) return;
+    if (isScrollingRef.current || !containerRef.current) return;
     const { scrollTop, clientHeight } = containerRef.current;
     const index = Math.round(scrollTop / clientHeight);
-    if (index !== currentIndex && index >= 0 && index < shorts.length) {
-      setCurrentIndex(index);
-      navigate(location.pathname, {
-        replace: true,
-        state: { ...location.state, shortId: shorts[index]._id }
-      });
+    
+    if (index >= 0 && index < shorts.length) {
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+      scrollTimeoutRef.current = setTimeout(() => {
+        if (index !== currentIndex) {
+          setCurrentIndex(index);
+          navigate(location.pathname, {
+            replace: true,
+            state: { ...location.state, shortId: shorts[index]._id }
+          });
+        }
+      }, 100);
     }
   };
 
   const scrollNext = () => {
-    if (currentIndex < shorts.length - 1 && containerRef.current) {
+    if (currentIndex < shorts.length - 1 && containerRef.current && !isScrollingRef.current) {
+      isScrollingRef.current = true;
+      const nextIdx = currentIndex + 1;
+      setCurrentIndex(nextIdx);
       containerRef.current.scrollTo({
-        top: (currentIndex + 1) * containerRef.current.clientHeight,
+        top: nextIdx * containerRef.current.clientHeight,
         behavior: 'smooth'
       });
+      navigate(location.pathname, {
+        replace: true,
+        state: { ...location.state, shortId: shorts[nextIdx]._id }
+      });
+      setTimeout(() => {
+        isScrollingRef.current = false;
+      }, 700);
     }
   };
 
   const scrollPrev = () => {
-    if (currentIndex > 0 && containerRef.current) {
+    if (currentIndex > 0 && containerRef.current && !isScrollingRef.current) {
+      isScrollingRef.current = true;
+      const prevIdx = currentIndex - 1;
+      setCurrentIndex(prevIdx);
       containerRef.current.scrollTo({
-        top: (currentIndex - 1) * containerRef.current.clientHeight,
+        top: prevIdx * containerRef.current.clientHeight,
         behavior: 'smooth'
       });
+      navigate(location.pathname, {
+        replace: true,
+        state: { ...location.state, shortId: shorts[prevIdx]._id }
+      });
+      setTimeout(() => {
+        isScrollingRef.current = false;
+      }, 700);
     }
   };
+
+  // Intercept trackpad/mouse-wheel and mobile swipe touch events for single slide moves
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleWheel = (e) => {
+      e.preventDefault();
+      if (isScrollingRef.current) return;
+
+      const delta = e.deltaY;
+      if (Math.abs(delta) < 30) return;
+
+      if (delta > 0) {
+        scrollNext();
+      } else {
+        scrollPrev();
+      }
+    };
+
+    let touchStartY = 0;
+    const handleTouchStart = (e) => {
+      touchStartY = e.touches[0].clientY;
+    };
+
+    const handleTouchEnd = (e) => {
+      if (isScrollingRef.current) return;
+      const touchEndY = e.changedTouches[0].clientY;
+      const diffY = touchStartY - touchEndY;
+
+      if (Math.abs(diffY) > 50) {
+        if (diffY > 0) {
+          scrollNext();
+        } else {
+          scrollPrev();
+        }
+      }
+    };
+
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    container.addEventListener('touchstart', handleTouchStart, { passive: true });
+    container.addEventListener('touchend', handleTouchEnd, { passive: true });
+    
+    return () => {
+      container.removeEventListener('wheel', handleWheel);
+      container.removeEventListener('touchstart', handleTouchStart);
+      container.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [currentIndex, shorts]);
 
   const togglePlay = (index) => {
     const video = videoRefs.current[index];
@@ -357,6 +451,12 @@ const FrontendShorts = () => {
           :root {
             --nav-height: 60px;
           }
+        }
+
+        html, body, .frontend-wrapper, .fe-main-content {
+          overflow: hidden !important;
+          height: 100vh !important;
+          height: 100dvh !important;
         }
 
         .shorts-page-container {
