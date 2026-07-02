@@ -554,9 +554,12 @@ const Home = () => {
           if (sectionMovies.length > 0) {
             contentEl = (
               <div key={section._id} className="fe-row-v fe-featured-row-v">
-                <div className="row-header-v">
-                  <h2 className="row-title-v">{section.title}</h2>
-                  <Link to="/view-all/movies/Movies" className="row-more-v">
+                <div className="watch-online-header-v">
+                  <div style={{ textAlign: 'left' }}>
+                    <span className="watch-online-tag-v">FEATURED MOVIES</span>
+                    <h2 className="watch-online-title-v">{section.title}</h2>
+                  </div>
+                  <Link to="/view-all/movies/Movies" className="row-more-v" style={{ marginBottom: '10px' }}>
                     VIEW ALL <ChevronRight size={14} />
                   </Link>
                 </div>
@@ -704,9 +707,12 @@ const Home = () => {
           if (sectionSports.length > 0) {
             contentEl = (
               <div key={section._id} className="fe-row-v fe-landscape-row-v">
-                <div className="row-header-v">
-                  <h2 className="row-title-v">{section.title}</h2>
-                  <Link to="/view-all/sports/Sports" className="row-more-v">
+                <div className="watch-online-header-v">
+                  <div style={{ textAlign: 'left' }}>
+                    <span className="watch-online-tag-v">SPORTS VIDEO</span>
+                    <h2 className="watch-online-title-v">{section.title}</h2>
+                  </div>
+                  <Link to="/view-all/sports/Sports" className="row-more-v" style={{ marginBottom: '10px' }}>
                     VIEW ALL <ChevronRight size={14} />
                   </Link>
                 </div>
@@ -801,9 +807,12 @@ const Home = () => {
           if (sectionNewReleases.length > 0) {
             contentEl = (
               <div key={section._id} className="fe-row-v fe-featured-row-v">
-                <div className="row-header-v">
-                  <h2 className="row-title-v">{section.title}</h2>
-                  <Link to="/view-all/new-releases/New Releases" className="row-more-v">
+                <div className="watch-online-header-v">
+                  <div style={{ textAlign: 'left' }}>
+                    <span className="watch-online-tag-v">LATEST RELEASES</span>
+                    <h2 className="watch-online-title-v">{section.title}</h2>
+                  </div>
+                  <Link to="/view-all/new-releases/New Releases" className="row-more-v" style={{ marginBottom: '10px' }}>
                     VIEW ALL <ChevronRight size={14} />
                   </Link>
                 </div>

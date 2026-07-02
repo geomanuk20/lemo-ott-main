@@ -314,10 +314,10 @@ const FrontendNavbar = ({
 
       <style dangerouslySetInnerHTML={{
         __html: `
-        .fe-navbar-v { position: absolute; top: 0; left: 0; width: 100%; height: 90px; display: flex; align-items: center; justify-content: space-between; padding: 0 60px; z-index: 11000; transition: 0.5s cubic-bezier(0.16, 1, 0.3, 1); background: transparent; }
+        .fe-navbar-v { position: fixed; top: 0; left: 0; width: 100%; height: 90px; display: flex; align-items: center; justify-content: space-between; padding: 0 60px; z-index: 11000; transition: 0.5s cubic-bezier(0.16, 1, 0.3, 1); background: transparent; }
         .fe-navbar-v.hidden { opacity: 0; visibility: hidden; pointer-events: none; transform: translateY(-20px); }
         .fe-navbar-v.transparent { background: transparent; }
-        .fe-navbar-v.scrolled { background: transparent; backdrop-filter: none; height: 75px; box-shadow: none; }
+        .fe-navbar-v.scrolled { background: rgba(5, 5, 5, 0.8) !important; backdrop-filter: blur(15px) !important; height: 75px; box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3); }
         
         .fe-nav-left { display: flex; align-items: center; }
         .fe-logo-v { width: 180px; height: auto; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; }
@@ -368,7 +368,9 @@ const FrontendNavbar = ({
         @media (max-width: 1024px) {
           .desktop-only { display: none !important; }
           .fe-mobile-toggle-v { display: flex; }
-          .fe-navbar-v { padding: 0 20px; height: 70px; position: fixed; background: rgba(5,5,5,0.92); }
+          .fe-navbar-v { padding: 0 20px; height: 70px; position: fixed; background: transparent; transition: background 0.4s ease; }
+          .fe-navbar-v.transparent { background: transparent !important; }
+          .fe-navbar-v.scrolled { background: rgba(5,5,5,0.85) !important; backdrop-filter: blur(10px) !important; }
           .fe-logo-v { width: 140px; }
         }
         @media (max-width: 480px) {
