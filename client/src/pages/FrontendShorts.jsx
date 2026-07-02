@@ -392,7 +392,7 @@ const FrontendShorts = () => {
                     {/* Sidebar controls (Likes, Views, VIP Badge & Navigation arrows) */}
                     <div className="short-sidebar-controls" onClick={e => e.stopPropagation()}>
                       {idx > 0 && (
-                        <button className="sidebar-action-btn nav-arrow up desktop-only" onClick={scrollPrev}>
+                        <button className="sidebar-action-btn nav-arrow up" onClick={scrollPrev}>
                           <div className="icon-circle">
                             <ChevronUp size={20} />
                           </div>
@@ -423,7 +423,7 @@ const FrontendShorts = () => {
                       )}
 
                       {idx < shorts.length - 1 && (
-                        <button className="sidebar-action-btn nav-arrow down desktop-only" onClick={scrollNext}>
+                        <button className="sidebar-action-btn nav-arrow down" onClick={scrollNext}>
                           <div className="icon-circle">
                             <ChevronDown size={20} />
                           </div>
@@ -444,12 +444,18 @@ const FrontendShorts = () => {
         }
         @media (max-width: 1024px) {
           :root {
-            --nav-height: 70px;
+            --nav-height: 0px !important;
+          }
+          .fe-navbar-v {
+            display: none !important;
+          }
+          .fe-mobile-toggle-v {
+            display: none !important;
           }
         }
         @media (max-width: 480px) {
           :root {
-            --nav-height: 60px;
+            --nav-height: 0px !important;
           }
         }
 
