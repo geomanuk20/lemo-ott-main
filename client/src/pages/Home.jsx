@@ -134,14 +134,6 @@ const Home = () => {
   const [shorts, setShorts] = useState([]);
   const [activeShortPreviewIndex, setActiveShortPreviewIndex] = useState(0);
 
-  useEffect(() => {
-    if (shorts.length === 0) return;
-    const interval = setInterval(() => {
-      setActiveShortPreviewIndex(prev => (prev + 1) % Math.min(shorts.length, 15));
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [shorts.length]);
-
   const [sportsChannels, setSportsChannels] = useState([]);
   const [assets, setAssets] = useState([]);
   const [homeSections, setHomeSections] = useState([]);
@@ -165,6 +157,38 @@ const Home = () => {
   const [selectedContent, setSelectedContent] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [sportsCategories, setSportsCategories] = useState([]);
+
+  const homeVideoRefs = useRef({});
+
+  useEffect(() => {
+    if (shorts.length === 0) return;
+    const shortsSection = homeSections.find(sec => sec.sectionType === 'Shorts');
+    const limit = shortsSection ? (shortsSection.limit || 15) : 15;
+    const maxPreviewCount = Math.min(shorts.length, limit);
+
+    const interval = setInterval(() => {
+      setActiveShortPreviewIndex(prev => (prev + 1) % maxPreviewCount);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [shorts.length, homeSections]);
+
+  useEffect(() => {
+    if (shorts.length === 0) return;
+    const shortsSection = homeSections.find(sec => sec.sectionType === 'Shorts');
+    const limit = shortsSection ? (shortsSection.limit || 15) : 15;
+    const activeShorts = shorts.slice(0, limit);
+    activeShorts.forEach((_, idx) => {
+      const el = homeVideoRefs.current[idx];
+      if (el) {
+        if (idx === activeShortPreviewIndex) {
+          el.play().catch(() => {});
+        } else {
+          el.pause();
+          el.currentTime = 0;
+        }
+      }
+    });
+  }, [activeShortPreviewIndex, shorts, homeSections]);
 
   useEffect(() => {
     if (subMessage.text) {
@@ -868,27 +892,19 @@ const Home = () => {
                         navigate('/shorts', { state: { shortId: s._id, initialShorts: shorts } });
                       }}
                     >
-                      <div className="fe-short-poster-v">
+                      <div className={`fe-short-poster-v ${idx === activeShortPreviewIndex ? 'active' : ''}`}>
                         {s.thumbnailUrl && idx !== activeShortPreviewIndex ? (
                           <img src={s.thumbnailUrl} alt={s.title} />
                         ) : (
                           <video 
+                            ref={el => homeVideoRefs.current[idx] = el}
                             src={s.videoUrl} 
                             muted 
                             loop 
+                            preload="metadata"
                             playsInline 
                             className="fe-short-card-video-fallback" 
                             style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                            ref={el => {
-                              if (el) {
-                                if (idx === activeShortPreviewIndex) {
-                                  el.play().catch(() => {});
-                                } else {
-                                  el.pause();
-                                  el.currentTime = 0;
-                                }
-                              }
-                            }}
                           />
                         )}
                         {((s.access || '').toLowerCase() === 'paid') && (
@@ -1314,8 +1330,10 @@ const Home = () => {
     .fe-shorts-list-v::-webkit-scrollbar { display: none; }
     .fe-short-card-v { flex-shrink: 0; width: 200px; cursor: pointer; transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
     .fe-short-card-v:hover { transform: translateY(-8px); }
-    .fe-short-poster-v { width: 100%; aspect-ratio: 9/16; border-radius: 16px; overflow: hidden; background: #0b0c10; position: relative; border: 1px solid rgba(255,255,255,0.06); box-shadow: 0 10px 30px rgba(0,0,0,0.5); transition: box-shadow 0.4s ease; }
-    .fe-short-card-v:hover .fe-short-poster-v { border-color: rgba(179, 211, 50, 0.3); box-shadow: 0 15px 35px rgba(179, 211, 50, 0.15), 0 0 20px rgba(179, 211, 50, 0.2); }
+    .fe-short-poster-v { width: 100%; aspect-ratio: 9/16; border-radius: 16px; overflow: hidden; background: #0b0c10; position: relative; border: 1px solid rgba(255,255,255,0.06); box-shadow: 0 10px 30px rgba(0,0,0,0.5); transition: box-shadow 0.4s ease, border-color 0.4s ease; }
+    .fe-short-card-v:hover .fe-short-poster-v, .fe-short-poster-v.active { border-color: rgba(179, 211, 50, 0.85) !important; box-shadow: 0 15px 35px rgba(179, 211, 50, 0.25), 0 0 25px rgba(179, 211, 50, 0.35) !important; }
+    .fe-short-poster-v.active .fe-short-hover-play { opacity: 1; }
+    .fe-short-poster-v.active .fe-short-play-btn { transform: scale(1); }
     .fe-short-poster-v img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1); }
     .fe-short-card-v:hover .fe-short-poster-v img { transform: scale(1.06); }
     
