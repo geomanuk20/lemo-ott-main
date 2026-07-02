@@ -156,7 +156,7 @@ const FrontendShorts = () => {
   }, [currentIndex, shorts.length]);
 
   const handleScroll = (e) => {
-    if (isScrollingRef.current || !containerRef.current) return;
+    if (!containerRef.current) return;
     const { scrollTop, clientHeight } = containerRef.current;
     const index = Math.round(scrollTop / clientHeight);
     
@@ -177,8 +177,7 @@ const FrontendShorts = () => {
   };
 
   const scrollNext = () => {
-    if (currentIndex < shorts.length - 1 && containerRef.current && !isScrollingRef.current) {
-      isScrollingRef.current = true;
+    if (currentIndex < shorts.length - 1 && containerRef.current) {
       const nextIdx = currentIndex + 1;
       setCurrentIndex(nextIdx);
       containerRef.current.scrollTo({
@@ -189,15 +188,11 @@ const FrontendShorts = () => {
         replace: true,
         state: { ...location.state, shortId: shorts[nextIdx]._id }
       });
-      setTimeout(() => {
-        isScrollingRef.current = false;
-      }, 700);
     }
   };
 
   const scrollPrev = () => {
-    if (currentIndex > 0 && containerRef.current && !isScrollingRef.current) {
-      isScrollingRef.current = true;
+    if (currentIndex > 0 && containerRef.current) {
       const prevIdx = currentIndex - 1;
       setCurrentIndex(prevIdx);
       containerRef.current.scrollTo({
@@ -208,60 +203,8 @@ const FrontendShorts = () => {
         replace: true,
         state: { ...location.state, shortId: shorts[prevIdx]._id }
       });
-      setTimeout(() => {
-        isScrollingRef.current = false;
-      }, 700);
     }
   };
-
-  // Intercept trackpad/mouse-wheel and mobile swipe touch events for single slide moves
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const handleWheel = (e) => {
-      e.preventDefault();
-      if (isScrollingRef.current) return;
-
-      const delta = e.deltaY;
-      if (Math.abs(delta) < 30) return;
-
-      if (delta > 0) {
-        scrollNext();
-      } else {
-        scrollPrev();
-      }
-    };
-
-    let touchStartY = 0;
-    const handleTouchStart = (e) => {
-      touchStartY = e.touches[0].clientY;
-    };
-
-    const handleTouchEnd = (e) => {
-      if (isScrollingRef.current) return;
-      const touchEndY = e.changedTouches[0].clientY;
-      const diffY = touchStartY - touchEndY;
-
-      if (Math.abs(diffY) > 50) {
-        if (diffY > 0) {
-          scrollNext();
-        } else {
-          scrollPrev();
-        }
-      }
-    };
-
-    container.addEventListener('wheel', handleWheel, { passive: false });
-    container.addEventListener('touchstart', handleTouchStart, { passive: true });
-    container.addEventListener('touchend', handleTouchEnd, { passive: true });
-    
-    return () => {
-      container.removeEventListener('wheel', handleWheel);
-      container.removeEventListener('touchstart', handleTouchStart);
-      container.removeEventListener('touchend', handleTouchEnd);
-    };
-  }, [currentIndex, shorts]);
 
   const togglePlay = (index) => {
     const video = videoRefs.current[index];
@@ -511,6 +454,7 @@ const FrontendShorts = () => {
           height: 100%;
           overflow-y: scroll;
           scroll-snap-type: y mandatory;
+          scroll-behavior: smooth;
           scrollbar-width: none;
           background: transparent;
           position: relative;
@@ -523,6 +467,7 @@ const FrontendShorts = () => {
           width: 100%;
           height: 100%;
           scroll-snap-align: start;
+          scroll-snap-stop: always;
           position: relative;
           display: flex;
           align-items: center;
