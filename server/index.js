@@ -1821,14 +1821,16 @@ const seedAdmin = async () => {
 
 // Basic Route
 app.get('/api/stats', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   try {
     const [
       moviesCount, showsCount, seasonsCount, episodesCount,
       usersCount, languagesCount, genresCount, sportsCount,
-      liveTvCount, transactionsCount, allTransactions
+      liveTvCount, transactionsCount, allTransactions,
+      shortsCount, shortFilmsCount, shortWebSeriesCount
     ] = await Promise.all([
-      Movie.countDocuments().maxTimeMS(5000),
-      Show.countDocuments().maxTimeMS(5000),
+      Movie.countDocuments({ contentType: { $nin: ['Short Film', 'short-film'] } }).maxTimeMS(5000),
+      Show.countDocuments({ contentType: { $ne: 'Short Web Series' } }).maxTimeMS(5000),
       Season.countDocuments().maxTimeMS(5000),
       Episode.countDocuments().maxTimeMS(5000),
       User.countDocuments().maxTimeMS(5000),
@@ -1837,7 +1839,10 @@ app.get('/api/stats', async (req, res) => {
       SportsVideo.countDocuments().maxTimeMS(5000),
       TVChannel.countDocuments().maxTimeMS(5000),
       Transaction.countDocuments().maxTimeMS(5000),
-      Transaction.find({ status: 'Completed' }).lean().maxTimeMS(5000)
+      Transaction.find({ status: 'Completed' }).lean().maxTimeMS(5000),
+      Short.countDocuments().maxTimeMS(5000),
+      Movie.countDocuments({ contentType: { $in: ['Short Film', 'short-film'] } }).maxTimeMS(5000),
+      Show.countDocuments({ contentType: 'Short Web Series' }).maxTimeMS(5000)
     ]);
 
     const now = new Date();
@@ -1902,6 +1907,9 @@ app.get('/api/stats', async (req, res) => {
       sports: sportsCount,
       liveTv: liveTvCount,
       transactions: transactionsCount,
+      shorts: shortsCount,
+      shortFilms: shortFilmsCount,
+      shortWebSeries: shortWebSeriesCount,
       revenue: {
         daily: daily.toFixed(2),
         weekly: weekly.toFixed(2),

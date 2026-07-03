@@ -55,16 +55,23 @@ const Dashboard = () => {
  const [loading, setLoading] = useState(true);
  const navigate = useNavigate();
 
- useEffect(() => {
-  setLoading(true);
-  fetch('/api/stats')
-   .then(res => res.json())
-   .then(data => { setBackendStats(data); setLoading(false); })
-   .catch(err => {
-    console.log('Backend not running yet, using local defaults');
-    setLoading(false);
-   });
- }, []);
+  useEffect(() => {
+   const fetchStats = () => {
+    fetch(`/api/stats?t=${Date.now()}`)
+     .then(res => res.json())
+     .then(data => { setBackendStats(data); setLoading(false); })
+     .catch(err => {
+      console.log('Backend not running yet, using local defaults', err);
+      setLoading(false);
+     });
+   };
+
+   setLoading(true);
+   fetchStats();
+
+   const interval = setInterval(fetchStats, 30000);
+   return () => clearInterval(interval);
+  }, []);
 
  const user = JSON.parse(localStorage.getItem('user') || '{}');
  const isSubAdmin = user.role === 'sub-admin';
@@ -77,6 +84,9 @@ const Dashboard = () => {
   { label: 'Seasons', value: backendStats?.seasons || '0', colorClass: 'stat-revenue', path: '/admin/tv-shows/seasons' },
   { label: 'Episodes', value: backendStats?.episodes || '0', colorClass: 'stat-users', path: '/admin/tv-shows/episodes' },
   { label: 'Sports', value: backendStats?.sports || '0', colorClass: 'stat-sports', path: '/admin/sports/video' },
+  { label: 'Shorts', value: backendStats?.shorts || '0', colorClass: 'stat-sports', path: '/admin/shorts' },
+  { label: 'Short Films', value: backendStats?.shortFilms || '0', colorClass: 'stat-movies', path: '/admin/short-films' },
+  { label: 'Short Web Series', value: backendStats?.shortWebSeries || '0', colorClass: 'stat-shows', path: '/admin/short-web-series' },
   { label: 'Live TV', value: backendStats?.liveTv || '0', colorClass: 'stat-livetv', path: '/admin/live-tv/channel', masterOnly: true },
   { label: 'Users', value: backendStats?.users || '0', colorClass: 'stat-users', path: '/admin/users', masterOnly: true },
   { label: 'Transactions', value: backendStats?.transactions || '0', colorClass: 'stat-trans', path: '/admin/transactions', masterOnly: true },
