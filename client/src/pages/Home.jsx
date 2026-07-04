@@ -154,6 +154,7 @@ const Home = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchType, setSearchType] = useState('Movies');
   const [settings, setSettings] = useState(null);
+  const [menuSettings, setMenuSettings] = useState(null);
   const [selectedContent, setSelectedContent] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [sportsCategories, setSportsCategories] = useState([]);
@@ -204,7 +205,10 @@ const Home = () => {
     let mSettings = null;
     try {
       const cachedMenu = localStorage.getItem('fe_menu_settings');
-      if (cachedMenu) mSettings = JSON.parse(cachedMenu);
+      if (cachedMenu) {
+        mSettings = JSON.parse(cachedMenu);
+        setMenuSettings(mSettings);
+      }
     } catch (e) {}
 
     // Cache versioning: bump this version when server-side filtering changes
@@ -279,6 +283,7 @@ const Home = () => {
           const menuRes = await fetch('/api/menu-settings');
           if (menuRes.ok) {
             freshMenuSettings = await menuRes.json();
+            setMenuSettings(freshMenuSettings);
             localStorage.setItem('fe_menu_settings', JSON.stringify(freshMenuSettings));
           }
         } catch (err) {
@@ -1326,7 +1331,7 @@ const Home = () => {
      </div>
     )}
 
-    <FrontendFooter settings={settings} />
+    <FrontendFooter settings={settings} menuSettings={menuSettings} />
    </div>
 
    <style dangerouslySetInnerHTML={{
