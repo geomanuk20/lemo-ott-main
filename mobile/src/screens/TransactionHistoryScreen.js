@@ -103,7 +103,11 @@ export default function TransactionHistoryScreen({ navigation }) {
 
         <View style={styles.amountContainer}>
           <Text style={styles.amountLabel}>Amount Paid</Text>
-          <Text style={styles.amountValue}>{item.currency || 'INR'} {item.amount}</Text>
+          <Text style={styles.amountValue}>
+            {item.amount && (item.amount.toString().includes('₹') || item.amount.toString().includes('$') || item.amount.toString().includes('INR')) 
+              ? item.amount 
+              : `${item.currency || 'INR'} ${item.amount}`}
+          </Text>
         </View>
       </View>
     );

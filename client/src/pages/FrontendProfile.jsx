@@ -400,7 +400,11 @@ const FrontendProfile = () => {
         </div>
         <div className="invoice-detail-row-v">
          <span className="label-v">Amount Paid</span>
-         <span className="value-v highlight-v">₹{selectedTransaction.amount}</span>
+         <span className="value-v highlight-v">
+          {selectedTransaction.amount && selectedTransaction.amount.toString().includes('₹') 
+            ? selectedTransaction.amount 
+            : `₹${selectedTransaction.amount}`}
+         </span>
         </div>
         <div className="invoice-detail-row-v">
          <span className="label-v">Status</span>
