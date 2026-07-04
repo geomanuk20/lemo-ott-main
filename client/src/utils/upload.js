@@ -22,6 +22,9 @@ export const uploadToCloudinary = async (file, onProgress) => {
     return data.url || null;
   } catch (err) {
     console.error('[Cloudinary Upload Error]:', err);
+    if (err.message === 'Failed to fetch' || err instanceof TypeError) {
+      throw new Error('Upload failed. This usually indicates that the file size exceeds your production server Nginx proxy limit (client_max_body_size) or Cloudflare limit.');
+    }
     throw err;
   }
 };
