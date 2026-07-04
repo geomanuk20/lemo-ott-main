@@ -1038,7 +1038,7 @@ const FrontendDetails = () => {
                   <div className="fe-cast-list">
                     {directorsList.length > 0 ? (
                       directorsList.map((director, idx) => (
-                        <span key={idx} className="fe-cast-chip">{director}</span>
+                        <span key={idx} className="fe-cast-chip fe-director-chip">{director}</span>
                       ))
                     ) : (
                       <span className="fe-cast-empty">N/A</span>
@@ -1688,22 +1688,22 @@ const FrontendDetails = () => {
      100% { transform: scale(2); opacity: 0; }
     }
 
-    .fe-visual-stats-v { display: flex; align-items: center; gap: 12px; margin-top: 20px; color: #888; font-size: 0.75rem; font-weight: 600; }
-    .stat-item-v { display: flex; align-items: center; gap: 6px; }
-    .stat-item-v svg { width: 14px; height: 14px; }
+    .fe-visual-stats-v { display: flex; align-items: center; gap: 10px; margin-top: 15px; color: #888; font-size: 0.72rem; font-weight: 600; }
+    .stat-item-v { display: flex; align-items: center; gap: 4px; }
+    .stat-item-v svg { width: 12px; height: 12px; }
     
-    .fe-rating-circle-v { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; padding: 2px; font-size: 0.8rem; font-weight: 900; color: #fff; background: rgba(0,0,0,0.5); box-shadow: 0 0 15px rgba(22,196,127,0.2); animation: scaleIn 0.5s ease-out; }
+    .fe-rating-circle-v { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; padding: 2px; font-size: 0.72rem; font-weight: 900; color: #fff; background: rgba(0,0,0,0.5); box-shadow: 0 0 10px rgba(22,196,127,0.15); animation: scaleIn 0.5s ease-out; }
     .rating-inner-v { background: #000; width: 100%; height: 100%; border-radius: 50%; display: flex; align-items: center; justify-content: center; position: relative; }
     .imdb-val-v { color: #b3d332; }
 
     @keyframes scaleIn { from { transform: scale(0); } to { transform: scale(1); } }
 
-    .fe-visual-actions-v { display: flex; gap: 15px; margin-top: 30px; }
-    .action-btn-v { border: none; padding: 10px 20px; border-radius: 4px; font-weight: 800; font-size: 0.85rem; display: flex; align-items: center; gap: 10px; cursor: pointer; transition: 0.3s; }
+    .fe-visual-actions-v { display: flex; gap: 10px; margin-top: 18px; }
+    .action-btn-v { border: none; padding: 8px 16px; border-radius: 6px; font-weight: 800; font-size: 0.78rem; display: flex; align-items: center; gap: 8px; cursor: pointer; transition: 0.3s; }
     .watchlist-v { background: #b3d332; color: #fff; }
     .watchlist-v.active { background: #333; }
     .share-v { background: #0088ff; color: #fff; }
-    .action-btn-v:hover { transform: translateY(-3px); filter: brightness(1.1); }
+    .action-btn-v:hover { transform: translateY(-2px); filter: brightness(1.1); }
 
     /* Info Right */
     .fe-details-info-v { flex: 1; padding-top: 10px; }
@@ -1721,6 +1721,34 @@ const FrontendDetails = () => {
     .fe-cast-list { display: flex; flex-wrap: wrap; gap: 8px; }
     .fe-cast-chip { background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); color: #fff; padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; transition: all 0.25s ease; cursor: default; }
     .fe-cast-chip:hover { background: rgba(179, 211, 50, 0.1); border-color: #b3d332; color: #b3d332; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(179, 211, 50, 0.15); }
+    
+    @keyframes directorGreenWave {
+      0% {
+        color: #b3d332;
+      }
+      50% {
+        color: #ffffff;
+      }
+      100% {
+        color: #b3d332;
+      }
+    }
+    .fe-cast-chip.fe-director-chip {
+      color: #b3d332;
+      background: rgba(179, 211, 50, 0.08);
+      border-color: rgba(179, 211, 50, 0.4);
+      font-weight: 750;
+      transition: background 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease;
+      animation: directorGreenWave 2.5s infinite ease-in-out;
+    }
+    .fe-cast-chip.fe-director-chip:hover {
+      background: rgba(179, 211, 50, 0.15);
+      border-color: #b3d332;
+      color: #b3d332 !important;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 15px rgba(179, 211, 50, 0.35);
+      animation: none !important;
+    }
     .fe-cast-empty { color: #555; font-size: 0.85rem; padding-top: 4px; }
 
     .fe-info-desc-v { color: #888; font-size: 0.9rem; line-height: 1.6; max-width: 800px; }
@@ -1778,11 +1806,56 @@ const FrontendDetails = () => {
      .fe-info-title-v { font-size: 2.8rem; }
      .fe-details-container-v { flex-direction: column; }
      .fe-details-visual-v { flex: 1; width: 100%; }
+     .fe-visual-stats-v {
+       background: rgba(255, 255, 255, 0.02);
+       border: 1px solid rgba(255, 255, 255, 0.06);
+       border-radius: 12px;
+       padding: 10px 18px;
+       margin-top: 15px;
+       display: flex;
+       align-items: center;
+       justify-content: space-between;
+       gap: 12px;
+       flex-wrap: nowrap;
+     }
+     .fe-visual-actions-v {
+       display: flex;
+       gap: 10px;
+       margin-top: 15px;
+       width: 100%;
+     }
+     .fe-visual-actions-v .action-btn-v {
+       flex: 1;
+       justify-content: center;
+       padding: 10px 12px;
+       font-size: 0.78rem;
+       border-radius: 8px;
+     }
     }
 
     @media (max-width: 768px) {
      .fe-info-title-v { font-size: 2rem; }
-     .fe-visual-stats-v { flex-wrap: wrap; gap: 15px; }
+     .fe-visual-stats-v {
+       padding: 8px 14px;
+       gap: 8px;
+     }
+     .stat-item-v {
+       font-size: 0.68rem;
+       gap: 4px;
+     }
+     .fe-rating-wrapper-v {
+       transform: scale(0.85);
+     }
+     .fe-visual-actions-v {
+       gap: 8px;
+       margin-top: 12px;
+     }
+     .fe-visual-actions-v .action-btn-v {
+       padding: 8px 8px;
+       font-size: 0.72rem;
+       border-radius: 8px;
+       gap: 4px;
+     }
      .fe-info-meta-top-v { font-size: 0.9rem; margin-bottom: 20px; }
      .fe-cast-group { flex-direction: column; gap: 6px; }
      .fe-cast-label { min-width: auto; padding-top: 0; }
@@ -1847,6 +1920,43 @@ const FrontendDetails = () => {
       font-size: 0.8rem;
       max-width: 100px;
      }
+    }    }
+    }
+
+    @media (max-width: 480px) {
+      .fe-visual-stats-v {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px 15px;
+        padding: 10px;
+      }
+      .stat-item-v {
+        font-size: 0.68rem;
+      }
+      .fe-rating-wrapper-v {
+        width: 100%;
+        display: flex;
+        flex-direction: row !important;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        padding-top: 8px;
+        margin-top: 5px;
+      }
+      .fe-visual-actions-v {
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .fe-visual-actions-v .action-btn-v {
+        flex: 1 1 calc(50% - 5px);
+        justify-content: center;
+        font-size: 0.72rem;
+        padding: 8px 6px;
+      }
+      .fe-visual-actions-v .share-v {
+        flex: 1 1 100%;
+      }
     }
 
     .fe-watchlist-notification-v { 
