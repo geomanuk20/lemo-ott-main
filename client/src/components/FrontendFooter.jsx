@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Globe, Shield, Info, MonitorPlay } from 'lucide-react';
 import { formatBrandingUrl } from '../utils/branding';
 
-const FrontendFooter = ({ settings = null }) => {
+const FrontendFooter = ({ settings = null, menuSettings = null }) => {
   const [pages, setPages] = useState([]);
 
   useEffect(() => {
@@ -39,9 +39,13 @@ const FrontendFooter = ({ settings = null }) => {
             <div className="footer-col-v">
               <h4>DISCOVER</h4>
               <Link to="/">Home</Link>
-              <Link to="/movies">Movies</Link>
-              <Link to="/shows">TV Shows</Link>
-              <Link to="/live-tv">Live TV</Link>
+              {(!menuSettings || menuSettings.movies?.toUpperCase() !== 'OFF') && <Link to="/movies">Movies</Link>}
+              {(!menuSettings || menuSettings.shows?.toUpperCase() !== 'OFF') && <Link to="/shows">TV Shows</Link>}
+              {(!menuSettings || menuSettings.liveTv?.toUpperCase() !== 'OFF') && <Link to="/live-tv">Live TV</Link>}
+              {(!menuSettings || menuSettings.sports?.toUpperCase() !== 'OFF') && <Link to="/sports">Sports</Link>}
+              {(!menuSettings || menuSettings.shortFilms?.toUpperCase() !== 'OFF') && <Link to="/short-films">Short Films</Link>}
+              {(!menuSettings || menuSettings.webSeries?.toUpperCase() !== 'OFF') && <Link to="/web-series">Web Series</Link>}
+              {(!menuSettings || menuSettings.shorts?.toUpperCase() !== 'OFF') && <Link to="/shorts">Shorts</Link>}
               <Link to="/subscription">Subscription</Link>
               <Link to="/submission">Submission</Link>
             </div>

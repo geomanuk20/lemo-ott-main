@@ -38,6 +38,7 @@ const Sidebar = () => {
   const [openSub, setOpenSub] = useState(null);
   const [notification, setNotification] = useState(null);
   const [settings, setSettings] = useState(null);
+  const [menuSettings, setMenuSettings] = useState(null);
   const location = useLocation();
 
   useEffect(() => {
@@ -50,7 +51,19 @@ const Sidebar = () => {
         console.error('Settings discovery anomaly:', err);
       }
     };
+    const fetchMenuSettings = async () => {
+      try {
+        const res = await fetch('/api/menu-settings');
+        if (res.ok) {
+          const data = await res.json();
+          setMenuSettings(data);
+        }
+      } catch (err) {
+        console.error('Error fetching menu settings:', err);
+      }
+    };
     fetchSettings();
+    fetchMenuSettings();
   }, []);
 
   useEffect(() => {
@@ -204,7 +217,17 @@ const Sidebar = () => {
     ] : [])
   ];
 
-  const filteredMenuItems = menuItems; // Already filtered by spread logic above
+  const filteredMenuItems = menuItems.filter(item => {
+    if (!menuSettings) return true;
+    if (item.name === 'Movies' && menuSettings.movies?.toUpperCase() === 'OFF') return false;
+    if (item.name === 'Short Film' && menuSettings.shortFilms?.toUpperCase() === 'OFF') return false;
+    if (item.name === 'Shorts' && menuSettings.shorts?.toUpperCase() === 'OFF') return false;
+    if (item.name === 'Short Web Series' && menuSettings.webSeries?.toUpperCase() === 'OFF') return false;
+    if (item.name === 'TV Shows' && menuSettings.shows?.toUpperCase() === 'OFF') return false;
+    if (item.name === 'Sports' && menuSettings.sports?.toUpperCase() === 'OFF') return false;
+    if (item.name === 'Live TV' && menuSettings.liveTv?.toUpperCase() === 'OFF') return false;
+    return true;
+  });
 
   const handleToggleSub = (name) => {
     if (openSub === name) {
@@ -247,7 +270,7 @@ const Sidebar = () => {
           )}
         </div>
       <nav className="nav-menu">
-        {menuItems.map((item, index) => (
+        {filteredMenuItems.map((item, index) => (
           <div key={index}>
             {item.hasSub ? (
               <>

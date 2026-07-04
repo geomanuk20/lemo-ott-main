@@ -223,7 +223,7 @@ const FrontendLayout = ({ children, isTransparent = true, showFooter = true, sho
 
       <main className="fe-main-content">
         {children}
-        {showFooter && <FrontendFooter settings={settings} />}
+        {showFooter && <FrontendFooter settings={settings} menuSettings={menuSettings} />}
       </main>
 
 
