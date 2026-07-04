@@ -25,8 +25,22 @@ const FrontendLogin = () => {
  const [loading, setLoading] = useState(false);
  const [error, setError] = useState('');
  const [success, setSuccess] = useState('');
- const [settings, setSettings] = useState(null);
- const [socialSettings, setSocialSettings] = useState(null);
+ const [settings, setSettings] = useState(() => {
+  try {
+   const cached = localStorage.getItem('fe_general_settings');
+   return cached ? JSON.parse(cached) : null;
+  } catch (err) {
+   return null;
+  }
+ });
+ const [socialSettings, setSocialSettings] = useState(() => {
+  try {
+   const cached = localStorage.getItem('fe_social_settings');
+   return cached ? JSON.parse(cached) : null;
+  } catch (err) {
+   return null;
+  }
+ });
  const navigate = useNavigate();
 
  useEffect(() => {
@@ -35,6 +49,7 @@ const FrontendLogin = () => {
     const res = await fetch('/api/general-settings');
     const data = await res.json();
     setSettings(data);
+    localStorage.setItem('fe_general_settings', JSON.stringify(data));
    } catch (err) {
     console.error('Error fetching settings:', err);
    }
@@ -57,6 +72,7 @@ const FrontendLogin = () => {
     const res = await fetch('/api/social-login-settings');
     const data = await res.json();
     setSocialSettings(data);
+    localStorage.setItem('fe_social_settings', JSON.stringify(data));
     if (data && data.facebookLogin?.toUpperCase() !== 'OFF') {
      const appId = data.facebookAppId;
      if (appId && appId !== 'Hidden in Demo') {
