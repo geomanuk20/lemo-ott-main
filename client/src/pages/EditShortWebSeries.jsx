@@ -66,8 +66,8 @@ const EditShortWebSeries = () => {
      ...prev,
      ...showData,
      genres: Array.isArray(showData.genres) ? showData.genres : (showData.genres ? [showData.genres] : []),
-     actors: Array.isArray(showData.actors) ? showData.actors : (showData.actors ? showData.actors.split(',').map(s => s.trim()) : []),
-     directors: Array.isArray(showData.directors) ? showData.directors : (showData.directors ? showData.directors.split(',').map(s => s.trim()) : []),
+     actors: Array.isArray(showData.actors) ? showData.actors.map(a => typeof a === 'object' ? a._id : a) : (showData.actors ? showData.actors.split(',').map(s => s.trim()) : []),
+     directors: Array.isArray(showData.directors) ? showData.directors.map(d => typeof d === 'object' ? d._id : d) : (showData.directors ? showData.directors.split(',').map(s => s.trim()) : []),
      contentType: 'Short Web Series' // Keep locked
     }));
    } catch (err) {
@@ -239,20 +239,20 @@ const EditShortWebSeries = () => {
           <div className="dropdown-search">
            <input type="text" placeholder="Search actor..." value={actorSearch} onChange={e => setActorSearch(e.target.value)} onClick={e => e.stopPropagation()} />
           </div>
-          <div className="dropdown-options">
-           {availableActors.filter(a => a.name.toLowerCase().includes(actorSearch.toLowerCase())).map(actor => (
-            <div key={actor._id} className="dropdown-option checkbox-option" onClick={(e) => {
-             e.stopPropagation();
-             const newActors = formData.actors.includes(actor.name) 
-              ? formData.actors.filter(name => name !== actor.name) 
-              : [...formData.actors, actor.name];
-             setFormData(prev => ({ ...prev, actors: newActors }));
-            }}>
-             <input type="checkbox" checked={formData.actors.includes(actor.name)} readOnly />
-             <span>{actor.name}</span>
-            </div>
-           ))}
-          </div>
+           <div className="dropdown-options">
+            {availableActors.filter(a => a.name.toLowerCase().includes(actorSearch.toLowerCase())).map(actor => (
+             <div key={actor._id} className="dropdown-option checkbox-option" onClick={(e) => {
+              e.stopPropagation();
+              const newActors = formData.actors.includes(actor._id) 
+               ? formData.actors.filter(id => id !== actor._id) 
+               : [...formData.actors, actor._id];
+              setFormData(prev => ({ ...prev, actors: newActors }));
+             }}>
+              <input type="checkbox" checked={formData.actors.includes(actor._id)} readOnly />
+              <span>{actor.name}</span>
+             </div>
+            ))}
+           </div>
          </div>
         )}
        </div>
@@ -270,20 +270,20 @@ const EditShortWebSeries = () => {
           <div className="dropdown-search">
            <input type="text" placeholder="Search director..." value={directorSearch} onChange={e => setDirectorSearch(e.target.value)} onClick={e => e.stopPropagation()} />
           </div>
-          <div className="dropdown-options">
-           {availableDirectors.filter(d => d.name.toLowerCase().includes(directorSearch.toLowerCase())).map(director => (
-            <div key={director._id} className="dropdown-option checkbox-option" onClick={(e) => {
-             e.stopPropagation();
-             const newDirectors = formData.directors.includes(director.name) 
-              ? formData.directors.filter(name => name !== director.name) 
-              : [...formData.directors, director.name];
-             setFormData(prev => ({ ...prev, directors: newDirectors }));
-            }}>
-             <input type="checkbox" checked={formData.directors.includes(director.name)} readOnly />
-             <span>{director.name}</span>
-            </div>
-           ))}
-          </div>
+           <div className="dropdown-options">
+            {availableDirectors.filter(d => d.name.toLowerCase().includes(directorSearch.toLowerCase())).map(director => (
+             <div key={director._id} className="dropdown-option checkbox-option" onClick={(e) => {
+              e.stopPropagation();
+              const newDirectors = formData.directors.includes(director._id) 
+               ? formData.directors.filter(id => id !== director._id) 
+               : [...formData.directors, director._id];
+              setFormData(prev => ({ ...prev, directors: newDirectors }));
+             }}>
+              <input type="checkbox" checked={formData.directors.includes(director._id)} readOnly />
+              <span>{director.name}</span>
+             </div>
+            ))}
+           </div>
          </div>
         )}
        </div>

@@ -1021,14 +1021,14 @@ const FrontendDetails = () => {
               ? data.actors 
               : (data.showId && typeof data.showId === 'object' ? data.showId.actors : null);
             const actorsList = rawActors && rawActors.length > 0 
-              ? rawActors.map(a => typeof a === 'object' ? a.name : a)
+              ? [...new Set(rawActors.map(a => typeof a === 'object' ? a.name : a))]
               : [];
 
             const rawDirectors = data.directors && data.directors.length > 0 
               ? data.directors 
               : (data.showId && typeof data.showId === 'object' ? data.showId.directors : null);
             const directorsList = rawDirectors && rawDirectors.length > 0 
-              ? rawDirectors.map(d => typeof d === 'object' ? d.name : d)
+              ? [...new Set(rawDirectors.map(d => typeof d === 'object' ? d.name : d))]
               : [];
 
             return (
