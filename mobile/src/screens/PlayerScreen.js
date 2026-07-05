@@ -925,7 +925,7 @@ export default function PlayerScreen({ route, navigation }) {
     }
   }, [status.positionMillis, currentCues, activeSubtitleTrack]);
 
-  const handleLoad = async () => {
+  const handleLoad = React.useCallback(async () => {
     setLoading(false);
     if (shouldSeekRef.current && videoRef.current) {
       shouldSeekRef.current = false;
@@ -944,7 +944,21 @@ export default function PlayerScreen({ route, navigation }) {
         console.warn('[PlayerScreen] Failed to restore playback state:', e);
       }
     }
-  };
+  }, [speed, muted]);
+
+  const handleLoadStart = React.useCallback(() => {
+    setLoading(true);
+  }, []);
+
+  const handleVideoError = React.useCallback((e) => {
+    console.error('[PlayerScreen] Video error:', e);
+    setLoading(false);
+    shouldSeekRef.current = false;
+    showAlert(
+      'Playback Error',
+      'Failed to load the video in the selected quality. Please check your internet connection.'
+    );
+  }, []);
 
   const handleQualityChange = async (qualityName, rawUrl) => {
     setShowQualityMenu(false);
@@ -1044,6 +1058,10 @@ export default function PlayerScreen({ route, navigation }) {
       console.warn(e);
     }
   };
+
+  const handlePlaybackStatusUpdate = React.useCallback((s) => {
+    setStatus(s);
+  }, []);
 
   const seek = async (delta) => {
     if (!videoRef.current) return;
@@ -1452,19 +1470,11 @@ export default function PlayerScreen({ route, navigation }) {
               resizeMode={resizeMode}
               useNativeControls={false}
               shouldPlay={isAdPlaying ? false : shouldPlayNextState}
-              onPlaybackStatusUpdate={s => setStatus(() => s)}
+              onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
               progressUpdateIntervalMillis={100}
-              onLoadStart={() => setLoading(true)}
+              onLoadStart={handleLoadStart}
               onLoad={handleLoad}
-              onError={e => {
-                console.error('[PlayerScreen] Video error:', e);
-                setLoading(false);
-                shouldSeekRef.current = false;
-                showAlert(
-                  'Playback Error',
-                  'Failed to load the video in the selected quality. Please check your internet connection.'
-                );
-              }}
+              onError={handleVideoError}
             />
             {/* Logo Watermark (Top Right) */}
             <View style={[styles.watermarkContainer, { top: pt + 6, right: ph }]} pointerEvents="none">
