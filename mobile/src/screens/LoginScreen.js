@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { Eye, EyeOff, Shield } from 'lucide-react-native';
 import Svg, { Path } from 'react-native-svg';
 import { AuthContext } from '../context/AuthContext';
@@ -66,7 +67,7 @@ export default function LoginScreen({ navigation }) {
       .catch(() => {});
   }, []);
 
-  const handleSocialLogin = (provider) => {
+  const handleSocialLogin = async (provider) => {
     setErrorMsg('');
     if (!socialSettings) {
       setErrorMsg('Failed to load social settings.');
@@ -79,12 +80,35 @@ export default function LoginScreen({ navigation }) {
         setErrorMsg('Google Client ID is not configured.');
         return;
       }
-      const redirectUri = 'https://lemoott.com';
-      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=email%20profile%20openid&prompt=select_account`;
-      
-      setSocialProvider('Google');
-      setSocialAuthUrl(authUrl);
-      setShowSocialWebView(true);
+      try {
+        setLoading(true);
+        GoogleSignin.configure({
+          webClientId: clientId,
+          offlineAccess: true,
+        });
+        await GoogleSignin.hasPlayServices();
+        const userInfo = await GoogleSignin.signIn();
+        const idToken = userInfo.idToken;
+        if (!idToken) {
+          setErrorMsg('Failed to retrieve ID Token from Google.');
+          setLoading(false);
+          return;
+        }
+        
+        const result = await socialLoginReal(idToken, 'Google');
+        if (!result.success) {
+          setErrorMsg(result.error || 'Failed to login with Google.');
+        } else {
+          if (navigation.canGoBack()) {
+            navigation.goBack();
+          }
+        }
+      } catch (err) {
+        console.error('[Google-Native-Login] Error:', err);
+        setErrorMsg('Failed to authenticate with Google Play Services.');
+      } finally {
+        setLoading(false);
+      }
     } else if (provider === 'Facebook') {
       const appId = socialSettings.facebookAppId;
       if (!appId || appId === 'Hidden in Demo') {
@@ -329,7 +353,9 @@ export default function LoginScreen({ navigation }) {
             javaScriptEnabled={true}
             domStorageEnabled={true}
             startInLoadingState={true}
-            incognito={true}
+            incognito={false}
+            sharedCookiesEnabled={true}
+            cacheEnabled={true}
             setSupportMultipleWindows={false}
             userAgent={Platform.OS === 'android' 
               ? 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36'
