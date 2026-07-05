@@ -19,9 +19,9 @@ export default function TabNavigator() {
     let active = true;
     const fetchSettings = async () => {
       try {
-        const res = await client.get('/home-aggregated');
-        if (active && res && res.data && res.data.menuSettings) {
-          setMenuSettings(res.data.menuSettings);
+        const res = await client.get('/menu-settings');
+        if (active && res && res.data) {
+          setMenuSettings(res.data);
         }
       } catch (err) {
         console.error('Error fetching tab settings:', err);
