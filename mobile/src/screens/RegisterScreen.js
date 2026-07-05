@@ -15,9 +15,15 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { Shield } from 'lucide-react-native';
 import Svg, { Path } from 'react-native-svg';
+
+let GoogleSignin = null;
+try {
+  GoogleSignin = require('@react-native-google-signin/google-signin').GoogleSignin;
+} catch (e) {
+  console.log('[Google-Native-Login] GoogleSignin native module is not registered.');
+}
 import { AuthContext } from '../context/AuthContext';
 import client from '../api/client';
 import { formatImageUrl } from '../config/api';
@@ -80,34 +86,44 @@ export default function RegisterScreen({ navigation }) {
         setErrorMsg('Google Client ID is not configured.');
         return;
       }
-      try {
-        setLoading(true);
-        GoogleSignin.configure({
-          webClientId: clientId,
-          offlineAccess: true,
-        });
-        await GoogleSignin.hasPlayServices();
-        const userInfo = await GoogleSignin.signIn();
-        const idToken = userInfo.idToken;
-        if (!idToken) {
-          setErrorMsg('Failed to retrieve ID Token from Google.');
-          setLoading(false);
-          return;
-        }
-        
-        const result = await socialLoginReal(idToken, 'Google');
-        if (!result.success) {
-          setErrorMsg(result.error || 'Failed to login with Google.');
-        } else {
-          if (navigation.canGoBack()) {
-            navigation.goBack();
+      if (GoogleSignin) {
+        try {
+          setLoading(true);
+          GoogleSignin.configure({
+            webClientId: clientId,
+            offlineAccess: true,
+          });
+          await GoogleSignin.hasPlayServices();
+          const userInfo = await GoogleSignin.signIn();
+          const idToken = userInfo.idToken;
+          if (!idToken) {
+            setErrorMsg('Failed to retrieve ID Token from Google.');
+            setLoading(false);
+            return;
           }
+          
+          const result = await socialLoginReal(idToken, 'Google');
+          if (!result.success) {
+            setErrorMsg(result.error || 'Failed to login with Google.');
+          } else {
+            if (navigation.canGoBack()) {
+              navigation.goBack();
+            }
+          }
+        } catch (err) {
+          console.error('[Google-Native-Login] Error:', err);
+          setErrorMsg('Failed to authenticate with Google Play Services.');
+        } finally {
+          setLoading(false);
         }
-      } catch (err) {
-        console.error('[Google-Native-Login] Error:', err);
-        setErrorMsg('Failed to authenticate with Google Play Services.');
-      } finally {
-        setLoading(false);
+      } else {
+        // Fallback: Open WebView login for Expo Go or standard browser environments
+        const redirectUri = 'https://lemoott.com';
+        const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=email%20profile%20openid&prompt=select_account`;
+        
+        setSocialProvider('Google');
+        setSocialAuthUrl(authUrl);
+        setShowSocialWebView(true);
       }
     } else if (provider === 'Facebook') {
       const appId = socialSettings.facebookAppId;
