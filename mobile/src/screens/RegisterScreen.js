@@ -11,19 +11,13 @@ import {
   ScrollView,
   Image,
   Modal,
-  StatusBar
+  StatusBar,
+  Linking
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import { Shield } from 'lucide-react-native';
 import Svg, { Path } from 'react-native-svg';
-
-let GoogleSignin = null;
-try {
-  GoogleSignin = require('@react-native-google-signin/google-signin').GoogleSignin;
-} catch (e) {
-  console.log('[Google-Native-Login] GoogleSignin native module is not registered.');
-}
 import { AuthContext } from '../context/AuthContext';
 import client from '../api/client';
 import { formatImageUrl } from '../config/api';
@@ -73,6 +67,48 @@ export default function RegisterScreen({ navigation }) {
       .catch(() => {});
   }, []);
 
+  // Deep Link Listener for Mobile Auth redirection from Browser
+  useEffect(() => {
+    const handleDeepLink = async (event) => {
+      const url = event.url;
+      console.log('[RegisterScreen] Deep link received URL:', url);
+      if (url && (url.startsWith('lemoott://login') || url.includes('token='))) {
+        try {
+          const match = url.match(/token=([^&]+)/);
+          if (match && match[1]) {
+            const token = decodeURIComponent(match[1]);
+            setLoading(true);
+            const result = await socialLoginReal(token, 'Google');
+            if (!result.success) {
+              setErrorMsg(result.error || 'Failed to login with Google.');
+            } else {
+              if (navigation.canGoBack()) {
+                navigation.goBack();
+              }
+            }
+          }
+        } catch (err) {
+          console.error('[RegisterScreen] Deep link auth error:', err);
+          setErrorMsg('Failed during Google authentication redirect.');
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    // Listen to initial URL (if app was completely closed)
+    Linking.getInitialURL().then((url) => {
+      if (url) handleDeepLink({ url });
+    });
+
+    // Listen to active app deep links
+    const subscription = Linking.addEventListener('url', handleDeepLink);
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
   const handleSocialLogin = async (provider) => {
     setErrorMsg('');
     if (!socialSettings) {
@@ -86,44 +122,15 @@ export default function RegisterScreen({ navigation }) {
         setErrorMsg('Google Client ID is not configured.');
         return;
       }
-      if (GoogleSignin) {
-        try {
-          setLoading(true);
-          GoogleSignin.configure({
-            webClientId: clientId,
-            offlineAccess: true,
-          });
-          await GoogleSignin.hasPlayServices();
-          const userInfo = await GoogleSignin.signIn();
-          const idToken = userInfo.idToken;
-          if (!idToken) {
-            setErrorMsg('Failed to retrieve ID Token from Google.');
-            setLoading(false);
-            return;
-          }
-          
-          const result = await socialLoginReal(idToken, 'Google');
-          if (!result.success) {
-            setErrorMsg(result.error || 'Failed to login with Google.');
-          } else {
-            if (navigation.canGoBack()) {
-              navigation.goBack();
-            }
-          }
-        } catch (err) {
-          console.error('[Google-Native-Login] Error:', err);
-          setErrorMsg('Failed to authenticate with Google Play Services.');
-        } finally {
-          setLoading(false);
-        }
-      } else {
-        // Fallback: Open WebView login for Expo Go or standard browser environments
-        const redirectUri = 'https://lemoott.com';
+      try {
+        const redirectUri = 'https://lemoott.com/mobile-auth';
         const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=email%20profile%20openid&prompt=select_account`;
         
-        setSocialProvider('Google');
-        setSocialAuthUrl(authUrl);
-        setShowSocialWebView(true);
+        console.log('[RegisterScreen] Launching system browser for Google login:', authUrl);
+        await Linking.openURL(authUrl);
+      } catch (err) {
+        console.error('[RegisterScreen] Failed to open Google login URL:', err);
+        setErrorMsg('Failed to launch Google login browser.');
       }
     } else if (provider === 'Facebook') {
       const appId = socialSettings.facebookAppId;

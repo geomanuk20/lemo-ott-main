@@ -96,6 +96,7 @@ import FrontendLiveTV from './pages/FrontendLiveTV';
 import FrontendSports from './pages/FrontendSports';
 import FrontendProfile from './pages/FrontendProfile';
 import FrontendLogin from './pages/FrontendLogin';
+import MobileAuth from './pages/MobileAuth';
 import ResetPassword from './pages/ResetPassword';
 import Watchlist from './pages/Watchlist';
 import FrontendPage from './pages/FrontendPage';
@@ -422,6 +423,7 @@ function App() {
         <Route path="/user/profile" element={<FrontendProfile />} />
         <Route path="/login" element={<FrontendLogin />} />
         <Route path="/register" element={<FrontendLogin type="register" />} />
+        <Route path="/mobile-auth" element={<MobileAuth />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/watchlist" element={<Watchlist />} />
         <Route path="/subscription" element={<FrontendSubscription />} />
