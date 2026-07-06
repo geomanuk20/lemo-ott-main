@@ -15,11 +15,18 @@ const MobileAuth = () => {
 
       const params = new URLSearchParams(hash.replace(/^#/, '?'));
       const accessToken = params.get('access_token');
+      const state = params.get('state') || '';
 
       if (accessToken) {
         setStatus('Authentication successful! Redirecting you back to the Lemo OTT app...');
-        // Redirect to the mobile app's deep link scheme
-        const deepLink = `lemoott://login?token=${encodeURIComponent(accessToken)}`;
+        
+        let deepLink = `lemoott://login?token=${encodeURIComponent(accessToken)}`;
+        if (state.startsWith('mobile_exp_')) {
+          const hostUri = decodeURIComponent(state.substring(11));
+          deepLink = `exp://${hostUri}/?token=${encodeURIComponent(accessToken)}`;
+        }
+
+        console.log('[MobileAuth] Redirecting to deep link:', deepLink);
         window.location.href = deepLink;
 
         // Fallback: If deep link fails to open automatically within 2 seconds, show a button
@@ -39,8 +46,14 @@ const MobileAuth = () => {
     const hash = window.location.hash || window.location.search;
     const params = new URLSearchParams(hash.replace(/^#/, '?'));
     const accessToken = params.get('access_token');
+    const state = params.get('state') || '';
     if (accessToken) {
-      window.location.href = `lemoott://login?token=${encodeURIComponent(accessToken)}`;
+      let deepLink = `lemoott://login?token=${encodeURIComponent(accessToken)}`;
+      if (state.startsWith('mobile_exp_')) {
+        const hostUri = decodeURIComponent(state.substring(11));
+        deepLink = `exp://${hostUri}/?token=${encodeURIComponent(accessToken)}`;
+      }
+      window.location.href = deepLink;
     }
   };
 

@@ -3615,6 +3615,12 @@ app.get('/api/social-login-settings', async (req, res) => {
     if ((!responseSettings.googleClientId || responseSettings.googleClientId === 'Hidden in Demo') && process.env.GOOGLE_CLIENT_ID) {
       responseSettings.googleClientId = process.env.GOOGLE_CLIENT_ID;
     }
+    if ((!responseSettings.googleClientIdAndroid || responseSettings.googleClientIdAndroid === 'Hidden in Demo') && process.env.GOOGLE_CLIENT_ID_ANDROID) {
+      responseSettings.googleClientIdAndroid = process.env.GOOGLE_CLIENT_ID_ANDROID;
+    }
+    if ((!responseSettings.googleClientIdIos || responseSettings.googleClientIdIos === 'Hidden in Demo') && process.env.GOOGLE_CLIENT_ID_IOS) {
+      responseSettings.googleClientIdIos = process.env.GOOGLE_CLIENT_ID_IOS;
+    }
     if ((!responseSettings.googleSecret || responseSettings.googleSecret === 'Hidden in Demo') && process.env.GOOGLE_CLIENT_SECRET) {
       responseSettings.googleSecret = process.env.GOOGLE_CLIENT_SECRET;
     }
@@ -5293,6 +5299,10 @@ app.get('/api/home-aggregated', async (req, res) => {
       MenuSettings.findOne().lean().maxTimeMS(5000),
       Short.find({ status: 'Active' }).sort({ createdAt: -1 }).limit(20).lean().maxTimeMS(5000)
     ]);
+
+    console.log('[DEBUG /home-aggregated]:');
+    console.log('  - Shorts in DB count:', shorts?.length);
+    console.log('  - Home Sections configured:', homeSections?.map(s => `${s.title} (${s.sectionType})`));
 
     let filteredSliders = sliders;
     let filteredMovies = movies;

@@ -109,7 +109,7 @@ const Watchlist = () => {
           alt={item.title} 
          />
          <div className="card-overlay-v">
-          <button className="play-overlay-btn-v" onClick={() => navigate(`/${item.contentType}/${item._id}`)}>
+          <button className="play-overlay-btn-v" onClick={() => navigate(`/details/${item.contentType.toLowerCase()}/${item._id}`)}>
            <Play size={24} fill="currentColor" />
           </button>
           <button className="remove-btn-v" onClick={() => removeFromWatchlist(item._id, item.contentType)}>

@@ -83,8 +83,8 @@ const EditShortFilm = () => {
     }
     // Keep contentType as Short Film
     data.contentType = 'Short Film';
-    data.actors = Array.isArray(data.actors) ? data.actors.map(a => typeof a === 'object' ? a._id : a) : [];
-    data.directors = Array.isArray(data.directors) ? data.directors.map(d => typeof d === 'object' ? d._id : d) : [];
+    data.actors = Array.isArray(data.actors) ? [...new Set(data.actors.map(a => typeof a === 'object' ? a._id : a))] : [];
+    data.directors = Array.isArray(data.directors) ? [...new Set(data.directors.map(d => typeof d === 'object' ? d._id : d))] : [];
     setFormData(data);
    } catch (err) {
     console.error('Error fetching short film:', err);

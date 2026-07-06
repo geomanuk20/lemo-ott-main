@@ -387,6 +387,18 @@ const MaintenanceWrapper = ({ children }) => {
 
 function App() {
   useEffect(() => {
+    // Check if redirecting back to mobile from Google login
+    const hash = window.location.hash || window.location.search;
+    if (hash && (hash.includes('state=mobile') || hash.includes('access_token='))) {
+      const params = new URLSearchParams(hash.replace(/^#/, '?'));
+      const accessToken = params.get('access_token');
+      const state = params.get('state');
+      if (accessToken && state === 'mobile') {
+        window.location.href = `lemoott://login?token=${encodeURIComponent(accessToken)}`;
+        return;
+      }
+    }
+
     const fetchBranding = async () => {
       try {
         const res = await fetch('/api/general-settings');

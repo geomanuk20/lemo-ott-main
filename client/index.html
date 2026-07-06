@@ -1,6 +1,15 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <script>
+      (function() {
+        var hash = window.location.hash || window.location.search;
+        if (hash && hash.indexOf('state=mobile') !== -1 && hash.indexOf('access_token=') !== -1) {
+          // Redirect to the dedicated /mobile-auth route where a manual button fallback is provided
+          window.location.href = '/mobile-auth' + (window.location.hash || window.location.search);
+        }
+      })();
+    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="referrer" content="origin" />

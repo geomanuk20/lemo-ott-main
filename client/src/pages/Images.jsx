@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import Loader from '../components/Loader';
 import ImportExportModal from '../components/ImportExportModal';
+import { uploadToCloudinary } from '../utils/upload';
 
 const Images = () => {
  const [images, setImages] = useState([]);
@@ -74,23 +75,16 @@ const Images = () => {
   if (!uploadTitle) return showNotification('Please enter an image name', 'error');
   
   setLoading(true);
-  const formData = new FormData();
-  formData.append('file', uploadFile);
 
   try {
    // 1. Upload to Cloudinary
-   const uploadRes = await fetch('/api/upload', {
-    method: 'POST',
-    body: formData
-   });
-
-   if (!uploadRes.ok) throw new Error('Upload failed');
-   const uploadData = await uploadRes.json();
+   const url = await uploadToCloudinary(uploadFile);
+   if (!url) throw new Error('Upload failed');
    
    // 2. Save to Database
    const assetData = {
     title: uploadTitle,
-    url: uploadData.url,
+    url: url,
     size: (uploadFile.size / (1024 * 1024)).toFixed(1) + ' MB',
     dimension: 'Original'
    };

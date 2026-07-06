@@ -6,6 +6,7 @@ import {
  ChevronDown
 } from 'lucide-react';
 import Loader from '../components/Loader';
+import { uploadToCloudinary } from '../utils/upload';
 
 const API_URL = '/api/player-ads';
 
@@ -61,24 +62,11 @@ const PlayerAds = () => {
 
   setUploadingAd(num);
   try {
-   const formDataObj = new FormData();
-   formDataObj.append('file', file);
-
-   const response = await fetch('/api/upload', {
-    method: 'POST',
-    body: formDataObj
-   });
-
-   if (!response.ok) {
-    const errData = await response.json().catch(() => ({}));
-    throw new Error(errData.message || 'Upload failed');
-   }
-
-   const data = await response.json();
-   if (data.url) {
+   const url = await uploadToCloudinary(file);
+   if (url) {
     setFormData(prev => ({
      ...prev,
-     [`ad${num}Source`]: data.url
+     [`ad${num}Source`]: url
     }));
     showNotification(`Ad ${num} source uploaded successfully!`);
    } else {

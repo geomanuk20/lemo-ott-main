@@ -5,6 +5,7 @@ import {
  XCircle 
 } from 'lucide-react';
 import Loader from '../components/Loader';
+import { uploadToCloudinary } from '../utils/upload';
 
 const API_URL = '/api/player-settings';
 
@@ -81,18 +82,11 @@ const PlayerConfig = () => {
   const file = e.target.files[0];
   if (!file) return;
 
-  const formDataUpload = new FormData();
-  formDataUpload.append('file', file);
-
   try {
    showNotification('Uploading...', 'info');
-   const response = await fetch('/api/upload', {
-    method: 'POST',
-    body: formDataUpload
-   });
-   const data = await response.json();
-   if (data.url) {
-    setFormData({ ...formData, watermarkLogo: data.url });
+   const url = await uploadToCloudinary(file);
+   if (url) {
+    setFormData({ ...formData, watermarkLogo: url });
     showNotification('File uploaded successfully');
    }
   } catch (err) {

@@ -66,8 +66,8 @@ const EditShortWebSeries = () => {
      ...prev,
      ...showData,
      genres: Array.isArray(showData.genres) ? showData.genres : (showData.genres ? [showData.genres] : []),
-     actors: Array.isArray(showData.actors) ? showData.actors.map(a => typeof a === 'object' ? a._id : a) : (showData.actors ? showData.actors.split(',').map(s => s.trim()) : []),
-     directors: Array.isArray(showData.directors) ? showData.directors.map(d => typeof d === 'object' ? d._id : d) : (showData.directors ? showData.directors.split(',').map(s => s.trim()) : []),
+     actors: Array.isArray(showData.actors) ? [...new Set(showData.actors.map(a => typeof a === 'object' ? a._id : a))] : (showData.actors ? [...new Set(showData.actors.split(',').map(s => s.trim()))] : []),
+     directors: Array.isArray(showData.directors) ? [...new Set(showData.directors.map(d => typeof d === 'object' ? d._id : d))] : (showData.directors ? [...new Set(showData.directors.split(',').map(s => s.trim()))] : []),
      contentType: 'Short Web Series' // Keep locked
     }));
    } catch (err) {

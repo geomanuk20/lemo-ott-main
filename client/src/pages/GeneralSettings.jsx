@@ -7,6 +7,7 @@ import {
  } from 'lucide-react';
  import Loader from '../components/Loader';
  import { formatBrandingUrl } from '../utils/branding';
+ import { uploadToCloudinary } from '../utils/upload';
 
 const API_URL = '/api/general-settings';
 
@@ -105,18 +106,11 @@ const GeneralSettings = () => {
   const file = e.target.files[0];
   if (!file) return;
 
-  const formDataUpload = new FormData();
-  formDataUpload.append('file', file);
-
   try {
    showNotification('Uploading...', 'info');
-   const response = await fetch('/api/upload', {
-    method: 'POST',
-    body: formDataUpload
-   });
-   const data = await response.json();
-   if (data.url) {
-    const trimmedUrl = data.url.trim();
+   const url = await uploadToCloudinary(file);
+   if (url) {
+    const trimmedUrl = url.trim();
     setFormData(prev => ({ ...prev, [field]: trimmedUrl }));
     showNotification('File uploaded successfully');
    }

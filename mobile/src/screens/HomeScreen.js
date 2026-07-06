@@ -152,6 +152,7 @@ export default function HomeScreen({ navigation }) {
     homeSections: [],
     experiences: [],
     assets: [],
+    shorts: [],
   });
   const [activeSliderIndex, setActiveSliderIndex] = useState(0);
   const sliderRef = useRef(null);
@@ -174,6 +175,7 @@ export default function HomeScreen({ navigation }) {
           homeSections: response.data.homeSections || [],
           experiences: response.data.experiences || [],
           assets: response.data.assets || [],
+          shorts: response.data.shorts || [],
         });
         // Use settings from aggregated response — no separate call needed
         if (response.data.settings) {
@@ -182,6 +184,8 @@ export default function HomeScreen({ navigation }) {
         if (response.data.menuSettings) {
           setMenuSettings(response.data.menuSettings);
         }
+        console.log('Mobile Home aggregated shorts count:', response.data.shorts?.length);
+        console.log('Mobile Home sections from backend:', response.data.homeSections?.map(s => s.sectionType));
       }
     } catch (error) {
       console.error('Error fetching home data:', error);
@@ -254,6 +258,19 @@ export default function HomeScreen({ navigation }) {
             <Text style={styles.playBadgeText}>Watch Now</Text>
           </View>
         </View>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderShortCard = ({ item }) => {
+    const imageUrl = item.thumbnailUrl || 'https://images.unsplash.com/photo-1626814026160-2237a95fc5a0?q=80&w=2070&auto=format&fit=crop';
+    return (
+      <TouchableOpacity
+        style={styles.shortCardContainer}
+        onPress={() => navigation.navigate('ShortsTab', { initialShortId: item._id })}
+      >
+        <Image source={{ uri: imageUrl }} style={styles.shortCardImage} resizeMode="cover" />
+        <Text style={styles.shortCardTitle} numberOfLines={1}>{item.title}</Text>
       </TouchableOpacity>
     );
   };
@@ -486,6 +503,7 @@ export default function HomeScreen({ navigation }) {
   const activeCount = [
     (!menuSettings || menuSettings.movies?.toUpperCase() !== 'OFF' || menuSettings.shortFilms?.toUpperCase() !== 'OFF'),
     (!menuSettings || menuSettings.shows?.toUpperCase() !== 'OFF' || menuSettings.webSeries?.toUpperCase() !== 'OFF'),
+    (!menuSettings || menuSettings.shorts?.toUpperCase() !== 'OFF'),
     (!menuSettings || menuSettings.liveTv?.toUpperCase() !== 'OFF'),
     (!menuSettings || menuSettings.sports?.toUpperCase() !== 'OFF'),
     true // Plans
@@ -581,6 +599,15 @@ export default function HomeScreen({ navigation }) {
               <Text style={styles.quickLinkLabel}>
                 {(!menuSettings || menuSettings.shows?.toUpperCase() !== 'OFF') ? 'Shows' : 'Web Series'}
               </Text>
+            </TouchableOpacity>
+          )}
+
+          {(!menuSettings || menuSettings.shorts?.toUpperCase() !== 'OFF') && (
+            <TouchableOpacity style={styles.quickLinkItem} onPress={() => navigation.navigate('ShortsTab')}>
+              <View style={[styles.quickLinkIconContainer, { backgroundColor: 'rgba(255, 45, 85, 0.15)' }]}>
+                <MonitorPlay color="#ff2d55" size={20} />
+              </View>
+              <Text style={styles.quickLinkLabel}>Shorts</Text>
             </TouchableOpacity>
           )}
 
@@ -790,6 +817,25 @@ export default function HomeScreen({ navigation }) {
                   );
                 }
               }
+              if (type === 'Shorts') {
+                if (data.shorts && data.shorts.length > 0 && (!menuSettings || menuSettings.shorts?.toUpperCase() !== 'OFF')) {
+                  return (
+                    <View key={key} style={styles.sectionContainer}>
+                      <View style={styles.sectionHeader}>
+                        <Text style={styles.sectionTitle}>{title}</Text>
+                      </View>
+                      <FlatList
+                        data={data.shorts.slice(0, section.limit || 20)}
+                        renderItem={({ item }) => renderShortCard({ item })}
+                        keyExtractor={(item) => item._id}
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.listContent}
+                      />
+                    </View>
+                  );
+                }
+              }
               return null;
             });
 
@@ -912,6 +958,21 @@ export default function HomeScreen({ navigation }) {
                   />
                 </View>
               )}
+              {data.shorts && data.shorts.length > 0 && (!menuSettings || menuSettings.shorts?.toUpperCase() !== 'OFF') && (
+                <View style={styles.sectionContainer}>
+                  <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>Vertical Shorts</Text>
+                  </View>
+                  <FlatList
+                    data={data.shorts}
+                    renderItem={({ item }) => renderShortCard({ item })}
+                    keyExtractor={(item) => item._id}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.listContent}
+                  />
+                </View>
+              )}
             </>
           );
         })()}
@@ -924,6 +985,26 @@ export default function HomeScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
+  shortCardContainer: {
+    width: 100,
+    marginHorizontal: 4,
+  },
+  shortCardImage: {
+    width: 100,
+    height: 160,
+    borderRadius: 12,
+    backgroundColor: '#1c1c1e',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  shortCardTitle: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 6,
+    paddingHorizontal: 2,
+    textAlign: 'center',
+  },
   container: {
     flex: 1,
     backgroundColor: '#000000',

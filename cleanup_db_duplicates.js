@@ -10,7 +10,12 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://geomanuk20_db_user
 const cleanup = async () => {
   try {
     console.log('Connecting to MongoDB...');
-    await mongoose.connect(MONGODB_URI);
+    await mongoose.connect(MONGODB_URI, {
+      family: 4,
+      serverSelectionTimeoutMS: 45000,
+      socketTimeoutMS: 120000,
+      connectTimeoutMS: 60000
+    });
     console.log('Connected successfully!');
 
     // 1. Clean up Movies

@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import Loader from '../components/Loader';
 import VideoPlayer from '../components/VideoPlayer';
+import { uploadToCloudinary } from '../utils/upload';
 
 const API_URL = '/api/live-stream/settings';
 
@@ -560,19 +561,11 @@ const LiveStreamDashboard = () => {
     const file = e.target.files[0];
     if (!file) return;
 
-    const formDataUpload = new FormData();
-    formDataUpload.append('file', file);
-
     try {
       showNotification('Uploading image...', 'info');
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formDataUpload
-      });
-      const data = await response.json();
-      if (data.url) {
-        const trimmedUrl = data.url.trim();
-        setStreamPoster(trimmedUrl);
+      const url = await uploadToCloudinary(file);
+      if (url) {
+        setStreamPoster(url.trim());
         showNotification('Thumbnail uploaded successfully');
       } else {
         showNotification('Upload failed', 'error');

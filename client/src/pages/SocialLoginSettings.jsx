@@ -18,6 +18,8 @@ const SocialLoginSettings = () => {
  const [formData, setFormData] = useState({
   googleLogin: 'ON',
   googleClientId: 'Hidden in Demo',
+  googleClientIdAndroid: 'Hidden in Demo',
+  googleClientIdIos: 'Hidden in Demo',
   googleSecret: 'Hidden in Demo',
   facebookLogin: 'OFF',
   facebookAppId: 'Hidden in Demo',
@@ -115,8 +117,18 @@ const SocialLoginSettings = () => {
       </div>
 
       <div className="form-row-full-v">
-       <label>Google Client ID</label>
-       <input type="text" name="googleClientId" value={formData.googleClientId} onChange={handleChange} />
+       <label>Google Client ID (Web / Default)</label>
+       <input type="text" name="googleClientId" value={formData.googleClientId || ''} onChange={handleChange} />
+      </div>
+
+      <div className="form-row-full-v">
+       <label>Google Client ID (Android)</label>
+       <input type="text" name="googleClientIdAndroid" value={formData.googleClientIdAndroid || ''} onChange={handleChange} />
+      </div>
+
+      <div className="form-row-full-v">
+       <label>Google Client ID (iOS)</label>
+       <input type="text" name="googleClientIdIos" value={formData.googleClientIdIos || ''} onChange={handleChange} />
       </div>
 
       <div className="form-row-full-v">

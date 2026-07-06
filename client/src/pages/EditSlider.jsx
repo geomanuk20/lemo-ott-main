@@ -142,30 +142,24 @@ const EditSlider = () => {
   });
  };
 
- const handleFileChange = async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const formDataUpload = new FormData();
-  formDataUpload.append('file', file);
-  try {
-   setLoading(true);
-   const response = await fetch('/api/upload', {
-    method: 'POST',
-    body: formDataUpload
-   });
-   const data = await response.json();
-   if (data.url) {
-    setFormData(prev => ({ ...prev, image: data.url }));
-   } else {
-    alert('Upload failed: ' + (data.message || 'Unknown error'));
+  const handleFileChange = async (e) => {
+   const file = e.target.files[0];
+   if (!file) return;
+   try {
+    setLoading(true);
+    const url = await uploadToCloudinary(file);
+    if (url) {
+     setFormData(prev => ({ ...prev, image: url }));
+    } else {
+     alert('Upload failed');
+    }
+   } catch (err) {
+    console.error('Upload error:', err);
+    alert('Network error during upload');
+   } finally {
+    setLoading(false);
    }
-  } catch (err) {
-   console.error('Upload error:', err);
-   alert('Network error during upload');
-  } finally {
-   setLoading(false);
-  }
- };
+  };
 
  const handleVideoFileChange = async (e) => {
   const file = e.target.files[0];

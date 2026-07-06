@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Mail, Phone, Shield, Edit2, CheckCircle2, XCircle, Loader2, Camera, Bookmark, LogOut, CreditCard, FileText, Calendar, Download, Eye, ChevronDown } from 'lucide-react';
+import { User, Mail, Phone, Shield, Edit2, CheckCircle2, XCircle, Loader2, Camera, Bookmark, LogOut, CreditCard, FileText, Calendar, Download, Eye, ChevronDown, Play } from 'lucide-react';
 import Loader from '../components/Loader';
 import FrontendLayout from '../components/FrontendLayout';
 import { logoutUser } from '../utils/logout';
 
 const FrontendProfile = () => {
+ const navigate = useNavigate();
  const [user, setUser] = useState(JSON.parse(localStorage.getItem('user') || '{}'));
  const [formData, setFormData] = useState({
   name: user.name || '',
@@ -28,6 +29,8 @@ const FrontendProfile = () => {
  const [currentPage, setCurrentPage] = useState(1);
  const itemsPerPage = 5;
  const [selectedTransaction, setSelectedTransaction] = useState(null);
+ const [watchlist, setWatchlist] = useState([]);
+ const [loadingWatchlist, setLoadingWatchlist] = useState(false);
 
  const handleTabClick = (tab) => {
     if (window.innerWidth <= 992) {
@@ -37,26 +40,59 @@ const FrontendProfile = () => {
     }
   };
 
- useEffect(() => {
-  const fetchUserData = async () => {
+  useEffect(() => {
+   const fetchUserData = async () => {
+    try {
+     const res = await fetch(`/api/users/${user.id}`);
+     const data = await res.json();
+     setFullUser(data);
+     
+     // Update localStorage so other pages (like Video Details) know the user is upgraded!
+     const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+     localStorage.setItem('user', JSON.stringify({ ...currentUser, ...data, id: data._id }));
+     
+     const transRes = await fetch(`/api/user/transactions/${user.email}`);
+     const transData = await transRes.json();
+     setTransactions(transData);
+
+     // Fetch watchlist data
+     setLoadingWatchlist(true);
+     const wlRes = await fetch(`/api/watchlist/${user.id}`);
+     const wlData = await wlRes.json();
+     setWatchlist(Array.isArray(wlData) ? wlData : (wlData.items || wlData.watchlist || []));
+    } catch (err) {
+     console.error('Error fetching dashboard data:', err);
+    } finally {
+     setLoadingWatchlist(false);
+    }
+   };
+   fetchUserData();
+  }, [user.id, user.email]);
+
+  const removeFromWatchlist = async (contentId, contentType) => {
    try {
-    const res = await fetch(`/api/users/${user.id}`);
-    const data = await res.json();
-    setFullUser(data);
-    
-    // Update localStorage so other pages (like Video Details) know the user is upgraded!
-    const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-    localStorage.setItem('user', JSON.stringify({ ...currentUser, ...data, id: data._id }));
-    
-    const transRes = await fetch(`/api/user/transactions/${user.email}`);
-    const transData = await transRes.json();
-    setTransactions(transData);
+    const response = await fetch('/api/watchlist/toggle', {
+     method: 'POST',
+     headers: { 'Content-Type': 'application/json' },
+     body: JSON.stringify({ userId: user.id, contentId, contentType })
+    });
+    if (response.ok) {
+     setWatchlist(prev => prev.filter(item => item._id !== contentId));
+     showNotification('Removed from watchlist');
+    }
    } catch (err) {
-    console.error('Error fetching dashboard data:', err);
+    console.error('Error removing from watchlist:', err);
    }
   };
-  fetchUserData();
- }, [user.id, user.email]);
+
+  const formatImageUrl = (item, typePref = 'thumbnail') => {
+   if (!item) return '';
+   const url = item[typePref] || item.thumbnail || item.poster || item.image || '';
+   if (!url || typeof url !== 'string' || url.trim() === '') return '';
+   if (url.startsWith('http') || url.startsWith('//') || url.startsWith('data:')) return url;
+   const cleanPath = url.startsWith('/') ? url.substring(1) : url;
+   return `/${cleanPath}`;
+  };
 
  const showNotification = (message, type = 'success') => {
   setNotification({ message, type });
@@ -161,7 +197,7 @@ const FrontendProfile = () => {
        <button className={activeTab === 'account' ? 'active' : ''} onClick={() => handleTabClick('account')}><User size={18} /> Account Info</button>
        <button className={activeTab === 'subscription' ? 'active' : ''} onClick={() => handleTabClick('subscription')}><CreditCard size={18} /> Subscription</button>
        <button className={activeTab === 'billing' ? 'active' : ''} onClick={() => handleTabClick('billing')}><FileText size={18} /> Billing History</button>
-       <button onClick={() => window.location.href = '/watchlist'}><Bookmark size={18} /> My Watchlist</button>
+       <button className={activeTab === 'watchlist' ? 'active' : ''} onClick={() => handleTabClick('watchlist')}><Bookmark size={18} /> My Watchlist</button>
        <button className="logout-v" onClick={handleLogout}><LogOut size={18} /> Logout</button>
       </div>
      </div>
@@ -283,7 +319,7 @@ const FrontendProfile = () => {
           <button 
            type="button"
            className="upgrade-btn-v" 
-           onClick={() => window.location.href = '/subscription'}
+           onClick={() => navigate('/subscription')}
           >
            Change / Upgrade Plan
           </button>
@@ -357,12 +393,70 @@ const FrontendProfile = () => {
         </div>
        </div>
 
-       {/* Mobile-only links */}
-       <div className="fe-mobile-link-row-v fe-mobile-only-v" onClick={() => window.location.href = '/watchlist'}>
-        <h3><Bookmark size={18} /> My Watchlist</h3>
-        <ChevronDown size={18} className="chevron-icon-v" style={{ transform: 'rotate(-90deg)' }} />
+       {/* Watchlist Section */}
+       <div className={`fe-accordion-item-v ${activeTab === 'watchlist' ? 'active' : ''}`}>
+        <div className="fe-accordion-header-v" onClick={() => handleTabClick('watchlist')}>
+         <h3><Bookmark size={18} /> My Watchlist</h3>
+         <ChevronDown size={18} className="chevron-icon-v" />
+        </div>
+        <div className="fe-accordion-content-v">
+         <div className="content-header-v">
+          <h2>My Watchlist</h2>
+         </div>
+         {loadingWatchlist ? (
+          <div className="watchlist-loader-v" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '200px', gap: '15px' }}>
+           <Loader2 className="spinner-v" size={32} />
+           <p style={{ color: '#888', fontWeight: 600 }}>Loading your watchlist...</p>
+          </div>
+         ) : watchlist.length === 0 ? (
+          <div className="empty-watchlist-v" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '250px', color: '#666', textAlign: 'center' }}>
+           <Bookmark size={60} style={{ color: '#222', marginBottom: '20px' }} />
+           <h3 style={{ color: '#fff', fontSize: '1.4rem', fontWeight: 800, marginBottom: '10px' }}>Your watchlist is empty</h3>
+           <p style={{ maxWidth: '300px', fontSize: '0.9rem', marginBottom: '20px' }}>Content you save will appear here for easy access later.</p>
+          </div>
+         ) : (
+          <div className="watchlist-grid-v">
+           {watchlist.map((item) => (
+            <div key={item._id} className="watchlist-card-v">
+             <div className="card-image-v">
+              <img 
+               src={formatImageUrl(item) || 'https://via.placeholder.com/400x225?text=No+Preview'} 
+               alt={item.title} 
+              />
+              <button 
+               className="remove-btn-v" 
+               onClick={() => removeFromWatchlist(item._id, item.contentType)}
+              >
+               <XCircle size={16} />
+              </button>
+              <div style={{ position: 'absolute', bottom: '10px', left: '10px', background: 'rgba(0,0,0,0.8)', color: '#b3d332', fontSize: '0.6rem', fontWeight: 900, padding: '3px 8px', borderRadius: '4px', border: '1px solid rgba(179,211,50,0.3)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+               {item.contentType?.toUpperCase()}
+              </div>
+             </div>
+             <div style={{ padding: '15px', display: 'flex', flexDirection: 'column', flexGrow: 1, justifyContent: 'space-between' }}>
+              <h4 style={{ fontSize: '0.95rem', fontWeight: 750, color: '#fff', margin: '0 0 6px 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+               {item.title}
+              </h4>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '10px' }}>
+               <span style={{ fontSize: '0.8rem', color: '#555', fontWeight: 700 }}>
+                {item.year || '2026'}
+               </span>
+               <button 
+                className="watch-btn-v"
+                onClick={() => navigate(`/details/${item.contentType.toLowerCase()}/${item._id}`)}
+               >
+                <Play size={10} fill="currentColor" /> Watch
+               </button>
+              </div>
+             </div>
+            </div>
+           ))}
+          </div>
+         )}
+        </div>
        </div>
 
+       {/* Mobile-only links */}
        <div className="fe-mobile-link-row-v logout-v fe-mobile-only-v" onClick={handleLogout}>
         <h3><LogOut size={18} /> Logout</h3>
         <ChevronDown size={18} className="chevron-icon-v" style={{ transform: 'rotate(-90deg)' }} />
@@ -486,6 +580,17 @@ const FrontendProfile = () => {
     .view-invoice-v:hover { background: #fff; color: #000; border-color: #fff; }
     
     .no-invoices-v p { margin-top: 15px; font-weight: 700; font-size: 1.1rem; }
+
+    .watchlist-grid-v { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 25px; margin-top: 10px; }
+    .watchlist-card-v { background: #111; border-radius: 12px; overflow: hidden; border: 1px solid #222; display: flex; flex-direction: column; position: relative; transition: 0.3s ease; }
+    .watchlist-card-v:hover { transform: translateY(-5px); border-color: #b3d332; box-shadow: 0 10px 20px rgba(0,0,0,0.3); }
+    .card-image-v { position: relative; width: 100%; aspect-ratio: 16/9; overflow: hidden; }
+    .card-image-v img { width: 100%; height: 100%; object-fit: cover; transition: 0.5s; }
+    .watchlist-card-v:hover .card-image-v img { transform: scale(1.05); }
+    .watchlist-card-v .remove-btn-v { position: absolute; top: 10px; right: 10px; width: 32px; height: 32px; border-radius: 50%; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; color: #fff; cursor: pointer; z-index: 10; transition: 0.3s; }
+    .watchlist-card-v .remove-btn-v:hover { background: #ff4d4d !important; border-color: #ff4d4d; }
+    .watchlist-card-v .watch-btn-v { background: #b3d332; border: none; border-radius: 20px; padding: 6px 16px; color: #fff; font-size: 0.75rem; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: 0.3s; }
+    .watchlist-card-v .watch-btn-v:hover { background: #fff; color: #000; transform: translateY(-1px); }
 
     .fe-pagination-v { display: flex; justify-content: center; align-items: center; gap: 20px; margin-top: 25px; padding-top: 20px; border-top: 1px solid #222; }
     .fe-pagination-v button { background: rgba(255,255,255,0.05); border: 1px solid #333; color: #fff; padding: 8px 16px; border-radius: 8px; font-weight: 700; cursor: pointer; transition: 0.3s; }

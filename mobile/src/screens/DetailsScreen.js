@@ -795,48 +795,60 @@ export default function DetailsScreen({ route, navigation }) {
           ) : null}
 
           {/* Directors Section */}
-          {(detail.directors && detail.directors.length > 0) && (
-            <View style={[styles.castContainer, { marginBottom: 15 }]}>
-              <Text style={styles.infoLabel}>Director{detail.directors.length > 1 ? 's' : ''}</Text>
-              <FlatList
-                data={detail.directors}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                keyExtractor={(item, idx) => idx.toString()}
-                renderItem={({ item }) => {
-                  const directorName = typeof item === 'object' ? item.name : item;
-                  return (
-                    <View style={styles.castCard}>
-                      <AvatarImage item={item} style={styles.castAvatar} />
-                      <Text style={styles.castName} numberOfLines={2}>{directorName}</Text>
-                    </View>
-                  );
-                }}
-              />
-            </View>
-          )}
+          {(detail.directors && detail.directors.length > 0) && (() => {
+            const uniqueDirectors = Array.from(new Set(detail.directors.map(d => typeof d === 'object' ? d._id : d)))
+              .map(id => detail.directors.find(d => (typeof d === 'object' ? d._id : d) === id))
+              .filter(Boolean);
+            if (uniqueDirectors.length === 0) return null;
+            return (
+              <View style={[styles.castContainer, { marginBottom: 15 }]}>
+                <Text style={styles.infoLabel}>Director{uniqueDirectors.length > 1 ? 's' : ''}</Text>
+                <FlatList
+                  data={uniqueDirectors}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  keyExtractor={(item, idx) => idx.toString()}
+                  renderItem={({ item }) => {
+                    const directorName = typeof item === 'object' ? item.name : item;
+                    return (
+                      <View style={styles.castCard}>
+                        <AvatarImage item={item} style={styles.castAvatar} />
+                        <Text style={styles.castName} numberOfLines={2}>{directorName}</Text>
+                      </View>
+                    );
+                  }}
+                />
+              </View>
+            );
+          })()}
 
           {/* Cast & Crew Section */}
-          {(detail.actors && detail.actors.length > 0) && (
-            <View style={styles.castContainer}>
-              <Text style={styles.infoLabel}>Cast & Crew</Text>
-              <FlatList
-                data={detail.actors}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                keyExtractor={(item, idx) => idx.toString()}
-                renderItem={({ item }) => {
-                  const castName = typeof item === 'object' ? item.name : item;
-                  return (
-                    <View style={styles.castCard}>
-                      <AvatarImage item={item} style={styles.castAvatar} />
-                      <Text style={styles.castName} numberOfLines={2}>{castName}</Text>
-                    </View>
-                  );
-                }}
-              />
-            </View>
-          )}
+          {(detail.actors && detail.actors.length > 0) && (() => {
+            const uniqueActors = Array.from(new Set(detail.actors.map(a => typeof a === 'object' ? a._id : a)))
+              .map(id => detail.actors.find(a => (typeof a === 'object' ? a._id : a) === id))
+              .filter(Boolean);
+            if (uniqueActors.length === 0) return null;
+            return (
+              <View style={styles.castContainer}>
+                <Text style={styles.infoLabel}>Cast & Crew</Text>
+                <FlatList
+                  data={uniqueActors}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  keyExtractor={(item, idx) => idx.toString()}
+                  renderItem={({ item }) => {
+                    const castName = typeof item === 'object' ? item.name : item;
+                    return (
+                      <View style={styles.castCard}>
+                        <AvatarImage item={item} style={styles.castAvatar} />
+                        <Text style={styles.castName} numberOfLines={2}>{castName}</Text>
+                      </View>
+                    );
+                  }}
+                />
+              </View>
+            );
+          })()}
 
           {/* Season and Episode browser (For Web Series) */}
           {detail.upcoming?.toLowerCase() === 'yes' ? (

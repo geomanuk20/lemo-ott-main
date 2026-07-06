@@ -1,12 +1,13 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Home, Film, Tv, Bookmark, User } from 'lucide-react-native';
+import { Home, Film, Tv, Bookmark, User, Clapperboard } from 'lucide-react-native';
 import client from '../api/client';
 
 // Import Screens
 import HomeScreen from '../screens/HomeScreen';
 import MoviesScreen from '../screens/MoviesScreen';
 import ShowsScreen from '../screens/ShowsScreen';
+import ShortsScreen from '../screens/ShortsScreen';
 import WatchlistScreen from '../screens/WatchlistScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 
@@ -21,6 +22,7 @@ export default function TabNavigator() {
       try {
         const res = await client.get('/menu-settings');
         if (active && res && res.data) {
+          console.log('Mobile fetched menu settings:', res.data);
           setMenuSettings(res.data);
         }
       } catch (err) {
@@ -77,6 +79,16 @@ export default function TabNavigator() {
           options={{
             tabBarLabel: 'Web Series',
             tabBarIcon: ({ color, size }) => <Tv color={color} size={size} />,
+          }}
+        />
+      )}
+      {(!menuSettings || menuSettings.shorts?.toUpperCase() !== 'OFF') && (
+        <Tab.Screen
+          name="ShortsTab"
+          component={ShortsScreen}
+          options={{
+            tabBarLabel: 'Shorts',
+            tabBarIcon: ({ color, size }) => <Clapperboard color={color} size={size} />,
           }}
         />
       )}

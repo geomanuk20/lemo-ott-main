@@ -13,13 +13,14 @@ import {
   Image,
   Animated,
   Linking,
-  useWindowDimensions
+  useWindowDimensions,
+  Modal
 } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Video, ResizeMode } from 'expo-av';
 import { WebView } from 'react-native-webview';
-import { ArrowLeft, Play, Pause, Volume2, VolumeX, MoreHorizontal, Subtitles } from 'lucide-react-native';
+import { ArrowLeft, Play, Pause, Volume2, VolumeX, MoreHorizontal, Subtitles, Star } from 'lucide-react-native';
 import Svg, { Path, Text as SvgText } from 'react-native-svg';
 import client from '../api/client';
 import { formatImageUrl, ACTIVE_IP, IMAGE_URL_BASE } from '../config/api';
@@ -365,6 +366,7 @@ export default function PlayerScreen({ route, navigation }) {
   usePreventScreenCapture();
   const { user, token } = useContext(AuthContext);
   const {
+    videoId,
     videoTitle,
     videoUrl,
     videoType,
@@ -393,6 +395,11 @@ export default function PlayerScreen({ route, navigation }) {
   const [barWidth, setBarWidth]         = useState(1);   // measured progress-bar width
   const [logoUrl, setLogoUrl]           = useState(null);
   const [resizeMode, setResizeMode]     = useState(ResizeMode.CONTAIN);
+
+  const ratingShownRef = useRef(false);
+  const [ratingModalVisible, setRatingModalVisible] = useState(false);
+  const [selectedRating, setSelectedRating] = useState(0);
+  const [ratingSubmitting, setRatingSubmitting] = useState(false);
 
   // Subtitle states
   const [subtitlesList, setSubtitlesList] = useState([]);
@@ -791,9 +798,31 @@ export default function PlayerScreen({ route, navigation }) {
     }
   };
 
+  /* ── show rating popup 5 seconds before video ends ── */
+  useEffect(() => {
+    const duration = status.durationMillis || 0;
+    const position = status.positionMillis || 0;
+    if (
+      user &&
+      !isAdPlaying &&
+      !ratingShownRef.current &&
+      !isLive &&
+      duration > 10000 &&
+      position > 0 &&
+      (duration - position) <= 5000
+    ) {
+      ratingShownRef.current = true;
+      if (status.isPlaying && videoRef.current) {
+        videoRef.current.pauseAsync().catch(() => null);
+      }
+      setRatingModalVisible(true);
+    }
+  }, [status.positionMillis, status.durationMillis, isAdPlaying, isLive, user]);
+
   /* ── resolve initial video URL ── */
   useEffect(() => {
     let active = true;
+    ratingShownRef.current = false; // Reset rating flag for new video
 
     // For embed-type URLs (YouTube, Vimeo, raw HTML), skip resolution:
     // the WebView will handle loading internally via renderEmbed().
@@ -1062,6 +1091,37 @@ export default function PlayerScreen({ route, navigation }) {
   const handlePlaybackStatusUpdate = React.useCallback((s) => {
     setStatus(s);
   }, []);
+
+  const handleRateSubmit = async () => {
+    if (selectedRating < 1 || selectedRating > 5) {
+      showAlert('Invalid Rating', 'Please select between 1 and 5 stars.');
+      return;
+    }
+    if (!user) {
+      showAlert('Sign In Required', 'Please sign in to rate this content.');
+      setRatingModalVisible(false);
+      return;
+    }
+    setRatingSubmitting(true);
+    try {
+      await client.post('/ratings', {
+        userId: user.id,
+        contentId: videoId,
+        contentType: contentType,
+        rating: selectedRating
+      });
+      setRatingModalVisible(false);
+      showAlert('Thank You', 'Your rating has been submitted successfully!');
+      if (videoRef.current) {
+        await videoRef.current.playAsync();
+      }
+    } catch (error) {
+      console.error('[PlayerScreen] Error submitting rating:', error);
+      showAlert('Submission Failed', 'Failed to submit rating. Please try again.');
+    } finally {
+      setRatingSubmitting(false);
+    }
+  };
 
   const seek = async (delta) => {
     if (!videoRef.current) return;
@@ -1462,7 +1522,7 @@ export default function PlayerScreen({ route, navigation }) {
         isEmbed ? (
           renderEmbed()
         ) : (
-          <View style={{ width, height, position: 'absolute', top: 0, left: 0 }}>
+          <View style={StyleSheet.absoluteFill}>
             <Video
               ref={videoRef}
               source={{ uri: resolvedUrl }}
@@ -1875,6 +1935,69 @@ export default function PlayerScreen({ route, navigation }) {
           )}
         </View>
       ) : null}
+
+      {/* ── Rating Modal ── */}
+      <Modal
+        visible={ratingModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={async () => {
+          setRatingModalVisible(false);
+          if (videoRef.current) {
+            await videoRef.current.playAsync().catch(() => null);
+          }
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.ratingModalContent}>
+            <Text style={styles.ratingModalTitle}>Rate This Content</Text>
+            <Text style={styles.ratingModalSubtitle}>{videoTitle || 'Content'}</Text>
+            
+            <View style={styles.starsRow}>
+              {[1, 2, 3, 4, 5].map((starVal) => (
+                <TouchableOpacity
+                  key={starVal}
+                  onPress={() => setSelectedRating(starVal)}
+                  style={styles.starTouch}
+                >
+                  <Star
+                    size={32}
+                    color={starVal <= selectedRating ? '#b3d332' : '#8e8e93'}
+                    fill={starVal <= selectedRating ? '#b3d332' : 'transparent'}
+                  />
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={styles.modalButtonsRow}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={async () => {
+                  setRatingModalVisible(false);
+                  if (videoRef.current) {
+                    await videoRef.current.playAsync().catch(() => null);
+                  }
+                }}
+                disabled={ratingSubmitting}
+              >
+                <Text style={styles.modalCancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.modalSubmitBtn}
+                onPress={handleRateSubmit}
+                disabled={ratingSubmitting}
+              >
+                {ratingSubmitting ? (
+                  <ActivityIndicator size="small" color="#000000" />
+                ) : (
+                  <Text style={styles.modalSubmitBtnText}>Submit</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -2313,6 +2436,75 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '900',
     letterSpacing: 0.5,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  ratingModalContent: {
+    width: '100%',
+    maxWidth: 320,
+    backgroundColor: '#1c1c1e',
+    borderColor: '#2a2c31',
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+  },
+  ratingModalTitle: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  ratingModalSubtitle: {
+    color: '#8e8e93',
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  starsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 24,
+  },
+  starTouch: {
+    padding: 4,
+  },
+  modalButtonsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  modalCancelBtn: {
+    flex: 1,
+    backgroundColor: '#2a2c31',
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCancelBtnText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  modalSubmitBtn: {
+    flex: 1,
+    backgroundColor: '#b3d332',
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalSubmitBtnText: {
+    color: '#000000',
+    fontSize: 14,
+    fontWeight: '800',
   },
 });
 

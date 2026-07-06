@@ -22,6 +22,8 @@ import { AuthContext } from '../context/AuthContext';
 import client from '../api/client';
 import { formatImageUrl } from '../config/api';
 
+import Constants from 'expo-constants';
+
 const GoogleIcon = () => (
   <Svg width={18} height={18} viewBox="0 0 24 24" style={{ marginRight: 8 }}>
     <Path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -117,14 +119,23 @@ export default function RegisterScreen({ navigation }) {
     }
 
     if (provider === 'Google') {
-      const clientId = socialSettings.googleClientId;
+      let clientId = socialSettings.googleClientId;
+      if (Platform.OS === 'android' && socialSettings.googleClientIdAndroid && socialSettings.googleClientIdAndroid !== 'Hidden in Demo') {
+        clientId = socialSettings.googleClientIdAndroid;
+      } else if (Platform.OS === 'ios' && socialSettings.googleClientIdIos && socialSettings.googleClientIdIos !== 'Hidden in Demo') {
+        clientId = socialSettings.googleClientIdIos;
+      }
+      
       if (!clientId || clientId === 'Hidden in Demo') {
         setErrorMsg('Google Client ID is not configured.');
         return;
       }
       try {
-        const redirectUri = 'https://lemoott.com/mobile-auth';
-        const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=email%20profile%20openid&prompt=select_account`;
+        const hostUri = Constants.expoConfig?.hostUri || Constants.manifest2?.extra?.expoGo?.debuggerHost || Constants.manifest?.hostUri;
+        const isExpoGo = __DEV__ && hostUri;
+        const stateVal = isExpoGo ? `mobile_exp_${encodeURIComponent(hostUri)}` : 'mobile';
+        const redirectUri = 'https://lemoott.com';
+        const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=email%20profile%20openid&prompt=select_account&state=${stateVal}`;
         
         console.log('[RegisterScreen] Launching system browser for Google login:', authUrl);
         await Linking.openURL(authUrl);
