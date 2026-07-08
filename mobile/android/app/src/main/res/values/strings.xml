@@ -1,3 +1,4 @@
 <resources>
   <string name="app_name">Lemo OTT</string>
+  <string name="onesignal_notification_accent_color">FFB3D332</string>
 </resources>

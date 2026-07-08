@@ -11,10 +11,12 @@ import {
 import { Video, ResizeMode } from 'expo-av';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Clapperboard, Heart, Eye } from 'lucide-react-native';
+import { useIsFocused } from '@react-navigation/native';
 import client from '../api/client';
 
 export default function ShortsScreen({ route }) {
   const { width, height } = useWindowDimensions();
+  const isFocused = useIsFocused();
   const [shorts, setShorts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [screenHeight, setScreenHeight] = useState(0);
@@ -158,7 +160,7 @@ export default function ShortsScreen({ route }) {
                 source={{ uri: item.videoUrl }}
                 style={styles.videoPlayer}
                 resizeMode={isTablet ? ResizeMode.CONTAIN : ResizeMode.COVER}
-                shouldPlay={index === activeVideoIndex}
+                shouldPlay={isFocused && index === activeVideoIndex}
                 isLooping
                 useNativeControls={false}
               />

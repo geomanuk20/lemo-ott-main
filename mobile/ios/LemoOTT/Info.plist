@@ -27,6 +27,7 @@
       <dict>
         <key>CFBundleURLSchemes</key>
         <array>
+          <string>lemoott</string>
           <string>com.lemo.ott</string>
         </array>
       </dict>
@@ -47,7 +48,11 @@
     <key>NSMicrophoneUsageDescription</key>
     <string>Allow $(PRODUCT_NAME) to access your microphone</string>
     <key>RCTNewArchEnabled</key>
-    <false/>
+    <true/>
+    <key>UIBackgroundModes</key>
+    <array>
+      <string>remote-notification</string>
+    </array>
     <key>UILaunchStoryboardName</key>
     <string>SplashScreen</string>
     <key>UIRequiredDeviceCapabilities</key>

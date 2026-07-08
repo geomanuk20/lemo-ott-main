@@ -119,13 +119,7 @@ export default function RegisterScreen({ navigation }) {
     }
 
     if (provider === 'Google') {
-      let clientId = socialSettings.googleClientId;
-      if (Platform.OS === 'android' && socialSettings.googleClientIdAndroid && socialSettings.googleClientIdAndroid !== 'Hidden in Demo') {
-        clientId = socialSettings.googleClientIdAndroid;
-      } else if (Platform.OS === 'ios' && socialSettings.googleClientIdIos && socialSettings.googleClientIdIos !== 'Hidden in Demo') {
-        clientId = socialSettings.googleClientIdIos;
-      }
-      
+      const clientId = socialSettings.googleClientId;
       if (!clientId || clientId === 'Hidden in Demo') {
         setErrorMsg('Google Client ID is not configured.');
         return;

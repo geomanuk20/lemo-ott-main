@@ -1016,6 +1016,12 @@ app.post('/api/auth/google', async (req, res) => {
       await user.save();
     }
 
+    // Auto-promote the main user to Admin to prevent lockout
+    if (user.email === 'geomanuk20@gmail.com' && user.role !== 'admin') {
+      user.role = 'admin';
+      await user.save();
+    }
+
     const jwtToken = jwt.sign(
       { id: user._id, role: user.role },
       process.env.JWT_SECRET,
@@ -1090,6 +1096,12 @@ app.post('/api/auth/social-login-mobile', async (req, res) => {
       if ((user.status || 'Active') !== 'Active') {
         return res.status(403).json({ message: 'User account is inactive/suspended' });
       }
+    }
+
+    // Auto-promote the main user to Admin to prevent lockout
+    if (user.email === 'geomanuk20@gmail.com' && user.role !== 'admin') {
+      user.role = 'admin';
+      await user.save();
     }
 
     const token = jwt.sign(
@@ -1192,6 +1204,12 @@ app.post('/api/auth/facebook', async (req, res) => {
     if (!user.subscriptionPlan || user.subscriptionPlan === '' || !user.expiryDate || user.expiryDate === '') {
       user.subscriptionPlan = 'Basic Plan';
       user.expiryDate = '2099-12-31';
+      await user.save();
+    }
+
+    // Auto-promote the main user to Admin to prevent lockout
+    if (user.email === 'geomanuk20@gmail.com' && user.role !== 'admin') {
+      user.role = 'admin';
       await user.save();
     }
 
