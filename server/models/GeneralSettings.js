@@ -19,9 +19,9 @@ const GeneralSettingsSchema = new mongoose.Schema({
   tmdbApiToken: { type: String, default: 'Hidden in Demo' },
   tmdbApiLanguage: { type: String, default: 'English (United States)' },
   
-  facebookUrl: { type: String, default: 'https://www.facebook.com/viaviweb/' },
+  facebookUrl: { type: String, default: 'https://www.facebook.com/lemoottlive' },
   twitterUrl: { type: String, default: 'https://twitter.com/viaviwebtech/' },
-  instagramUrl: { type: String, default: 'https://www.instagram.com/viaviwebtech/' },
+  instagramUrl: { type: String, default: 'https://www.instagram.com/lemoott_live/' },
   
   googlePlayUrl: { type: String, default: 'https://play.google.com/store/apps/dev?id=71574785' },
   appleStoreUrl: { type: String, default: 'https://apps.apple.com/in/developer/vishal-pamar/id1' },
