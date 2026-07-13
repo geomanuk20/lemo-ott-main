@@ -49,20 +49,23 @@ export default function ShowsScreen({ navigation }) {
   const [shows, setShows] = useState([]);
   const [genres, setGenres] = useState([]);
   const [languages, setLanguages] = useState([]);
+  const [menuSettings, setMenuSettings] = useState(null);
   const [selectedGenre, setSelectedGenre] = useState('All');
   const [selectedLanguage, setSelectedLanguage] = useState('All');
 
   const fetchData = useCallback(async () => {
     try {
-      const [showsRes, genresRes, languagesRes] = await Promise.all([
+      const [showsRes, genresRes, languagesRes, menuRes] = await Promise.all([
         client.get('/shows'),
         client.get('/genres'),
-        client.get('/languages')
+        client.get('/languages'),
+        client.get('/menu-settings')
       ]);
 
       setShows(showsRes.data || []);
       setGenres(genresRes.data || []);
       setLanguages(languagesRes.data || []);
+      setMenuSettings(menuRes.data || null);
     } catch (error) {
       console.error('Error fetching shows screen data:', error);
     } finally {
@@ -85,17 +88,40 @@ export default function ShowsScreen({ navigation }) {
 
   // Filter logic
   const filteredShows = shows.filter(show => {
+    // 1. Filter by Menu Settings content types
+    if (menuSettings) {
+      const isWebSeries = (show.contentType || '').toLowerCase() === 'short web series' || (show.contentType || '').toLowerCase() === 'short-web-series';
+      const isTvShow = !isWebSeries;
+      
+      const tvShowsOff = menuSettings.shows?.toUpperCase() === 'OFF';
+      const webSeriesOff = menuSettings.webSeries?.toUpperCase() === 'OFF';
+
+      if (isTvShow && tvShowsOff) return false;
+      if (isWebSeries && webSeriesOff) return false;
+    }
+
+    // 2. Filter by Genre
     const matchesGenre = selectedGenre === 'All' || 
       (show.genres && show.genres.some(g => {
         const genreName = typeof g === 'object' ? g.name : g;
         return genreName === selectedGenre;
       }));
       
+    // 3. Filter by Language
     const matchesLanguage = selectedLanguage === 'All' || 
       (show.language && (typeof show.language === 'object' ? show.language.name : show.language) === selectedLanguage);
 
     return matchesGenre && matchesLanguage;
   });
+
+  const getHeaderTitle = () => {
+    if (!menuSettings) return 'Web Series';
+    const showsOn = menuSettings.shows?.toUpperCase() !== 'OFF';
+    const webSeriesOn = menuSettings.webSeries?.toUpperCase() !== 'OFF';
+    if (showsOn && webSeriesOn) return 'TV Shows & Web Series';
+    if (webSeriesOn) return 'Web Series';
+    return 'TV Shows';
+  };
 
   const renderShowItem = ({ item }) => {
     const imageUrl = formatImageUrl(item, 'poster');
@@ -146,7 +172,7 @@ export default function ShowsScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Web Series</Text>
+        <Text style={styles.headerTitle}>{getHeaderTitle()}</Text>
       </View>
 
       {/* Filter Options */}

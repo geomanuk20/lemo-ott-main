@@ -49,20 +49,23 @@ export default function MoviesScreen({ navigation }) {
   const [movies, setMovies] = useState([]);
   const [genres, setGenres] = useState([]);
   const [languages, setLanguages] = useState([]);
+  const [menuSettings, setMenuSettings] = useState(null);
   const [selectedGenre, setSelectedGenre] = useState('All');
   const [selectedLanguage, setSelectedLanguage] = useState('All');
 
   const fetchData = useCallback(async () => {
     try {
-      const [moviesRes, genresRes, languagesRes] = await Promise.all([
+      const [moviesRes, genresRes, languagesRes, menuRes] = await Promise.all([
         client.get('/movies'),
         client.get('/genres'),
-        client.get('/languages')
+        client.get('/languages'),
+        client.get('/menu-settings')
       ]);
 
       setMovies(moviesRes.data || []);
       setGenres(genresRes.data || []);
       setLanguages(languagesRes.data || []);
+      setMenuSettings(menuRes.data || null);
     } catch (error) {
       console.error('Error fetching movies screen data:', error);
     } finally {
@@ -85,6 +88,19 @@ export default function MoviesScreen({ navigation }) {
 
   // Filter logic
   const filteredMovies = movies.filter(movie => {
+    // 1. Filter by Menu Settings content types
+    if (menuSettings) {
+      const isShortFilm = (movie.contentType || '').toLowerCase() === 'short film' || (movie.contentType || '').toLowerCase() === 'short-film';
+      const isMovie = !isShortFilm;
+      
+      const moviesOff = menuSettings.movies?.toUpperCase() === 'OFF';
+      const shortFilmsOff = menuSettings.shortFilms?.toUpperCase() === 'OFF';
+
+      if (isMovie && moviesOff) return false;
+      if (isShortFilm && shortFilmsOff) return false;
+    }
+
+    // 2. Filter by Genre
     const matchesGenre = selectedGenre === 'All' || 
       (movie.genres && movie.genres.some(g => {
         // Handle both populate object or raw string/id
@@ -92,11 +108,21 @@ export default function MoviesScreen({ navigation }) {
         return genreName === selectedGenre;
       }));
       
+    // 3. Filter by Language
     const matchesLanguage = selectedLanguage === 'All' || 
       (movie.language && (typeof movie.language === 'object' ? movie.language.name : movie.language) === selectedLanguage);
 
     return matchesGenre && matchesLanguage;
   });
+
+  const getHeaderTitle = () => {
+    if (!menuSettings) return 'Short Films';
+    const moviesOn = menuSettings.movies?.toUpperCase() !== 'OFF';
+    const shortFilmsOn = menuSettings.shortFilms?.toUpperCase() !== 'OFF';
+    if (moviesOn && shortFilmsOn) return 'Movies & Short Films';
+    if (shortFilmsOn) return 'Short Films';
+    return 'Movies';
+  };
 
   const renderMovieItem = ({ item }) => {
     const imageUrl = formatImageUrl(item, 'poster');
@@ -147,7 +173,7 @@ export default function MoviesScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Short Films</Text>
+        <Text style={styles.headerTitle}>{getHeaderTitle()}</Text>
       </View>
 
       {/* Filter Options */}

@@ -361,6 +361,8 @@ const resolveVideoUrl = async (url, type, token) => {
   }
 };
 
+const DEFAULT_SUBTITLES = [];
+
 export default function PlayerScreen({ route, navigation }) {
   useKeepAwake();
   usePreventScreenCapture();
@@ -374,7 +376,7 @@ export default function PlayerScreen({ route, navigation }) {
     videoFile720,
     videoFile480,
     contentType = 'movie',
-    subtitles = [],
+    subtitles = DEFAULT_SUBTITLES,
     subtitlesActive = 'Inactive'
   } = route.params;
 
@@ -1090,7 +1092,10 @@ export default function PlayerScreen({ route, navigation }) {
 
   const handlePlaybackStatusUpdate = React.useCallback((s) => {
     setStatus(s);
-  }, []);
+    if (s && s.didJustFinish) {
+      navigation.goBack();
+    }
+  }, [navigation]);
 
   const handleRateSubmit = async () => {
     if (selectedRating < 1 || selectedRating > 5) {

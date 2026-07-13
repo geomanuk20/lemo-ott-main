@@ -4,17 +4,23 @@
     "slug": "lemo-ott-mobile",
     "version": "1.0.1",
     "scheme": "lemoott",
+    "icon": "./assets/icon.png",
     "orientation": "default",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#000000",
     "ios": {
       "supportsTablet": true,
       "backgroundColor": "#000000",
-      "bundleIdentifier": "com.lemo.ott"
+      "bundleIdentifier": "com.lemo.ott",
+      "icon": "./assets/icon.png"
     },
     "android": {
       "package": "com.lemo.ott",
-      "backgroundColor": "#000000"
+      "backgroundColor": "#000000",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      }
     },
     "extra": {
       "eas": {

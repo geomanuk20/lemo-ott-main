@@ -8,35 +8,35 @@
 
 /* Begin PBXBuildFile section */
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
+		26C459860D40B38919320279 /* libPods-LemoOTT.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 4031EBB2BA95311B44840727 /* libPods-LemoOTT.a */; };
+		2AAB57F91050442B08283895 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36A037BD5184491B77A820E1 /* ExpoModulesProvider.swift */; };
+		39954066D6424A5DB815A3D1 /* OneSignalNotificationServiceExtension.appex in Copy Files */ = {isa = PBXBuildFile; fileRef = 17DEFDC75D764440AB3284C9 /* OneSignalNotificationServiceExtension.appex */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
-		5D046AD33C90B49389684AAC /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 920D46C51BC58387EA2B7035 /* ExpoModulesProvider.swift */; };
-		8DE06915EE254E8C917B8EE5 /* OneSignalNotificationServiceExtension.appex in Copy Files */ = {isa = PBXBuildFile; fileRef = 3FA9BBF745C94FC2AED85B54 /* OneSignalNotificationServiceExtension.appex */; };
+		41FCF2B6D1880656E8789DD8 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 82D451D767A38E3BA8E5A7AC /* PrivacyInfo.xcprivacy */; };
+		697C4F52EA8DAC80D8591E89 /* libPods-OneSignalNotificationServiceExtension.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 38A501DE46B523D56E6BA58E /* libPods-OneSignalNotificationServiceExtension.a */; };
+		95257FF742C04C658D12BD96 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C5984E30BAC471E8DA4C9AE /* NotificationService.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
-		BDE2A3A92D5B83A4956C3284 /* libPods-OneSignalNotificationServiceExtension.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 6F95CB138DBD4F1E29716B4E /* libPods-OneSignalNotificationServiceExtension.a */; };
-		BF86F4526493D43B50DB2BCD /* libPods-LemoOTT.a in Frameworks */ = {isa = PBXBuildFile; fileRef = CFB715ABA3F09E6DD7E28917 /* libPods-LemoOTT.a */; };
-		E2F190BEEF717B2AD99FC628 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 45C50A301ED89C3D43188D42 /* PrivacyInfo.xcprivacy */; };
-		E58ED8AC5EB64421B50B67DC /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DF399E79BBB492FB461EB14 /* NotificationService.swift */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		EA87A68FCB934629BF039D21 /* PBXContainerItemProxy */ = {
+		E0FD7F03BDA44015A7E1721E /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 83CBB9F71A601CBA00E9B192 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = 68B82555D58642ADBAB16F77;
+			remoteGlobalIDString = F4A3857E9A984C9E863E5118;
 			remoteInfo = OneSignalNotificationServiceExtension;
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		D9BE7F61852447AE87EFC71A /* Copy Files */ = {
+		22D91452F88443D49D2C55F7 /* Copy Files */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				8DE06915EE254E8C917B8EE5 /* OneSignalNotificationServiceExtension.appex in Copy Files */,
+				39954066D6424A5DB815A3D1 /* OneSignalNotificationServiceExtension.appex in Copy Files */,
 			);
 			name = "Copy Files";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -47,39 +47,39 @@
 		13B07F961A680F5B00A75B9A /* LemoOTT.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LemoOTT.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = LemoOTT/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = LemoOTT/Info.plist; sourceTree = "<group>"; };
-		1A7F4242047FF6C3D19AB98C /* Pods-OneSignalNotificationServiceExtension.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-OneSignalNotificationServiceExtension.debug.xcconfig"; path = "Target Support Files/Pods-OneSignalNotificationServiceExtension/Pods-OneSignalNotificationServiceExtension.debug.xcconfig"; sourceTree = "<group>"; };
-		3FA9BBF745C94FC2AED85B54 /* OneSignalNotificationServiceExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = undefined; name = OneSignalNotificationServiceExtension.appex; path = OneSignalNotificationServiceExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		45C50A301ED89C3D43188D42 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = LemoOTT/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		4646A4E95F294109B320E88C /* OneSignalNotificationServiceExtension-Info.plist */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.xml; name = "OneSignalNotificationServiceExtension-Info.plist"; path = "OneSignalNotificationServiceExtension-Info.plist"; sourceTree = "<group>"; };
-		6DF399E79BBB492FB461EB14 /* NotificationService.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = NotificationService.swift; path = NotificationService.swift; sourceTree = "<group>"; };
-		6F95CB138DBD4F1E29716B4E /* libPods-OneSignalNotificationServiceExtension.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-OneSignalNotificationServiceExtension.a"; sourceTree = BUILT_PRODUCTS_DIR; };
-		920D46C51BC58387EA2B7035 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-LemoOTT/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
-		9537A7C827AC5FE6214541E3 /* Pods-LemoOTT.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-LemoOTT.debug.xcconfig"; path = "Target Support Files/Pods-LemoOTT/Pods-LemoOTT.debug.xcconfig"; sourceTree = "<group>"; };
-		980EBF7C913C33F04C782BED /* Pods-LemoOTT.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-LemoOTT.release.xcconfig"; path = "Target Support Files/Pods-LemoOTT/Pods-LemoOTT.release.xcconfig"; sourceTree = "<group>"; };
+		16F4FE1B52B11A096CADBB42 /* Pods-LemoOTT.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-LemoOTT.release.xcconfig"; path = "Target Support Files/Pods-LemoOTT/Pods-LemoOTT.release.xcconfig"; sourceTree = "<group>"; };
+		17DEFDC75D764440AB3284C9 /* OneSignalNotificationServiceExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = undefined; name = OneSignalNotificationServiceExtension.appex; path = OneSignalNotificationServiceExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		2C5984E30BAC471E8DA4C9AE /* NotificationService.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = NotificationService.swift; path = NotificationService.swift; sourceTree = "<group>"; };
+		36A037BD5184491B77A820E1 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-LemoOTT/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
+		38A501DE46B523D56E6BA58E /* libPods-OneSignalNotificationServiceExtension.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-OneSignalNotificationServiceExtension.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		4031EBB2BA95311B44840727 /* libPods-LemoOTT.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-LemoOTT.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		668A694C9E2A488FB7AB744D /* OneSignalNotificationServiceExtension.entitlements */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = OneSignalNotificationServiceExtension.entitlements; path = OneSignalNotificationServiceExtension.entitlements; sourceTree = "<group>"; };
+		7A1DFB5239A687274731F105 /* Pods-OneSignalNotificationServiceExtension.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-OneSignalNotificationServiceExtension.release.xcconfig"; path = "Target Support Files/Pods-OneSignalNotificationServiceExtension/Pods-OneSignalNotificationServiceExtension.release.xcconfig"; sourceTree = "<group>"; };
+		82D451D767A38E3BA8E5A7AC /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = LemoOTT/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		8949C4623AF54DD79695707A /* OneSignalNotificationServiceExtension-Info.plist */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.xml; name = "OneSignalNotificationServiceExtension-Info.plist"; path = "OneSignalNotificationServiceExtension-Info.plist"; sourceTree = "<group>"; };
+		9E2389ACCE3A1EF4B8C2822F /* Pods-LemoOTT.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-LemoOTT.debug.xcconfig"; path = "Target Support Files/Pods-LemoOTT/Pods-LemoOTT.debug.xcconfig"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = LemoOTT/SplashScreen.storyboard; sourceTree = "<group>"; };
-		AF637EAFFC87E07554FE9B7C /* Pods-OneSignalNotificationServiceExtension.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-OneSignalNotificationServiceExtension.release.xcconfig"; path = "Target Support Files/Pods-OneSignalNotificationServiceExtension/Pods-OneSignalNotificationServiceExtension.release.xcconfig"; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
-		CFB715ABA3F09E6DD7E28917 /* libPods-LemoOTT.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-LemoOTT.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		BEC7DC69933942B67D85121A /* Pods-OneSignalNotificationServiceExtension.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-OneSignalNotificationServiceExtension.debug.xcconfig"; path = "Target Support Files/Pods-OneSignalNotificationServiceExtension/Pods-OneSignalNotificationServiceExtension.debug.xcconfig"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
-		EEF6BA4C9AFC475788A4FB65 /* OneSignalNotificationServiceExtension.entitlements */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = OneSignalNotificationServiceExtension.entitlements; path = OneSignalNotificationServiceExtension.entitlements; sourceTree = "<group>"; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = LemoOTT/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* LemoOTT-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "LemoOTT-Bridging-Header.h"; path = "LemoOTT/LemoOTT-Bridging-Header.h"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		0ADD9596B3D542CC9D27977F /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				BDE2A3A92D5B83A4956C3284 /* libPods-OneSignalNotificationServiceExtension.a in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		13B07F8C1A680F5B00A75B9A /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				BF86F4526493D43B50DB2BCD /* libPods-LemoOTT.a in Frameworks */,
+				26C459860D40B38919320279 /* libPods-LemoOTT.a in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		18ACF482388242218DC4D6D3 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				697C4F52EA8DAC80D8591E89 /* libPods-OneSignalNotificationServiceExtension.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -95,31 +95,27 @@
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				45C50A301ED89C3D43188D42 /* PrivacyInfo.xcprivacy */,
+				82D451D767A38E3BA8E5A7AC /* PrivacyInfo.xcprivacy */,
 			);
 			name = LemoOTT;
-			sourceTree = "<group>";
-		};
-		197C20B1342A73A709510A17 /* Pods */ = {
-			isa = PBXGroup;
-			children = (
-				9537A7C827AC5FE6214541E3 /* Pods-LemoOTT.debug.xcconfig */,
-				980EBF7C913C33F04C782BED /* Pods-LemoOTT.release.xcconfig */,
-				1A7F4242047FF6C3D19AB98C /* Pods-OneSignalNotificationServiceExtension.debug.xcconfig */,
-				AF637EAFFC87E07554FE9B7C /* Pods-OneSignalNotificationServiceExtension.release.xcconfig */,
-			);
-			name = Pods;
-			path = Pods;
 			sourceTree = "<group>";
 		};
 		2D16E6871FA4F8E400B85C8A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				CFB715ABA3F09E6DD7E28917 /* libPods-LemoOTT.a */,
-				6F95CB138DBD4F1E29716B4E /* libPods-OneSignalNotificationServiceExtension.a */,
+				4031EBB2BA95311B44840727 /* libPods-LemoOTT.a */,
+				38A501DE46B523D56E6BA58E /* libPods-OneSignalNotificationServiceExtension.a */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		38A0E82FFD1391B8D12EEC06 /* ExpoModulesProviders */ = {
+			isa = PBXGroup;
+			children = (
+				C08F13B2E9DAF6D4EFC6B943 /* LemoOTT */,
+			);
+			name = ExpoModulesProviders;
 			sourceTree = "<group>";
 		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
@@ -129,17 +125,6 @@
 			name = Libraries;
 			sourceTree = "<group>";
 		};
-		837D5AAD00584E05824DF818 /* OneSignalNotificationServiceExtension */ = {
-			isa = PBXGroup;
-			children = (
-				EEF6BA4C9AFC475788A4FB65 /* OneSignalNotificationServiceExtension.entitlements */,
-				4646A4E95F294109B320E88C /* OneSignalNotificationServiceExtension-Info.plist */,
-				6DF399E79BBB492FB461EB14 /* NotificationService.swift */,
-			);
-			name = OneSignalNotificationServiceExtension;
-			path = OneSignalNotificationServiceExtension;
-			sourceTree = "<group>";
-		};
 		83CBB9F61A601CBA00E9B192 = {
 			isa = PBXGroup;
 			children = (
@@ -147,9 +132,9 @@
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				837D5AAD00584E05824DF818 /* OneSignalNotificationServiceExtension */,
-				197C20B1342A73A709510A17 /* Pods */,
-				B0540CFA034318B4B31EE2AC /* ExpoModulesProviders */,
+				E89F6A9AA94243D6A27403D7 /* OneSignalNotificationServiceExtension */,
+				F406A8128FADF2F75EF21B04 /* Pods */,
+				38A0E82FFD1391B8D12EEC06 /* ExpoModulesProviders */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -160,17 +145,9 @@
 			isa = PBXGroup;
 			children = (
 				13B07F961A680F5B00A75B9A /* LemoOTT.app */,
-				3FA9BBF745C94FC2AED85B54 /* OneSignalNotificationServiceExtension.appex */,
+				17DEFDC75D764440AB3284C9 /* OneSignalNotificationServiceExtension.appex */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		B0540CFA034318B4B31EE2AC /* ExpoModulesProviders */ = {
-			isa = PBXGroup;
-			children = (
-				F9FE06F0AAF3E87F694296D0 /* LemoOTT */,
-			);
-			name = ExpoModulesProviders;
 			sourceTree = "<group>";
 		};
 		BB2F792B24A3F905000567C9 /* Supporting */ = {
@@ -182,12 +159,35 @@
 			path = LemoOTT/Supporting;
 			sourceTree = "<group>";
 		};
-		F9FE06F0AAF3E87F694296D0 /* LemoOTT */ = {
+		C08F13B2E9DAF6D4EFC6B943 /* LemoOTT */ = {
 			isa = PBXGroup;
 			children = (
-				920D46C51BC58387EA2B7035 /* ExpoModulesProvider.swift */,
+				36A037BD5184491B77A820E1 /* ExpoModulesProvider.swift */,
 			);
 			name = LemoOTT;
+			sourceTree = "<group>";
+		};
+		E89F6A9AA94243D6A27403D7 /* OneSignalNotificationServiceExtension */ = {
+			isa = PBXGroup;
+			children = (
+				668A694C9E2A488FB7AB744D /* OneSignalNotificationServiceExtension.entitlements */,
+				8949C4623AF54DD79695707A /* OneSignalNotificationServiceExtension-Info.plist */,
+				2C5984E30BAC471E8DA4C9AE /* NotificationService.swift */,
+			);
+			name = OneSignalNotificationServiceExtension;
+			path = OneSignalNotificationServiceExtension;
+			sourceTree = "<group>";
+		};
+		F406A8128FADF2F75EF21B04 /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				9E2389ACCE3A1EF4B8C2822F /* Pods-LemoOTT.debug.xcconfig */,
+				16F4FE1B52B11A096CADBB42 /* Pods-LemoOTT.release.xcconfig */,
+				BEC7DC69933942B67D85121A /* Pods-OneSignalNotificationServiceExtension.debug.xcconfig */,
+				7A1DFB5239A687274731F105 /* Pods-OneSignalNotificationServiceExtension.release.xcconfig */,
+			);
+			name = Pods;
+			path = Pods;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -198,33 +198,33 @@
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "LemoOTT" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				487DEA166D22F3B2BE030DE5 /* [Expo] Configure project */,
+				62F8DBE1BBBCB26C5A90CB34 /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				D9BE7F61852447AE87EFC71A /* Copy Files */,
-				DABD239302393F5B7A9630AC /* [CP] Embed Pods Frameworks */,
+				22D91452F88443D49D2C55F7 /* Copy Files */,
+				75BE1E082807F6C23C556E7D /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				177D717446ED47CD83CC875B /* PBXTargetDependency */,
+				8610342FD66A45078DB66A20 /* PBXTargetDependency */,
 			);
 			name = LemoOTT;
 			productName = LemoOTT;
 			productReference = 13B07F961A680F5B00A75B9A /* LemoOTT.app */;
 			productType = "com.apple.product-type.application";
 		};
-		68B82555D58642ADBAB16F77 /* OneSignalNotificationServiceExtension */ = {
+		F4A3857E9A984C9E863E5118 /* OneSignalNotificationServiceExtension */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = B8ED88E9689E43FEA83B2171 /* Build configuration list for PBXNativeTarget "OneSignalNotificationServiceExtension" */;
+			buildConfigurationList = 301BC8260ED04D8CAD65506C /* Build configuration list for PBXNativeTarget "OneSignalNotificationServiceExtension" */;
 			buildPhases = (
-				35E86951805798DDA8C7E837 /* [CP] Check Pods Manifest.lock */,
-				4E1D8F16B469412D8A23D6EF /* Sources */,
-				46D526300D0F474EB0F9D074 /* Resources */,
-				0ADD9596B3D542CC9D27977F /* Frameworks */,
+				401A008DD6ED8E7E8A14CF88 /* [CP] Check Pods Manifest.lock */,
+				0D62C547F09947CA995BE27B /* Sources */,
+				1D73296B18264E2CA0EE8F3F /* Resources */,
+				18ACF482388242218DC4D6D3 /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -232,7 +232,7 @@
 			);
 			name = OneSignalNotificationServiceExtension;
 			productName = OneSignalNotificationServiceExtension;
-			productReference = 3FA9BBF745C94FC2AED85B54 /* OneSignalNotificationServiceExtension.appex */;
+			productReference = 17DEFDC75D764440AB3284C9 /* OneSignalNotificationServiceExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
@@ -247,7 +247,7 @@
 						DevelopmentTeam = undefined;
 						LastSwiftMigration = 1250;
 					};
-					68B82555D58642ADBAB16F77 = {
+					F4A3857E9A984C9E863E5118 = {
 						DevelopmentTeam = undefined;
 					};
 				};
@@ -266,7 +266,7 @@
 			projectRoot = "";
 			targets = (
 				13B07F861A680F5B00A75B9A /* LemoOTT */,
-				68B82555D58642ADBAB16F77 /* OneSignalNotificationServiceExtension */,
+				F4A3857E9A984C9E863E5118 /* OneSignalNotificationServiceExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -279,11 +279,11 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				E2F190BEEF717B2AD99FC628 /* PrivacyInfo.xcprivacy in Resources */,
+				41FCF2B6D1880656E8789DD8 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		46D526300D0F474EB0F9D074 /* Resources */ = {
+		1D73296B18264E2CA0EE8F3F /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -332,7 +332,7 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		35E86951805798DDA8C7E837 /* [CP] Check Pods Manifest.lock */ = {
+		401A008DD6ED8E7E8A14CF88 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -354,7 +354,7 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		487DEA166D22F3B2BE030DE5 /* [Expo] Configure project */ = {
+		62F8DBE1BBBCB26C5A90CB34 /* [Expo] Configure project */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
@@ -378,37 +378,7 @@
 			shellPath = /bin/sh;
 			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-LemoOTT/expo-configure-project.sh\"\n";
 		};
-		800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-LemoOTT/Pods-LemoOTT-resources.sh",
-				"${PODS_CONFIGURATION_BUILD_DIR}/EXConstants/EXConstants.bundle",
-				"${PODS_CONFIGURATION_BUILD_DIR}/EXConstants/ExpoConstants_privacy.bundle",
-				"${PODS_CONFIGURATION_BUILD_DIR}/ExpoFileSystem/ExpoFileSystem_privacy.bundle",
-				"${PODS_CONFIGURATION_BUILD_DIR}/RNCAsyncStorage/RNCAsyncStorage_resources.bundle",
-				"${PODS_CONFIGURATION_BUILD_DIR}/RNSVG/RNSVGFilters.bundle",
-				"${PODS_CONFIGURATION_BUILD_DIR}/React-Core/React-Core_privacy.bundle",
-				"${PODS_CONFIGURATION_BUILD_DIR}/React-cxxreact/React-cxxreact_privacy.bundle",
-			);
-			name = "[CP] Copy Pods Resources";
-			outputPaths = (
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/EXConstants.bundle",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ExpoConstants_privacy.bundle",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ExpoFileSystem_privacy.bundle",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/RNCAsyncStorage_resources.bundle",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/RNSVGFilters.bundle",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/React-Core_privacy.bundle",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/React-cxxreact_privacy.bundle",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-LemoOTT/Pods-LemoOTT-resources.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-		DABD239302393F5B7A9630AC /* [CP] Embed Pods Frameworks */ = {
+		75BE1E082807F6C23C556E7D /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -450,40 +420,70 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-LemoOTT/Pods-LemoOTT-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
+		800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-LemoOTT/Pods-LemoOTT-resources.sh",
+				"${PODS_CONFIGURATION_BUILD_DIR}/EXConstants/EXConstants.bundle",
+				"${PODS_CONFIGURATION_BUILD_DIR}/EXConstants/ExpoConstants_privacy.bundle",
+				"${PODS_CONFIGURATION_BUILD_DIR}/ExpoFileSystem/ExpoFileSystem_privacy.bundle",
+				"${PODS_CONFIGURATION_BUILD_DIR}/RNCAsyncStorage/RNCAsyncStorage_resources.bundle",
+				"${PODS_CONFIGURATION_BUILD_DIR}/RNSVG/RNSVGFilters.bundle",
+				"${PODS_CONFIGURATION_BUILD_DIR}/React-Core/React-Core_privacy.bundle",
+				"${PODS_CONFIGURATION_BUILD_DIR}/React-cxxreact/React-cxxreact_privacy.bundle",
+			);
+			name = "[CP] Copy Pods Resources";
+			outputPaths = (
+				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/EXConstants.bundle",
+				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ExpoConstants_privacy.bundle",
+				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ExpoFileSystem_privacy.bundle",
+				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/RNCAsyncStorage_resources.bundle",
+				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/RNSVGFilters.bundle",
+				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/React-Core_privacy.bundle",
+				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/React-cxxreact_privacy.bundle",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-LemoOTT/Pods-LemoOTT-resources.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		0D62C547F09947CA995BE27B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				95257FF742C04C658D12BD96 /* NotificationService.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		13B07F871A680F5B00A75B9A /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
-				5D046AD33C90B49389684AAC /* ExpoModulesProvider.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		4E1D8F16B469412D8A23D6EF /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				E58ED8AC5EB64421B50B67DC /* NotificationService.swift in Sources */,
+				2AAB57F91050442B08283895 /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		177D717446ED47CD83CC875B /* PBXTargetDependency */ = {
+		8610342FD66A45078DB66A20 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 68B82555D58642ADBAB16F77 /* OneSignalNotificationServiceExtension */;
-			targetProxy = EA87A68FCB934629BF039D21 /* PBXContainerItemProxy */;
+			target = F4A3857E9A984C9E863E5118 /* OneSignalNotificationServiceExtension */;
+			targetProxy = E0FD7F03BDA44015A7E1721E /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 9537A7C827AC5FE6214541E3 /* Pods-LemoOTT.debug.xcconfig */;
+			baseConfigurationReference = 9E2389ACCE3A1EF4B8C2822F /* Pods-LemoOTT.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
@@ -519,7 +519,7 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 980EBF7C913C33F04C782BED /* Pods-LemoOTT.release.xcconfig */;
+			baseConfigurationReference = 16F4FE1B52B11A096CADBB42 /* Pods-LemoOTT.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
@@ -665,9 +665,9 @@
 			};
 			name = Release;
 		};
-		86C3AB16B3DD49E08FF5DAB5 /* Debug */ = {
+		B337D88E17D34E7C8E4641BD /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 1A7F4242047FF6C3D19AB98C /* Pods-OneSignalNotificationServiceExtension.debug.xcconfig */;
+			baseConfigurationReference = BEC7DC69933942B67D85121A /* Pods-OneSignalNotificationServiceExtension.debug.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = OneSignalNotificationServiceExtension/OneSignalNotificationServiceExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
@@ -692,9 +692,9 @@
 			};
 			name = Debug;
 		};
-		BBDB3FF9971C40AF99C4BC7F /* Release */ = {
+		F980BF7C0A5D4EC9903249BD /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = AF637EAFFC87E07554FE9B7C /* Pods-OneSignalNotificationServiceExtension.release.xcconfig */;
+			baseConfigurationReference = 7A1DFB5239A687274731F105 /* Pods-OneSignalNotificationServiceExtension.release.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = OneSignalNotificationServiceExtension/OneSignalNotificationServiceExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
@@ -727,20 +727,20 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		301BC8260ED04D8CAD65506C /* Build configuration list for PBXNativeTarget "OneSignalNotificationServiceExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B337D88E17D34E7C8E4641BD /* Debug */,
+				F980BF7C0A5D4EC9903249BD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "LemoOTT" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				83CBBA201A601CBA00E9B192 /* Debug */,
 				83CBBA211A601CBA00E9B192 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		B8ED88E9689E43FEA83B2171 /* Build configuration list for PBXNativeTarget "OneSignalNotificationServiceExtension" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				86C3AB16B3DD49E08FF5DAB5 /* Debug */,
-				BBDB3FF9971C40AF99C4BC7F /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

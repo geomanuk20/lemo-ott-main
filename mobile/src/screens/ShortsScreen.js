@@ -82,6 +82,11 @@ export default function ShortsScreen({ route }) {
 
   // Increment views count on active short
   useEffect(() => {
+    // If we have an initial short to scroll to, and we haven't scrolled yet, don't increment view for index 0
+    if (initialShortId && !initialScrollHandledRef.current) {
+      return;
+    }
+
     if (shorts.length > 0 && shorts[activeVideoIndex]) {
       const activeShort = shorts[activeVideoIndex];
       const shortId = activeShort._id;
@@ -89,16 +94,23 @@ export default function ShortsScreen({ route }) {
       if (!viewedShortsRef.current.has(shortId)) {
         viewedShortsRef.current.add(shortId);
         
+        console.log('[ShortsScreen] Sending view increment for Short ID:', shortId, 'Current views in state:', activeShort.views);
         client.post(`/shorts/${shortId}/view`)
-          .then(() => {
+          .then((res) => {
+            const updatedViews = res.data && typeof res.data.views === 'number' ? res.data.views : (activeShort.views || 0) + 1;
+            console.log('[ShortsScreen] View increment succeeded. Server returned views:', updatedViews);
             setShorts(prevShorts => 
-              prevShorts.map(s => s._id === shortId ? { ...s, views: (s.views || 0) + 1 } : s)
+              prevShorts.map(s => s._id === shortId ? { ...s, views: updatedViews } : s)
             );
           })
-          .catch(err => console.error('Error incrementing view:', err));
+          .catch(err => {
+            console.error('[ShortsScreen] Error incrementing view:', err.message || err);
+            // Rollback viewed status on failure so it can retry
+            viewedShortsRef.current.delete(shortId);
+          });
       }
     }
-  }, [activeVideoIndex, shorts]);
+  }, [activeVideoIndex, shorts, initialShortId]);
 
   const handleLike = async (item) => {
     try {
@@ -148,6 +160,7 @@ export default function ShortsScreen({ route }) {
         <FlatList
           ref={listRef}
           data={shorts}
+          extraData={shorts}
           keyExtractor={(item) => item._id}
           pagingEnabled
           showsVerticalScrollIndicator={false}

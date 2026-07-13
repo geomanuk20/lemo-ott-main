@@ -157,6 +157,7 @@ const FrontendLogin = () => {
      const client = window.google.accounts.oauth2.initTokenClient({
       client_id: settings.googleClientId,
       scope: 'email profile openid',
+      prompt: 'select_account',
       callback: async (tokenResponse) => {
        if (tokenResponse.error) {
         setError('Google authorization cancelled or failed.');
