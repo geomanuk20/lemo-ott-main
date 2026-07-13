@@ -1224,12 +1224,6 @@ const FrontendDetails = () => {
       return (
        <div className="fe-cinema-overlay-v">
         <div className="fe-cinema-container-v">
-         <div className="fe-cinema-header-v">
-          <button className="fe-cinema-close-v" onClick={() => setActiveVideoUrl(null)}>
-           <X size={20} /> CLOSE PLAYER
-          </button>
-         </div>
-         
          <div className="fe-cinema-content-v">
           {/* Left: Video Player */}
           <div className="fe-cinema-main-v">
