@@ -1757,8 +1757,8 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
   const getWatermarkText = () => {
     try {
       const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
-      const identifier = storedUser.email || storedUser.username || '';
-      if (identifier && identifier !== 'admin@video.com' && !identifier.endsWith('@video.com') && identifier.toLowerCase() !== 'admin') {
+      const identifier = storedUser.username || '';
+      if (identifier && identifier.toLowerCase() !== 'admin' && !identifier.includes('@')) {
         return `Lemo OTT Secure Stream • ${identifier}`;
       }
     } catch (e) {}
