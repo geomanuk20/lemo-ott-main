@@ -97,13 +97,15 @@ const FrontendLiveTV = () => {
  return (
   <FrontendLayout isTransparent={true}>
    {/* Hero Section */}
-   <section className="fe-movies-hero">
-    <div className="hero-overlay"></div>
-    <div className="hero-content">
-     <h1>Live TV<span style={{ color: '#b3d332' }}>.</span></h1>
-     <p>Watch live channels and broadcast events here to watch fixed</p>
-    </div>
-   </section>
+   <div className="fe-hero-wrapper-v">
+    <section className="fe-movies-hero">
+     <div className="hero-overlay"></div>
+     <div className="hero-content">
+      <h1>Live TV<span style={{ color: '#b3d332' }}>.</span></h1>
+      <p>Watch live channels and broadcast events here to watch fixed</p>
+     </div>
+    </section>
+   </div>
 
    {/* Content Section */}
    <section className="fe-movies-content">
@@ -194,13 +196,14 @@ const FrontendLiveTV = () => {
    </section>
 
    <style dangerouslySetInnerHTML={{ __html: `
-    .fe-movies-hero { position: fixed; top: 0; left: 0; width: 100%; height: 45vh; min-height: 350px; background: url('https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=1920&q=80') center/cover; background-attachment: fixed; display: flex; align-items: center; padding: 0 10%; color: #fff; z-index: 1; overflow: hidden; cursor: pointer; }
+    .fe-hero-wrapper-v { position: relative; height: 45vh; min-height: 350px; width: 100%; overflow: hidden; z-index: 1; }
+    .fe-movies-hero { position: absolute; top: 0; left: 0; width: 100%; height: 100%; min-height: 350px; background: url('https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=1920&q=80') center/cover; background-attachment: scroll; display: flex; align-items: center; padding: 0 10%; color: #fff; z-index: 1; overflow: hidden; cursor: pointer; }
     .hero-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to right, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 60%, transparent 100%), linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 20%); z-index: 5; }
     .hero-content { position: relative; z-index: 10; max-width: 800px; }
     .hero-content h1 { font-size: 5rem; font-weight: 800; margin: 0 0 15px 0; line-height: 1; letter-spacing: -2px; }
     .hero-content p { font-size: 1.4rem; font-weight: 400; opacity: 0.9; color: rgba(255,255,255,0.8); line-height: 1.4; max-width: 600px; }
     
-    .fe-movies-content { position: relative; z-index: 10; padding: 60px 10%; background: #050505; margin-top: 45vh; min-height: 60vh; box-shadow: 0 -20px 60px rgba(0,0,0,0.5); border-top: 1px solid rgba(255,255,255,0.05); }
+    .fe-movies-content { position: relative; z-index: 10; padding: 60px 10%; background: #050505; margin-top: 0; flex: 1; min-height: auto; box-shadow: 0 -20px 60px rgba(0,0,0,0.5); border-top: 1px solid rgba(255,255,255,0.05); }
     .movies-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 40px; }
     .channels-grid-container { width: 100%; }
     .fe-movie-card-new { display: flex; flex-direction: column; transition: 0.3s; text-decoration: none; }

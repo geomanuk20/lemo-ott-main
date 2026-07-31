@@ -166,7 +166,7 @@ const FrontendViewAll = () => {
           )}
           <div className="card-overlay-v">
            {item.upcoming === 'Yes' ? (
-             <div style={{ color: '#b3d332', fontWeight: 900, fontSize: '0.85rem', letterSpacing: '1px' }}>COMING SOON</div>
+              <div style={{ color: '#b3d332', fontWeight: 800, fontSize: '0.65rem', letterSpacing: '0.5px' }}>COMING SOON</div>
            ) : (
              <div className="play-icon-v"><Play size={24} fill="white" /></div>
            )}

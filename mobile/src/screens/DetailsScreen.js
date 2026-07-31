@@ -1583,9 +1583,9 @@ const styles = StyleSheet.create({
   },
   mobileUpcomingBadgeOverlayText: {
     color: '#000',
-    fontWeight: '900',
-    fontSize: 12,
-    letterSpacing: 1.5,
+    fontWeight: '800',
+    fontSize: 10,
+    letterSpacing: 1,
   },
   upcomingEpisodesWrapper: {
     padding: 30,

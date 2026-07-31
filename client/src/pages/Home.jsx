@@ -436,8 +436,9 @@ const Home = () => {
 
  return (
   <FrontendLayout isTransparent={true} showFooter={false}>
-   {/* Hero Section */}
-   <section className="fe-hero-v">
+   {/* Hero Section Wrapper with Clip Path */}
+   <div className="fe-hero-wrapper-v">
+    <section className="fe-hero-v">
     {Array.isArray(sliders) && sliders.length > 0 ? (
      sliders.map((slide, i) => (
       <div key={slide._id} className={`fe-hero-slide-v ${i === currentSlide ? 'active' : ''}`}>
@@ -543,7 +544,8 @@ const Home = () => {
       </div>
      ))}
     </div>
-   </section>
+    </section>
+   </div>
 
    {/* Main Content Area */}
    <div className="fe-content-v">
@@ -586,7 +588,7 @@ const Home = () => {
                       <div className="fe-card-hover-v">
                         <div className="fe-hover-content-v">
                           {m.upcoming === 'Yes' ? (
-                            <div style={{ color: '#b3d332', fontWeight: 900, fontSize: '0.9rem', letterSpacing: '1px', marginBottom: '15px' }}>COMING SOON</div>
+                            <div style={{ color: '#b3d332', fontWeight: 800, fontSize: '0.65rem', letterSpacing: '0.5px', marginBottom: '15px' }}>COMING SOON</div>
                           ) : (
                             <div className="fe-play-btn-v"><Play size={20} fill="white" /></div>
                           )}
@@ -662,7 +664,7 @@ const Home = () => {
                         )}
                         <div className="online-card-overlay-v">
                           {show.upcoming === 'Yes' ? (
-                            <div style={{ color: '#b3d332', fontWeight: 900, fontSize: '0.9rem', letterSpacing: '1px', alignSelf: 'center', marginTop: '45%' }}>COMING SOON</div>
+                            <div style={{ color: '#b3d332', fontWeight: 800, fontSize: '0.65rem', letterSpacing: '0.5px', alignSelf: 'center', marginTop: '45%' }}>COMING SOON</div>
                           ) : (
                             <>
                               {(() => {
@@ -839,7 +841,7 @@ const Home = () => {
                       <div className="fe-card-hover-v">
                         <div className="fe-hover-content-v">
                           {m.upcoming === 'Yes' ? (
-                            <div style={{ color: '#b3d332', fontWeight: 900, fontSize: '0.9rem', letterSpacing: '1px', marginBottom: '15px' }}>COMING SOON</div>
+                            <div style={{ color: '#b3d332', fontWeight: 800, fontSize: '0.65rem', letterSpacing: '0.5px', marginBottom: '15px' }}>COMING SOON</div>
                           ) : (
                             <div className="fe-play-btn-v"><Play size={20} fill="white" /></div>
                           )}
@@ -986,7 +988,7 @@ const Home = () => {
                       <div className="fe-card-hover-v">
                         <div className="fe-hover-content-v">
                           {m.upcoming === 'Yes' ? (
-                            <div style={{ color: '#b3d332', fontWeight: 900, fontSize: '0.9rem', letterSpacing: '1px', marginBottom: '15px' }}>COMING SOON</div>
+                            <div style={{ color: '#b3d332', fontWeight: 800, fontSize: '0.65rem', letterSpacing: '0.5px', marginBottom: '15px' }}>COMING SOON</div>
                           ) : (
                             <div className="fe-play-btn-v"><Play size={20} fill="white" /></div>
                           )}
@@ -1062,7 +1064,7 @@ const Home = () => {
                         )}
                         <div className="online-card-overlay-v">
                           {show.upcoming === 'Yes' ? (
-                            <div style={{ color: '#b3d332', fontWeight: 900, fontSize: '0.9rem', letterSpacing: '1px', alignSelf: 'center', marginTop: '45%' }}>COMING SOON</div>
+                            <div style={{ color: '#b3d332', fontWeight: 800, fontSize: '0.65rem', letterSpacing: '0.5px', alignSelf: 'center', marginTop: '45%' }}>COMING SOON</div>
                           ) : (
                             <>
                               {(() => {
@@ -1397,7 +1399,8 @@ const Home = () => {
     .fe-profile-v { width: 32px; height: 32px; border: 2px solid rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; }
 
     /* Hero */
-    .fe-hero-v { position: fixed; top: 0; left: 0; height: 100vh; height: 100dvh; width: 100%; overflow: hidden; z-index: 1; cursor: pointer; user-select: none; }
+    .fe-hero-wrapper-v { position: relative; height: 100vh; height: 100dvh; width: 100%; overflow: hidden; z-index: 1; }
+    .fe-hero-v { position: absolute; top: 0; left: 0; height: 100%; width: 100%; overflow: hidden; z-index: 1; cursor: pointer; user-select: none; }
     .fe-hero-slide-v { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; visibility: hidden; transition: 1.5s ease-in-out; display: flex; align-items: center; padding: 0 80px 0 140px; z-index: 1; }
     .fe-hero-slide-v.active { opacity: 1; visibility: visible; z-index: 2; }
     .fe-hero-bg-v { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
@@ -1436,7 +1439,7 @@ const Home = () => {
     .row-badge-v { background: #b3d332; color: #000; font-size: 0.65rem; font-weight: 900; padding: 4px 10px; border-radius: 4px; letter-spacing: 1px; text-transform: uppercase; }
     .row-badge-v.premium-v { background: linear-gradient(135deg, #ffca28 0%, #ff8f00 100%); }
     .empty-section-v { background: rgba(255,255,255,0.02); border: 1px dashed rgba(255,255,255,0.1); border-radius: 12px; padding: 40px; text-align: center; color: #666; font-size: 0.9rem; font-style: italic; }
-    .fe-content-v { background: #000; position: relative; z-index: 10; margin-top: 100vh; margin-top: 100dvh; padding: 40px 0; }
+    .fe-content-v { background: #050505; position: relative; z-index: 10; margin-top: 0; padding: 40px 0 0 0; min-height: auto; flex: 1; display: flex; flex-direction: column; }
 
     /* Experience Section */
     .fe-experience-section-v { padding: 80px 5%; background: #000; color: #fff; }
@@ -1581,8 +1584,8 @@ const Home = () => {
      .desktop-only { display: none !important; }
      .fe-mobile-toggle-v { display: block; }
      .fe-nav-center-v { display: none; }
-     .fe-hero-v, .fe-hero-slide-v, .fe-hero-bg-v, .fe-hero-bg-v img, .fe-hero-video-v { height: 70vh; height: 70dvh; }
-     .fe-content-v { margin-top: 70vh; margin-top: 70dvh; padding: 40px 20px; }
+     .fe-hero-wrapper-v, .fe-hero-v, .fe-hero-slide-v, .fe-hero-bg-v, .fe-hero-bg-v img, .fe-hero-video-v { height: 70vh; height: 70dvh; }
+     .fe-content-v { margin-top: 0; padding: 40px 20px; }
      .fe-hero-slide-v { padding: 0 40px; }
      .fe-hero-content-v { padding: 0; max-width: 90%; }
      .fe-hero-title-v { font-size: 2.4rem; margin-bottom: 15px; }
@@ -1593,7 +1596,7 @@ const Home = () => {
      .fe-movie-card-v { width: 180px; height: 270px; }
     }
     @media (max-width: 768px) {
-     .fe-hero-v { 
+     .fe-hero-wrapper-v, .fe-hero-v { 
       height: 42vh !important; 
       height: 42dvh !important; 
       min-height: 42dvh !important; 
@@ -1603,7 +1606,7 @@ const Home = () => {
       width: 100% !important; 
       min-height: 100% !important;
      }
-     .fe-content-v { margin-top: 42vh !important; margin-top: 42dvh !important; }
+     .fe-content-v { margin-top: 0 !important; }
      .fe-hero-slide-v { padding: 0 15px 15px 15px !important; align-items: flex-end !important; }
      .fe-hero-content-v { max-width: 90% !important; }
      .fe-hero-slide-v.active .fe-hero-content-v { transform: translateY(15px) !important; opacity: 1 !important; }

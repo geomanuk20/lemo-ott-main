@@ -161,11 +161,15 @@ export const uploadToCloudinary = (file) => {
           reject(new Error('Invalid response payload from server'));
         }
       } else {
-        try {
-          const errData = JSON.parse(xhr.responseText);
-          reject(new Error(errData.message || 'Upload request failed'));
-        } catch (e) {
-          reject(new Error(`Upload failed with status code: ${xhr.status}`));
+        if (xhr.status === 413) {
+          reject(new Error('File size exceeds maximum allowed upload limit (10GB). Please upload a smaller video file.'));
+        } else {
+          try {
+            const errData = JSON.parse(xhr.responseText);
+            reject(new Error(errData.message || 'Upload request failed'));
+          } catch (e) {
+            reject(new Error(`Upload failed with status code: ${xhr.status}`));
+          }
         }
       }
     };

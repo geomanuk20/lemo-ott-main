@@ -425,16 +425,52 @@ const diskStorage = multer.diskStorage({
     cb(null, `${Date.now()}_${sanitizedBase}${ext}`);
   }
 });
-const localUpload = multer({ storage: diskStorage });
+const localUpload = multer({ 
+  storage: diskStorage,
+  limits: { fileSize: 10 * 1024 * 1024 * 1024 } // 10GB file size limit for video uploads
+});
+
+// Redis Cache & Rate Limiting Middleware
+const { cacheMiddleware, createRateLimiter, invalidateCache } = require('./middleware/cacheMiddleware');
+const { isRedisAvailable } = require('./redisClient');
+const { QUEUE_NAMES, addJob } = require('./queues/queueSystem');
+const apiRateLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 300, message: 'Too many requests, please try again later.' });
+
+// Health Check Endpoint (For Load Balancers & Target Groups)
+app.get(['/health', '/healthz'], (req, res) => {
+  const isDbConnected = mongoose.connection.readyState === 1;
+  const memoryUsage = process.memoryUsage();
+  
+  res.status(isDbConnected ? 200 : 503).json({
+    status: isDbConnected ? 'ok' : 'degraded',
+    timestamp: new Date().toISOString(),
+    uptimeSeconds: Math.floor(process.uptime()),
+    pid: process.pid,
+    nodeVersion: process.version,
+    mongodb: {
+      status: isDbConnected ? 'connected' : 'disconnected',
+      readyState: mongoose.connection.readyState,
+    },
+    redis: {
+      available: isRedisAvailable(),
+    },
+    memory: {
+      heapUsedMB: Math.round(memoryUsage.heapUsed / 1024 / 1024),
+      heapTotalMB: Math.round(memoryUsage.heapTotal / 1024 / 1024),
+      rssMB: Math.round(memoryUsage.rss / 1024 / 1024),
+    },
+  });
+});
 
 // Middleware
 app.use(cors());
+app.use('/api/', apiRateLimiter);
 app.use((req, res, next) => {
   res.setHeader('Referrer-Policy', 'origin');
   next();
 });
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(express.json({ limit: '10gb' }));
+app.use(express.urlencoded({ limit: '10gb', extended: true }));
 app.use('/uploads', express.static('uploads'));
 app.use('/upload', express.static('uploads')); // Alias for legacy support
 
@@ -2077,7 +2113,7 @@ app.get('/api/videos/:folder/:file', async (req, res) => {
 });
 
 // Movie Routes
-app.get('/api/movies', async (req, res) => {
+app.get('/api/movies', cacheMiddleware('movies', 300), async (req, res) => {
   try {
     const isAdmin = await isAdminRequest(req);
     const query = {};
@@ -2106,7 +2142,7 @@ app.get('/api/movies', async (req, res) => {
   }
 });
 
-app.get('/api/movies/:id', async (req, res) => {
+app.get('/api/movies/:id', cacheMiddleware('movies', 600), async (req, res) => {
   try {
     const movie = await Movie.findById(req.params.id)
       .populate('actors')
@@ -2137,6 +2173,7 @@ app.post('/api/movies', async (req, res) => {
   try {
     const movie = new Movie(req.body);
     await movie.save();
+    await invalidateCache('movies:*');
     res.status(201).json(movie);
   } catch (err) {
     res.status(400).json({ message: err.message });
@@ -2146,6 +2183,7 @@ app.post('/api/movies', async (req, res) => {
 app.put('/api/movies/:id', async (req, res) => {
   try {
     const movie = await Movie.findByIdAndUpdate(req.params.id, req.body, { returnDocument: 'after' });
+    await invalidateCache('movies:*');
     res.json(movie);
   } catch (err) {
     res.status(400).json({ message: err.message });
@@ -2155,6 +2193,7 @@ app.put('/api/movies/:id', async (req, res) => {
 app.delete('/api/movies/:id', async (req, res) => {
   try {
     await Movie.findByIdAndDelete(req.params.id);
+    await invalidateCache('movies:*');
     res.json({ message: 'Movie deleted' });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -2430,6 +2469,8 @@ const connectDB = async () => {
       connectTimeoutMS: 60000, // 1 minute
       family: 4, 
       maxPoolSize: 50,
+      minPoolSize: 10,
+      readPreference: 'primaryPreferred',
       retryWrites: true,
       retryReads: true,
       heartbeatFrequencyMS: 10000
@@ -2713,13 +2754,14 @@ app.post('/api/pages', async (req, res) => {
       status: status || 'Active'
     });
     await newPage.save();
+    await invalidateCache('pages:*');
     res.status(201).json(newPage);
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
 });
 
-app.get('/api/pages', async (req, res) => {
+app.get('/api/pages', cacheMiddleware('pages', 900), async (req, res) => {
   try {
     const pages = await Page.find();
     res.json(pages);
@@ -2728,7 +2770,7 @@ app.get('/api/pages', async (req, res) => {
   }
 });
 
-app.get('/api/pages/:id', async (req, res) => {
+app.get('/api/pages/:id', cacheMiddleware('pages', 900), async (req, res) => {
   try {
     const page = await Page.findById(req.params.id);
     if (!page) return res.status(404).json({ message: 'Page not found' });
@@ -2742,6 +2784,7 @@ app.put('/api/pages/:id', async (req, res) => {
   try {
     const page = await Page.findByIdAndUpdate(req.params.id, req.body, { returnDocument: 'after' });
     if (!page) return res.status(404).json({ message: 'Page not found' });
+    await invalidateCache('pages:*');
     res.json(page);
   } catch (err) {
     res.status(400).json({ message: err.message });
@@ -2751,6 +2794,7 @@ app.put('/api/pages/:id', async (req, res) => {
 app.delete('/api/pages/:id', async (req, res) => {
   try {
     await Page.findByIdAndDelete(req.params.id);
+    await invalidateCache('pages:*');
     res.json({ message: 'Page deleted' });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -5164,7 +5208,7 @@ app.delete('/api/directors/:id', async (req, res) => {
 });
 
 // Slider Routes
-app.get('/api/sliders', async (req, res) => {
+app.get('/api/sliders', cacheMiddleware('sliders', 600), async (req, res) => {
   console.log('GET /api/sliders request received');
   try {
     const isAdmin = await isAdminRequest(req);
@@ -5187,8 +5231,7 @@ app.get('/api/sliders', async (req, res) => {
   }
 });
 
-
-app.get('/api/sliders/:id', async (req, res) => {
+app.get('/api/sliders/:id', cacheMiddleware('sliders', 600), async (req, res) => {
   try {
     const slider = await Slider.findById(req.params.id);
     res.json(slider);
@@ -5203,6 +5246,7 @@ app.post('/api/sliders', async (req, res) => {
     const slider = new Slider(req.body);
     await slider.save();
     console.log('Successfully saved slider:', slider._id);
+    await invalidateCache('sliders:*');
     res.status(201).json(slider);
   } catch (err) {
     console.error('Error saving slider:', err);
@@ -5213,6 +5257,7 @@ app.post('/api/sliders', async (req, res) => {
 app.put('/api/sliders/:id', async (req, res) => {
   try {
     const slider = await Slider.findByIdAndUpdate(req.params.id, req.body, { returnDocument: 'after' });
+    await invalidateCache('sliders:*');
     res.json(slider);
   } catch (err) {
     res.status(400).json({ message: err.message });
@@ -5222,6 +5267,7 @@ app.put('/api/sliders/:id', async (req, res) => {
 app.delete('/api/sliders/:id', async (req, res) => {
   try {
     await Slider.findByIdAndDelete(req.params.id);
+    await invalidateCache('sliders:*');
     res.json({ message: 'Slider deleted' });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -5940,6 +5986,7 @@ app.post('/api/movies/import', async (req, res) => {
       }
     }
 
+    await invalidateCache('movies:*');
     res.json({
       message: 'Movie import completed',
       importedCount,
@@ -6914,6 +6961,7 @@ app.post('/api/sliders/import', async (req, res) => {
       }
     }
 
+    await invalidateCache('sliders:*');
     res.json({
       message: 'Sliders import completed',
       importedCount,
@@ -7238,6 +7286,7 @@ app.post('/api/pages/import', async (req, res) => {
       }
     }
 
+    await invalidateCache('pages:*');
     res.json({
       message: 'Pages import completed',
       importedCount,

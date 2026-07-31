@@ -1,0 +1,144 @@
+version: '3.8'
+
+services:
+  # ==============================================================================
+  # 🔄 NGINX LOAD BALANCER
+  # ==============================================================================
+  nginx_load_balancer:
+    image: nginx:alpine
+    container_name: lemo_nginx_lb
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./server/uploads:/var/www/uploads:ro
+    depends_on:
+      - api_node_1
+      - api_node_2
+      - api_node_3
+      - api_node_4
+
+  # ==============================================================================
+  # 🚀 API NODES (Node #1, Node #2, Node #3, Node #4)
+  # ==============================================================================
+  api_node_1:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: lemo_api_node_1
+    restart: always
+    environment:
+      - NODE_ENV=production
+      - PORT=5001
+      - REDIS_HOST=redis_cache
+      - REDIS_PORT=6379
+      - MONGODB_URI=mongodb://mongodb_cluster:27017/video_ott?replicaSet=rs0
+    depends_on:
+      - redis_cache
+      - mongodb_cluster
+    ports:
+      - "5001:5001"
+
+  api_node_2:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: lemo_api_node_2
+    restart: always
+    environment:
+      - NODE_ENV=production
+      - PORT=5002
+      - REDIS_HOST=redis_cache
+      - REDIS_PORT=6379
+      - MONGODB_URI=mongodb://mongodb_cluster:27017/video_ott?replicaSet=rs0
+    depends_on:
+      - redis_cache
+      - mongodb_cluster
+    ports:
+      - "5002:5002"
+
+  api_node_3:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: lemo_api_node_3
+    restart: always
+    environment:
+      - NODE_ENV=production
+      - PORT=5003
+      - REDIS_HOST=redis_cache
+      - REDIS_PORT=6379
+      - MONGODB_URI=mongodb://mongodb_cluster:27017/video_ott?replicaSet=rs0
+    depends_on:
+      - redis_cache
+      - mongodb_cluster
+    ports:
+      - "5003:5003"
+
+  api_node_4:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: lemo_api_node_4
+    restart: always
+    environment:
+      - NODE_ENV=production
+      - PORT=5004
+      - REDIS_HOST=redis_cache
+      - REDIS_PORT=6379
+      - MONGODB_URI=mongodb://mongodb_cluster:27017/video_ott?replicaSet=rs0
+    depends_on:
+      - redis_cache
+      - mongodb_cluster
+    ports:
+      - "5004:5004"
+
+  # ==============================================================================
+  # 👷 BACKGROUND WORKER PROCESS
+  # ==============================================================================
+  background_worker:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: lemo_background_worker
+    restart: always
+    command: npm run worker
+    environment:
+      - NODE_ENV=production
+      - REDIS_HOST=redis_cache
+      - REDIS_PORT=6379
+      - MONGODB_URI=mongodb://mongodb_cluster:27017/video_ott?replicaSet=rs0
+    depends_on:
+      - redis_cache
+      - mongodb_cluster
+
+  # ==============================================================================
+  # ⚡ REDIS CLUSTER (Cache + BullMQ Queue Store)
+  # ==============================================================================
+  redis_cache:
+    image: redis:alpine
+    container_name: lemo_redis_cache
+    restart: always
+    command: redis-server --appendonly yes --maxmemory 2gb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  # ==============================================================================
+  # 📊 MONGODB CLUSTER / REPLICA SET
+  # ==============================================================================
+  mongodb_cluster:
+    image: mongo:6.0
+    container_name: lemo_mongodb_cluster
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  redis_data:
+  mongo_data:

@@ -6,11 +6,13 @@ import {
   FlatList, 
   ActivityIndicator, 
   useWindowDimensions, 
-  TouchableOpacity 
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  Platform
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Clapperboard, Heart, Eye } from 'lucide-react-native';
+import { Clapperboard, Heart, Eye, Clock, Play, Pause } from 'lucide-react-native';
 import { useIsFocused } from '@react-navigation/native';
 import client from '../api/client';
 
@@ -21,6 +23,9 @@ export default function ShortsScreen({ route }) {
   const [loading, setLoading] = useState(true);
   const [screenHeight, setScreenHeight] = useState(0);
   const [activeVideoIndex, setActiveVideoIndex] = useState(0);
+  const [playbackStatus, setPlaybackStatus] = useState({ positionMillis: 0, durationMillis: 0 });
+  const [isPaused, setIsPaused] = useState(false);
+  const [showPlayPauseIcon, setShowPlayPauseIcon] = useState(false);
   const listRef = useRef(null);
   const initialShortId = route?.params?.initialShortId;
   const initialScrollHandledRef = useRef(false);
@@ -49,7 +54,10 @@ export default function ShortsScreen({ route }) {
 
   const onViewableItemsChanged = useRef(({ viewableItems }) => {
     if (viewableItems && viewableItems.length > 0) {
-      setActiveVideoIndex(viewableItems[0].index);
+      const newIndex = viewableItems[0].index;
+      setActiveVideoIndex(newIndex);
+      setIsPaused(false);
+      setPlaybackStatus({ positionMillis: 0, durationMillis: 0 });
     }
   }).current;
 
@@ -73,8 +81,8 @@ export default function ShortsScreen({ route }) {
   }, [initialShortId, shorts]);
 
   const getItemLayout = (data, index) => ({
-    length: screenHeight,
-    offset: screenHeight * index,
+    length: currentHeight,
+    offset: currentHeight * index,
     index,
   });
 
@@ -82,7 +90,6 @@ export default function ShortsScreen({ route }) {
 
   // Increment views count on active short
   useEffect(() => {
-    // If we have an initial short to scroll to, and we haven't scrolled yet, don't increment view for index 0
     if (initialShortId && !initialScrollHandledRef.current) {
       return;
     }
@@ -105,7 +112,6 @@ export default function ShortsScreen({ route }) {
           })
           .catch(err => {
             console.error('[ShortsScreen] Error incrementing view:', err.message || err);
-            // Rollback viewed status on failure so it can retry
             viewedShortsRef.current.delete(shortId);
           });
       }
@@ -133,8 +139,34 @@ export default function ShortsScreen({ route }) {
     }
   };
 
+  const togglePlayPause = () => {
+    setIsPaused(prev => !prev);
+    setShowPlayPauseIcon(true);
+    setTimeout(() => {
+      setShowPlayPauseIcon(false);
+    }, 800);
+  };
+
+  const handlePlaybackStatusUpdate = (index, status) => {
+    if (index === activeVideoIndex && status.isLoaded) {
+      setPlaybackStatus({
+        positionMillis: status.positionMillis || 0,
+        durationMillis: status.durationMillis || 0,
+      });
+    }
+  };
+
+  const formatTime = (ms) => {
+    if (!ms || isNaN(ms) || ms <= 0) return '0:00';
+    const totalSec = Math.floor(ms / 1000);
+    const min = Math.floor(totalSec / 60);
+    const sec = totalSec % 60;
+    return `${min}:${sec < 10 ? '0' : ''}${sec}`;
+  };
+
   const viewabilityConfig = useRef({
-    itemVisiblePercentThreshold: 50,
+    itemVisiblePercentThreshold: 80,
+    minimumViewTime: 100,
   }).current;
 
   if (loading) {
@@ -156,56 +188,100 @@ export default function ShortsScreen({ route }) {
 
   return (
     <View style={styles.container} onLayout={(e) => setScreenHeight(e.nativeEvent.layout.height)}>
-      {screenHeight > 0 && (
+      {currentHeight > 0 && (
         <FlatList
           ref={listRef}
           data={shorts}
           extraData={shorts}
           keyExtractor={(item) => item._id}
           pagingEnabled
+          decelerationRate="fast"
+          snapToInterval={currentHeight}
+          snapToAlignment="start"
+          disableIntervalMomentum={true}
+          removeClippedSubviews={Platform.OS === 'android'}
           showsVerticalScrollIndicator={false}
           onViewableItemsChanged={onViewableItemsChanged}
           viewabilityConfig={viewabilityConfig}
           getItemLayout={getItemLayout}
-          renderItem={({ item, index }) => (
-            <View style={{ width, height: screenHeight, position: 'relative', backgroundColor: '#000' }}>
-              <Video
-                source={{ uri: item.videoUrl }}
-                style={styles.videoPlayer}
-                resizeMode={isTablet ? ResizeMode.CONTAIN : ResizeMode.COVER}
-                shouldPlay={isFocused && index === activeVideoIndex}
-                isLooping
-                useNativeControls={false}
-              />
-              
-              {/* Right Interaction Actions Sidebar */}
-              <View style={styles.rightActionsContainer}>
-                <View style={{ alignItems: 'center' }}>
-                  <TouchableOpacity style={styles.actionButton} onPress={() => handleLike(item)}>
-                    <Heart 
-                      color={item.hasLiked ? '#ff2d55' : '#ffffff'} 
-                      fill={item.hasLiked ? '#ff2d55' : 'transparent'} 
-                      size={22} 
-                    />
-                  </TouchableOpacity>
-                  <Text style={styles.actionText}>{item.likes || 0}</Text>
-                </View>
+          renderItem={({ item, index }) => {
+            const isActive = isFocused && index === activeVideoIndex;
+            const isPlayingThis = isActive && !isPaused;
+            const currentPos = isActive ? playbackStatus.positionMillis : 0;
+            const totalDur = isActive ? playbackStatus.durationMillis : 0;
+            const progressPct = totalDur > 0 ? Math.min(100, Math.max(0, (currentPos / totalDur) * 100)) : 0;
 
-                <View style={{ alignItems: 'center' }}>
-                  <View style={styles.actionButton}>
-                    <Eye color="#ffffff" size={22} />
+            return (
+              <TouchableWithoutFeedback onPress={togglePlayPause}>
+                <View style={{ width, height: currentHeight, position: 'relative', backgroundColor: '#000' }}>
+                  <Video
+                    source={{ uri: item.videoUrl }}
+                    style={styles.videoPlayer}
+                    resizeMode={isTablet ? ResizeMode.CONTAIN : ResizeMode.COVER}
+                    shouldPlay={isPlayingThis}
+                    isLooping
+                    useNativeControls={false}
+                    onPlaybackStatusUpdate={(status) => handlePlaybackStatusUpdate(index, status)}
+                  />
+                  
+                  {/* Play/Pause Overlay Animated Icon */}
+                  {showPlayPauseIcon && isActive && (
+                    <View style={styles.playPauseOverlay}>
+                      {isPaused ? (
+                        <Pause color="#ffffff" size={56} fill="#ffffff" />
+                      ) : (
+                        <Play color="#ffffff" size={56} fill="#ffffff" />
+                      )}
+                    </View>
+                  )}
+
+                  {/* Right Interaction Actions Sidebar */}
+                  <View style={styles.rightActionsContainer}>
+                    <View style={{ alignItems: 'center' }}>
+                      <TouchableOpacity style={styles.actionButton} onPress={() => handleLike(item)}>
+                        <Heart 
+                          color={item.hasLiked ? '#ff2d55' : '#ffffff'} 
+                          fill={item.hasLiked ? '#ff2d55' : 'transparent'} 
+                          size={22} 
+                        />
+                      </TouchableOpacity>
+                      <Text style={styles.actionText}>{item.likes || 0}</Text>
+                    </View>
+
+                    <View style={{ alignItems: 'center' }}>
+                      <View style={styles.actionButton}>
+                        <Eye color="#ffffff" size={22} />
+                      </View>
+                      <Text style={styles.actionText}>{item.views || 0}</Text>
+                    </View>
                   </View>
-                  <Text style={styles.actionText}>{item.views || 0}</Text>
-                </View>
-              </View>
 
-              {/* Title & Description Overlay */}
-              <View style={styles.overlayTextContainer}>
-                <Text style={styles.shortTitle}>@{item.title || 'Short'}</Text>
-                {item.description ? <Text style={styles.shortDesc}>{item.description}</Text> : null}
-              </View>
-            </View>
-          )}
+                  {/* Title, Description & Real-Time Playback Time Overlay */}
+                  <View style={styles.overlayTextContainer}>
+                    <Text style={styles.shortTitle}>@{item.title || 'Short'}</Text>
+                    {item.description ? <Text style={styles.shortDesc}>{item.description}</Text> : null}
+                    
+                    {/* Time Badge Display */}
+                    {totalDur > 0 && isActive && (
+                      <View style={styles.timeBadgeContainer}>
+                        <Clock color="#b3d332" size={13} />
+                        <Text style={styles.timeBadgeText}>
+                          {formatTime(currentPos)} / {formatTime(totalDur)}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Real-time Video Progress Bar at Bottom of Reel */}
+                  {isActive && totalDur > 0 && (
+                    <View style={styles.progressBarBackground}>
+                      <View style={[styles.progressBarFill, { width: `${progressPct}%` }]} />
+                    </View>
+                  )}
+                </View>
+              </TouchableWithoutFeedback>
+            );
+          }}
         />
       )}
     </View>
@@ -233,9 +309,18 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  playPauseOverlay: {
+    position: 'absolute',
+    top: '45%',
+    left: '42%',
+    zIndex: 30,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    padding: 16,
+    borderRadius: 50,
+  },
   overlayTextContainer: {
     position: 'absolute',
-    bottom: 40,
+    bottom: 35,
     left: 20,
     right: 80,
     zIndex: 10,
@@ -253,9 +338,42 @@ const styles = StyleSheet.create({
     color: '#e2e8f0',
     fontSize: 13,
     fontWeight: '400',
+    marginBottom: 6,
     textShadowColor: 'rgba(0, 0, 0, 0.75)',
     textShadowOffset: { width: -1, height: 1 },
     textShadowRadius: 10,
+  },
+  timeBadgeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    gap: 5,
+    marginTop: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(179, 211, 50, 0.3)',
+  },
+  timeBadgeText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
+  },
+  progressBarBackground: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    zIndex: 25,
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: '#b3d332',
   },
   rightActionsContainer: {
     position: 'absolute',
