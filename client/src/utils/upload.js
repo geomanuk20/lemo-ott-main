@@ -9,6 +9,14 @@ export const uploadToCloudinary = (file) => {
       return;
     }
 
+    // Minimum 1MB validation for video uploads
+    const isVideoFile = file.type.startsWith('video/') || !!file.name.match(/\.(mp4|mkv|webm|avi|mov)$/i);
+    const MIN_VIDEO_SIZE = 1 * 1024 * 1024; // 1 MB (1,048,576 bytes)
+    if (isVideoFile && file.size < MIN_VIDEO_SIZE) {
+      reject(new Error('Selected video file is too small. Minimum required video upload size is 1MB.'));
+      return;
+    }
+
     // 1. Create a beautiful glassmorphic dark-theme progress overlay in the DOM
     const overlay = document.createElement('div');
     overlay.id = 'fe-upload-progress-overlay';
