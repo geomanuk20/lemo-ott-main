@@ -1,0 +1,24 @@
+{
+  "watch": [
+    "index.js",
+    "middleware/",
+    "models/",
+    "queues/",
+    "cloudFrontSigner.js",
+    "mediaConvert.js",
+    "s3Config.js",
+    "worker.js"
+  ],
+  "ignore": [
+    "uploads/*",
+    "uploads/**",
+    "uploads/tmp/*",
+    "uploads/hls/*",
+    "uploads/temp/*",
+    "*.log",
+    "phonepe_*.json",
+    "phonepe_*.txt",
+    "debug_log.txt"
+  ],
+  "ext": "js,json"
+}
