@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
+  BarChart2,
   Globe, 
   Film, 
   Tv, 
@@ -74,7 +75,16 @@ const Sidebar = () => {
   const isSubAdmin = user.role === 'sub-admin';
 
   const menuItems = [
-    { name: 'Dashboard', icon: <LayoutDashboard size={20} />, path: '/admin/dashboard' },
+    { 
+      name: 'Dashboard', 
+      icon: <LayoutDashboard size={20} />, 
+      path: '/admin/dashboard',
+      hasSub: true,
+      subItems: [
+        { name: 'Overview', icon: <LayoutDashboard size={16} />, path: '/admin/dashboard' },
+        { name: 'Analytics', icon: <BarChart2 size={16} />, path: '/admin/analytics' },
+      ]
+    },
     { name: 'Language', icon: <Globe size={20} />, path: '/admin/language' },
     { name: 'Genres', icon: <Tag size={20} />, path: '/admin/genres' },
     { name: 'Movies', icon: <Film size={20} />, path: '/admin/movies' },
@@ -275,7 +285,7 @@ const Sidebar = () => {
             {item.hasSub ? (
               <>
                 <div 
-                  className={`nav-item ${openSub === item.name || location.pathname.startsWith(item.path) ? 'open' : ''} ${location.pathname.startsWith(item.path) ? 'active' : ''}`}
+                  className={`nav-item ${openSub === item.name || (item.subItems && item.subItems.some(s => location.pathname === s.path)) ? 'open' : ''} ${(item.subItems ? item.subItems.some(s => location.pathname === s.path) : location.pathname.startsWith(item.path)) ? 'active' : ''}`}
                   onClick={() => handleToggleSub(item.name)}
                   style={{ cursor: 'pointer' }}
                 >
@@ -283,7 +293,7 @@ const Sidebar = () => {
                   <span>{item.name}</span>
                   <ChevronRight size={14} className="chevron" />
                 </div>
-                {(openSub === item.name || location.pathname.startsWith(item.path)) && item.subItems && (
+                {(openSub === item.name || (item.subItems && item.subItems.some(s => location.pathname === s.path))) && item.subItems && (
                   <div className="sub-menu">
                     {item.subItems.map((sub, idx) => (
                       <NavLink 

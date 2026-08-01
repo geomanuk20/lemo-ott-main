@@ -106,7 +106,7 @@ const FrontendFooter = ({ settings = null, menuSettings = null }) => {
       <style dangerouslySetInnerHTML={{
         __html: `
         .fe-footer-v { background: #080808; border-top: 1px solid #1a1a1a; padding: 80px 10% 40px 10%; color: #fff; position: relative; z-index: 20; }
-        .fe-footer-content-v { max-width: 1400px; margin: 0 auto; position: relative; z-index: 21; }
+        .fe-footer-content-v { max-width: 1400px; margin: 0 auto; }
         
         .footer-top-v { display: flex; justify-content: space-between; gap: 80px; margin-bottom: 60px; }
         .footer-brand-v { flex: 1.5; }

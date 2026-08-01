@@ -108,9 +108,7 @@ server {
     listen [::]:80;
     server_name _;
 
-    client_max_body_size 10G;
-    client_body_timeout 3600s;
-    client_header_timeout 3600s;
+    client_max_body_size 100M;
 
     # Gzip Compression
     gzip on;

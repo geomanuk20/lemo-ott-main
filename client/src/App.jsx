@@ -4,6 +4,7 @@ import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import Dashboard from './pages/Dashboard';
+import Analytics from './pages/Analytics';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Languages from './pages/Languages';
@@ -469,6 +470,8 @@ function App() {
         >
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
+          <Route path="dashboard/analytics" element={<Analytics />} />
+          <Route path="analytics" element={<Analytics />} />
           <Route path="language" element={<Languages />} />
           <Route path="genres" element={<Genres />} />
           <Route path="movies" element={<Movies />} />

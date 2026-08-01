@@ -425,10 +425,7 @@ const diskStorage = multer.diskStorage({
     cb(null, `${Date.now()}_${sanitizedBase}${ext}`);
   }
 });
-const localUpload = multer({ 
-  storage: diskStorage,
-  limits: { fileSize: 10 * 1024 * 1024 * 1024 } // 10GB file size limit for video uploads
-});
+const localUpload = multer({ storage: diskStorage });
 
 // Redis Cache & Rate Limiting Middleware
 const { cacheMiddleware, createRateLimiter, invalidateCache } = require('./middleware/cacheMiddleware');
@@ -469,8 +466,8 @@ app.use((req, res, next) => {
   res.setHeader('Referrer-Policy', 'origin');
   next();
 });
-app.use(express.json({ limit: '10gb' }));
-app.use(express.urlencoded({ limit: '10gb', extended: true }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use('/uploads', express.static('uploads'));
 app.use('/upload', express.static('uploads')); // Alias for legacy support
 
@@ -1877,11 +1874,17 @@ const seedAdmin = async () => {
 app.get('/api/stats', async (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   try {
+    const range = req.query.range || req.query.timeRange || '30days';
+    const reqStartDate = req.query.startDate || null;
+    const reqEndDate = req.query.endDate || null;
+
     const [
       moviesCount, showsCount, seasonsCount, episodesCount,
       usersCount, languagesCount, genresCount, sportsCount,
       liveTvCount, transactionsCount, allTransactions,
-      shortsCount, shortFilmsCount, shortWebSeriesCount
+      shortsCount, shortFilmsCount, shortWebSeriesCount,
+      topMovies, topShows, topShorts, topShortWebSeries, topShortFilms, topLiveTv, topSports,
+      userPlansAgg, movieViewsAgg
     ] = await Promise.all([
       Movie.countDocuments({ contentType: { $nin: ['Short Film', 'short-film'] } }).maxTimeMS(5000),
       Show.countDocuments({ contentType: { $ne: 'Short Web Series' } }).maxTimeMS(5000),
@@ -1896,17 +1899,27 @@ app.get('/api/stats', async (req, res) => {
       Transaction.find({ status: 'Completed' }).lean().maxTimeMS(5000),
       Short.countDocuments().maxTimeMS(5000),
       Movie.countDocuments({ contentType: { $in: ['Short Film', 'short-film'] } }).maxTimeMS(5000),
-      Show.countDocuments({ contentType: 'Short Web Series' }).maxTimeMS(5000)
+      Show.countDocuments({ contentType: 'Short Web Series' }).maxTimeMS(5000),
+      Movie.find({ contentType: { $nin: ['Short Film', 'short-film'] } }).select('title views imdbRating thumbnail').sort({ views: -1 }).limit(5).lean().maxTimeMS(5000),
+      Show.find({ contentType: { $ne: 'Short Web Series' } }).select('title views imdbRating poster').sort({ views: -1 }).limit(5).lean().maxTimeMS(5000),
+      Short.find().select('title views likes thumbnailUrl').sort({ views: -1 }).limit(5).lean().maxTimeMS(5000),
+      Show.find({ contentType: 'Short Web Series' }).select('title views imdbRating poster').sort({ views: -1 }).limit(5).lean().maxTimeMS(5000),
+      Movie.find({ contentType: { $in: ['Short Film', 'short-film'] } }).select('title views imdbRating thumbnail').sort({ views: -1 }).limit(5).lean().maxTimeMS(5000),
+      TVChannel.find().select('name title views logo').sort({ views: -1 }).limit(5).lean().maxTimeMS(5000),
+      SportsVideo.find().select('title views poster').sort({ views: -1 }).limit(5).lean().maxTimeMS(5000),
+      User.aggregate([{ $group: { _id: '$subscriptionPlan', count: { $sum: 1 } } }]),
+      Movie.aggregate([{ $group: { _id: null, totalViews: { $sum: '$views' } } }])
     ]);
 
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
 
-    const daysAgoStr = (n) => {
+    const daysAgoDate = (n) => {
       const d = new Date(now);
       d.setDate(d.getDate() - n);
-      return d.toISOString().split('T')[0];
+      return d;
     };
+    const daysAgoStr = (n) => daysAgoDate(n).toISOString().split('T')[0];
 
     const weekAgoStr = daysAgoStr(7);
     const monthAgoStr = daysAgoStr(30);
@@ -1919,6 +1932,9 @@ app.get('/api/stats', async (req, res) => {
     };
 
     let daily = 0, weekly = 0, monthly = 0, yearly = 0, totalRevenue = 0;
+    let rangeFilteredRevenue = 0;
+    let rangeFilteredTxCount = 0;
+
     const currentYear = now.getFullYear();
     const planStats = {
       basic: Array(12).fill(0),
@@ -1926,6 +1942,26 @@ app.get('/api/stats', async (req, res) => {
       platinum: Array(12).fill(0),
       diamond: Array(12).fill(0)
     };
+    const monthlyRevenueTrend = Array(12).fill(0);
+
+    // Dynamic trend labels & data for selected time range
+    let trendLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    let trendData = Array(12).fill(0);
+
+    if (range === '7days') {
+      trendLabels = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = daysAgoDate(i);
+        trendLabels.push(d.toLocaleDateString('en-US', { weekday: 'short', month: 'numeric', day: 'numeric' }));
+      }
+      trendData = Array(7).fill(0);
+    } else if (range === '30days') {
+      trendLabels = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
+      trendData = Array(4).fill(0);
+    } else if (range === 'custom' && reqStartDate && reqEndDate) {
+      trendLabels = [reqStartDate, reqEndDate];
+      trendData = [0, 0];
+    }
 
     allTransactions.forEach(t => {
       const dateStr = t.paymentDate || (t.createdAt ? new Date(t.createdAt).toISOString().split('T')[0] : null);
@@ -1938,9 +1974,45 @@ app.get('/api/stats', async (req, res) => {
         if (dateStr >= monthAgoStr) monthly += amount;
         if (dateStr >= yearAgoStr) yearly += amount;
 
+        // Check if transaction falls within requested range
+        let inRange = false;
+        if (range === '7days' && dateStr >= weekAgoStr) inRange = true;
+        else if (range === '30days' && dateStr >= monthAgoStr) inRange = true;
+        else if (range === 'year' && dateStr >= yearAgoStr) inRange = true;
+        else if (range === 'all') inRange = true;
+        else if (range === 'custom' && reqStartDate && reqEndDate) {
+          if (dateStr >= reqStartDate && dateStr <= reqEndDate) inRange = true;
+        }
+
+        if (inRange) {
+          rangeFilteredRevenue += amount;
+          rangeFilteredTxCount++;
+
+          if (range === '7days') {
+            const txDate = new Date(dateStr);
+            const diffTime = Math.abs(now - txDate);
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            const dayIdx = 6 - diffDays;
+            if (dayIdx >= 0 && dayIdx < 7) {
+              trendData[dayIdx] += amount;
+            }
+          } else if (range === '30days') {
+            const txDate = new Date(dateStr);
+            const diffDays = Math.floor(Math.abs(now - txDate) / (1000 * 60 * 60 * 24));
+            const weekIdx = Math.min(3, Math.floor(diffDays / 7.5));
+            trendData[3 - weekIdx] += amount;
+          } else if (range === 'custom') {
+            trendData[0] += amount;
+          }
+        }
+
         const txYear = parseInt(dateStr.substring(0, 4));
         const txMonth = parseInt(dateStr.substring(5, 7)) - 1;
         if (txYear === currentYear && txMonth >= 0 && txMonth < 12) {
+          monthlyRevenueTrend[txMonth] += amount;
+          if (range === 'year' || range === 'all') {
+            trendData[txMonth] += amount;
+          }
           const planLower = (t.plan || '').toLowerCase();
           if (planLower.includes('basic')) planStats.basic[txMonth]++;
           else if (planLower.includes('premium')) planStats.premium[txMonth]++;
@@ -1949,6 +2021,22 @@ app.get('/api/stats', async (req, res) => {
         }
       }
     });
+
+    const activeUserPlans = {
+      basic: 0,
+      premium: 0,
+      platinum: 0,
+      diamond: 0
+    };
+    (userPlansAgg || []).forEach(p => {
+      const pName = (p._id || '').toLowerCase();
+      if (pName.includes('basic')) activeUserPlans.basic += p.count;
+      else if (pName.includes('premium')) activeUserPlans.premium += p.count;
+      else if (pName.includes('platinum')) activeUserPlans.platinum += p.count;
+      else if (pName.includes('diamond')) activeUserPlans.diamond += p.count;
+    });
+
+    const totalMovieViews = movieViewsAgg?.[0]?.totalViews || 0;
 
     res.json({
       movies: moviesCount,
@@ -1964,6 +2052,21 @@ app.get('/api/stats', async (req, res) => {
       shorts: shortsCount,
       shortFilms: shortFilmsCount,
       shortWebSeries: shortWebSeriesCount,
+      totalMovieViews,
+      topMovies,
+      topShows,
+      topShorts,
+      topShortWebSeries,
+      topShortFilms,
+      topLiveTv,
+      topSports,
+      activeUserPlans,
+      monthlyRevenueTrend,
+      range,
+      rangeFilteredRevenue: rangeFilteredRevenue.toFixed(2),
+      rangeFilteredTxCount,
+      trendLabels,
+      trendData,
       revenue: {
         daily: daily.toFixed(2),
         weekly: weekly.toFixed(2),
