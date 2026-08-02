@@ -134,37 +134,44 @@ const PlayerConfig = () => {
       
       <div className="form-row-v">
        <label>Player Style</label>
-       <select name="playerStyle" value={formData.playerStyle} onChange={handleChange}>
-        <option value="Clasic Dark">Clasic Dark</option>
-        <option value="Modern Light">Modern Light</option>
-        <option value="Blue Accent">Blue Accent</option>
-       </select>
+       <div className="form-control-col-v">
+        <select name="playerStyle" value={formData.playerStyle} onChange={handleChange}>
+         <option value="Clasic Dark">Clasic Dark</option>
+         <option value="Modern Light">Modern Light</option>
+         <option value="Blue Accent">Blue Accent</option>
+        </select>
+       </div>
       </div>
 
       <div className="form-row-v">
        <label>Vector Icons</label>
-       <select name="vectorIcons" value={formData.vectorIcons} onChange={handleChange}>
-        <option value="YES">YES</option>
-        <option value="NO">NO</option>
-       </select>
+       <div className="form-control-col-v">
+        <select name="vectorIcons" value={formData.vectorIcons} onChange={handleChange}>
+         <option value="YES">YES</option>
+         <option value="NO">NO</option>
+        </select>
+       </div>
       </div>
 
       <div className="form-row-v">
        <label>Autoplay</label>
-       <select name="autoplay" value={formData.autoplay} onChange={handleChange}>
-        <option value="YES">YES</option>
-        <option value="NO">NO</option>
-       </select>
+       <div className="form-control-col-v">
+        <select name="autoplay" value={formData.autoplay} onChange={handleChange}>
+         <option value="YES">YES</option>
+         <option value="NO">NO</option>
+        </select>
+       </div>
       </div>
 
       <div className="form-row-v">
        <label>Rewind and Forward</label>
-       <select name="rewindForward" value={formData.rewindForward} onChange={handleChange}>
-        <option value="YES">YES</option>
-        <option value="NO">NO</option>
-       </select>
+       <div className="form-control-col-v">
+        <select name="rewindForward" value={formData.rewindForward} onChange={handleChange}>
+         <option value="YES">YES</option>
+         <option value="NO">NO</option>
+        </select>
+       </div>
       </div>
-
 
      </div>
 
@@ -174,52 +181,60 @@ const PlayerConfig = () => {
 
       <div className="form-row-v">
        <label>Watermark</label>
-       <select name="watermark" value={formData.watermark} onChange={handleChange}>
-        <option value="YES">YES</option>
-        <option value="NO">NO</option>
-       </select>
+       <div className="form-control-col-v">
+        <select name="watermark" value={formData.watermark} onChange={handleChange}>
+         <option value="YES">YES</option>
+         <option value="NO">NO</option>
+        </select>
+       </div>
       </div>
 
-      <div className="form-row-v">
-       <label>Watermark Logo</label>
-       <div className="file-input-group-v">
-        <input 
-         type="text" 
-         name="watermarkLogo" 
-         value={formData.watermarkLogo} 
-         onChange={handleChange} 
-        />
-        <button type="button" className="select-btn-v" onClick={handleFileSelect}>Select</button>
-       </div>
-       <p className="hint-text-v">(Recommended resolution : 180x50)</p>
-       
-       <div className="logo-preview-box-v">
-        {formData.watermarkLogo && formData.watermarkLogo !== 'upload/player_logo.png' ? (
-         <img src={formData.watermarkLogo} alt="Watermark Preview" style={{ maxWidth: '100%', maxHeight: '100%' }} />
-        ) : (
-         <div className="preview-placeholder-v"></div>
-        )}
+      <div className="form-row-v has-preview-v">
+       <label style={{ paddingTop: '10px' }}>Watermark Logo</label>
+       <div className="form-control-col-v">
+        <div className="file-input-group-v">
+         <input 
+          type="text" 
+          name="watermarkLogo" 
+          value={formData.watermarkLogo} 
+          onChange={handleChange} 
+         />
+         <button type="button" className="select-btn-v" onClick={handleFileSelect}>Select</button>
+        </div>
+        <p className="hint-text-v">(Recommended resolution : 180x50)</p>
+        
+        <div className="logo-preview-box-v">
+         {formData.watermarkLogo && formData.watermarkLogo !== 'upload/player_logo.png' ? (
+          <img src={formData.watermarkLogo} alt="Watermark Preview" style={{ maxWidth: '100%', maxHeight: '100%' }} />
+         ) : (
+          <div className="preview-placeholder-v"></div>
+         )}
+        </div>
        </div>
       </div>
 
       <div className="form-row-v">
        <label>Watermark Position</label>
-       <select name="watermarkPosition" value={formData.watermarkPosition} onChange={handleChange}>
-        <option value="Top Right">Top Right</option>
-        <option value="Top Left">Top Left</option>
-        <option value="Bottom Right">Bottom Right</option>
-        <option value="Bottom Left">Bottom Left</option>
-       </select>
+       <div className="form-control-col-v">
+        <select name="watermarkPosition" value={formData.watermarkPosition} onChange={handleChange}>
+         <option value="Top Right">Top Right</option>
+         <option value="Top Left">Top Left</option>
+         <option value="Bottom Right">Bottom Right</option>
+         <option value="Bottom Left">Bottom Left</option>
+        </select>
+       </div>
       </div>
 
       <div className="form-row-v">
        <label>Watermark URL*</label>
-       <input 
-        type="text" 
-        name="watermarkUrl" 
-        value={formData.watermarkUrl} 
-        onChange={handleChange} 
-       />
+       <div className="form-control-col-v">
+        <input 
+         type="text" 
+         name="watermarkUrl" 
+         value={formData.watermarkUrl} 
+         onChange={handleChange} 
+        />
+       </div>
       </div>
 
       <div className="form-actions-right-v">
@@ -244,8 +259,28 @@ const PlayerConfig = () => {
     
     .settings-grid-v { display: grid; grid-template-columns: 1fr 1fr; gap: 50px; max-width: 1200px; }
     
-    .form-row-v { margin-bottom: 18px; }
-    .form-row-v label { display: block; font-weight: 600; color: #aaa; margin-bottom: 8px; font-size: 0.85rem; }
+    .form-row-v { 
+     display: flex; 
+     align-items: center; 
+     justify-content: space-between; 
+     gap: 20px; 
+     margin-bottom: 22px; 
+    }
+    .form-row-v.has-preview-v {
+     align-items: flex-start;
+    }
+    .form-row-v label { 
+     min-width: 170px; 
+     flex: 0 0 170px; 
+     font-weight: 600; 
+     color: #aaa; 
+     margin-bottom: 0; 
+     font-size: 0.88rem; 
+    }
+    .form-control-col-v {
+     flex: 1;
+     width: 100%;
+    }
     
     .form-row-v input, .form-row-v select { 
      width: 100%; 
@@ -278,6 +313,30 @@ const PlayerConfig = () => {
     .spinner { animation: spin 1s linear infinite; }
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    @media (max-width: 992px) {
+     .settings-grid-v {
+      grid-template-columns: 1fr;
+      gap: 30px;
+     }
+    }
+
+    @media (max-width: 576px) {
+     .player-settings-page {
+      padding: 20px 15px;
+     }
+     .form-row-v {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 8px;
+      margin-bottom: 18px;
+     }
+     .form-row-v label {
+      min-width: auto;
+      flex: none;
+      margin-bottom: 4px;
+     }
+    }
 
     /* Notification */
     .custom-alert-box-v { position: fixed; top: 40px; left: 50%; transform: translateX(-50%); background: #111; border-radius: 12px; padding: 30px 60px; z-index: 9999; box-shadow: 0 20px 50px rgba(0,0,0,0.6); border: 1px solid #333; }

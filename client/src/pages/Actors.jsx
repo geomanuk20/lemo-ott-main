@@ -232,9 +232,21 @@ const Actors = () => {
       <div className="pagination-container-alt">
        <div className="pagination-group-alt">
         <button className="page-btn-alt arrow" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>«</button>
-        {[...Array(totalPages)].map((_, i) => (
-         <button key={i+1} className={`page-btn-alt ${currentPage === i+1 ? 'active' : ''}`} onClick={() => setCurrentPage(i+1)}>{i+1}</button>
-        ))}
+         {(() => {
+          const pages = [];
+          let last = 0;
+          for (let i = 1; i <= totalPages; i++) {
+           if (i === 1 || i === totalPages || i === currentPage) {
+            if (last && i - last > 1) pages.push('...' + i);
+            pages.push(i);
+            last = i;
+           }
+          }
+          return pages.map((page) => {
+           if (typeof page === 'string') return <span key={page} className="page-ellipsis-alt">…</span>;
+           return <button key={page} className={`page-btn-alt ${currentPage === page ? 'active' : ''}`} onClick={() => setCurrentPage(page)}>{page}</button>;
+          });
+         })()}
         <button className="page-btn-alt arrow" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>»</button>
        </div>
       </div>
@@ -358,6 +370,34 @@ const Actors = () => {
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     .import-export-btn-alt { background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 8px 18px; border-radius: 4px; display: flex; align-items: center; gap: 8px; font-weight: 700; cursor: pointer; transition: all 0.2s ease; margin-right: 10px; }
     .import-export-btn-alt:hover { background: #222; border-color: #b3d332; color: #b3d332; }
+
+    @media (max-width: 768px) {
+     .filters-bar-alt {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 12px;
+      margin: 15px 10px;
+      padding: 15px;
+     }
+     .search-box-alt {
+      width: 100%;
+     }
+     .filter-right-alt {
+      width: 100%;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+     }
+     .actors-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+      padding: 0 10px 30px;
+     }
+     .import-export-btn-alt, .add-actor-btn {
+      padding: 8px 12px;
+      font-size: 0.82rem;
+     }
+    }
    ` }} />
    <ImportExportModal 
     isOpen={isImportExportOpen} 

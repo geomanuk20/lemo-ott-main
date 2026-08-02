@@ -267,6 +267,31 @@ const EditActor = () => {
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     .spinner { animation: spin 1s linear infinite; color: #b3d332; }
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+    @media (max-width: 768px) {
+     .add-actor-page {
+      padding: 15px 12px;
+     }
+     .form-row-custom {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 6px;
+      margin-bottom: 16px;
+     }
+     .form-row-custom label {
+      width: 100%;
+      padding-top: 0;
+      margin-bottom: 4px;
+      font-size: 0.95rem;
+     }
+     .input-col {
+      width: 100%;
+     }
+     .save-btn-red {
+      width: 100%;
+      padding: 14px;
+     }
+    }
    ` }} />
   </div>
  );

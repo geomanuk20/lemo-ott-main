@@ -160,7 +160,7 @@ const Images = () => {
       />
      </div>
      </div>
-     <div className="header-right" style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+     <div className="header-right">
       <input 
        type="file" 
        ref={fileInputRef} 
@@ -294,17 +294,33 @@ const Images = () => {
    <style dangerouslySetInnerHTML={{ __html: `
     .images-page { padding: 30px; animation: fadeIn 0.4s ease-out; }
     
-    .images-header-section { display: flex; justify-content: space-between; align-items: center; margin-bottom: 35px; }
-    .import-export-btn { background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 12px 24px; border-radius: 12px; display: flex; align-items: center; gap: 8px; font-weight: 700; cursor: pointer; transition: all 0.2s ease; font-size: 0.9rem; }
+    .images-header-section { display: flex; justify-content: space-between; align-items: center; margin-bottom: 35px; gap: 20px; flex-wrap: wrap; }
+    .header-right { display: flex; gap: 15px; align-items: center; }
+    
+    .import-export-btn, .upload-btn-premium { 
+     height: 42px;
+     padding: 0 18px;
+     border-radius: 8px;
+     display: inline-flex;
+     align-items: center;
+     justify-content: center;
+     gap: 8px;
+     font-weight: 800;
+     font-size: 0.88rem;
+     cursor: pointer;
+     box-sizing: border-box;
+     transition: all 0.2s ease;
+    }
+    .upload-btn-premium { background: #b3d332; color: #000; border: 1px solid #b3d332; box-shadow: 0 4px 15px rgba(179, 211, 50, 0.2); }
+    .upload-btn-premium:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(179, 211, 50, 0.3); }
+    
+    .import-export-btn { background: #1a1a1a; border: 1px solid #333; color: #fff; }
     .import-export-btn:hover { background: #2a2a2a; border-color: #b3d332; color: #b3d332; }
     
     .search-bar-exp { background: #1a1a1a; border: 1px solid #333; border-radius: 12px; display: flex; align-items: center; padding: 0 15px; width: 350px; transition: border-color 0.3s; }
     .search-bar-exp:focus-within { border-color: #b3d332; }
     .search-bar-exp input { background: transparent; border: none; color: #fff; padding: 12px 10px; width: 100%; outline: none; font-size: 0.95rem; }
     .search-icon { color: #555; }
-    
-    .upload-btn-premium { background: #b3d332; color: #fff; border: none; padding: 12px 24px; border-radius: 12px; display: flex; align-items: center; gap: 10px; font-weight: 700; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 15px rgba(22, 196, 127, 0.2); }
-    .upload-btn-premium:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(22, 196, 127, 0.3); }
 
     .images-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 30px; }
     
@@ -324,10 +340,11 @@ const Images = () => {
     
     .image-details-exp { padding: 20px; }
     .img-title-text { color: #fff; font-size: 1.1rem; font-weight: 700; margin: 0 0 10px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .img-meta-row { display: flex; gap: 10px; }
-    .meta-tag { font-size: 0.7rem; font-weight: 800; padding: 4px 10px; border-radius: 6px; text-transform: uppercase; }
+    .img-meta-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .meta-tag { font-size: 0.7rem; font-weight: 800; padding: 4px 10px; border-radius: 6px; text-transform: uppercase; white-space: nowrap; }
     .meta-tag.dim { background: rgba(0, 136, 255, 0.1); color: #0088ff; border: 1px solid rgba(0, 136, 255, 0.2); }
     .meta-tag.size { background: rgba(255, 255, 255, 0.05); color: #888; border: 1px solid rgba(255, 255, 255, 0.1); }
+    .meta-tag.date { background: rgba(255, 255, 255, 0.05); color: #aaa; border: 1px solid rgba(255, 255, 255, 0.1); display: inline-flex; align-items: center; }
     
     .empty-state { grid-column: 1 / -1; padding: 100px 0; text-align: center; color: #555; font-size: 1.2rem; display: flex; flex-direction: column; align-items: center; gap: 20px; }
 
@@ -353,7 +370,7 @@ const Images = () => {
     
     .exp-modal-footer { display: flex; gap: 15px; margin-top: 35px; }
     .btn-cancel { flex: 1; background: #333; color: #fff; border: none; padding: 14px; border-radius: 10px; cursor: pointer; font-weight: 700; transition: background 0.2s; }
-    .btn-save { flex: 1.5; background: #b3d332; color: #fff; border: none; padding: 14px; border-radius: 10px; cursor: pointer; font-weight: 700; transition: opacity 0.2s; display: flex; align-items: center; justify-content: center; gap: 10px; }
+    .btn-save { flex: 1.5; background: #b3d332; color: #000; border: none; padding: 14px; border-radius: 10px; cursor: pointer; font-weight: 700; transition: opacity 0.2s; display: flex; align-items: center; justify-content: center; gap: 10px; }
     .btn-confirm-delete { flex: 1.5; background: #ff4d4d; color: #fff; border: none; padding: 14px; border-radius: 10px; cursor: pointer; font-weight: 700; }
     .btn-save:hover, .btn-confirm-delete:hover { opacity: 0.9; }
 
@@ -367,6 +384,19 @@ const Images = () => {
     @keyframes slideDown { from { transform: translate(-50%, -100%); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
     @keyframes zoomIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    @media (max-width: 768px) {
+     .images-page { padding: 15px 12px 60px 12px; }
+     .images-header-section { flex-direction: column; align-items: stretch; gap: 12px; margin-bottom: 20px; }
+     .search-bar-exp { width: 100%; box-sizing: border-box; }
+     .header-right { width: 100%; display: flex; gap: 10px; }
+     .import-export-btn, .upload-btn-premium { flex: 1 1 50%; height: 42px; padding: 0 10px; font-size: 0.85rem; justify-content: center; }
+     .images-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+     .image-card-premium { border-radius: 14px; }
+     .image-details-exp { padding: 12px 10px; }
+     .img-title-text { font-size: 0.95rem; margin-bottom: 6px; }
+     .meta-tag { font-size: 0.62rem; padding: 3px 6px; }
+    }
    ` }} />
   </div>
  );

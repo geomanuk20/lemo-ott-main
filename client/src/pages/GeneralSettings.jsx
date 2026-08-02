@@ -164,75 +164,93 @@ const GeneralSettings = () => {
       
       <div className="form-row-v">
        <label>Site Name*</label>
-       <input type="text" name="siteName" value={formData.siteName} onChange={handleChange} required />
-      </div>
-
-      <div className="form-row-v">
-       <label>Site Logo*</label>
-       <div className="file-input-group-v">
-        <input type="text" name="siteLogo" value={formData.siteLogo} onChange={handleChange} />
-        <button type="button" className="select-btn-v" onClick={() => handleFileSelect('logo-input')}>Select</button>
-       </div>
-       <p className="hint-text-v">(Recommended resolution : 180x50)</p>
-       <div className="logo-preview-box-v">
-        {formData.siteLogo ? (
-          <img 
-            src={formatBrandingUrl(formData.siteLogo)} 
-            alt="Logo Preview" 
-            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} 
-          />
-        ) : (
-          <div className="preview-logo-placeholder-v">LEMO OTT</div>
-        )}
+       <div className="form-control-col-v">
+        <input type="text" name="siteName" value={formData.siteName} onChange={handleChange} required />
        </div>
       </div>
 
-      <div className="form-row-v">
-       <label>Site Favicon*</label>
-       <div className="file-input-group-v">
-        <input type="text" name="siteFavicon" value={formData.siteFavicon} onChange={handleChange} />
-        <button type="button" className="select-btn-v" onClick={() => handleFileSelect('favicon-input')}>Select</button>
+      <div className="form-row-v has-preview-v">
+       <label style={{ paddingTop: '10px' }}>Site Logo*</label>
+       <div className="form-control-col-v">
+        <div className="file-input-group-v">
+         <input type="text" name="siteLogo" value={formData.siteLogo} onChange={handleChange} />
+         <button type="button" className="select-btn-v" onClick={() => handleFileSelect('logo-input')}>Select</button>
+        </div>
+        <p className="hint-text-v">(Recommended resolution : 180x50)</p>
+        <div className="logo-preview-box-v">
+         {formData.siteLogo ? (
+           <img 
+             src={formatBrandingUrl(formData.siteLogo)} 
+             alt="Logo Preview" 
+             style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} 
+           />
+         ) : (
+           <div className="preview-logo-placeholder-v">LEMO OTT</div>
+         )}
+        </div>
        </div>
-       <p className="hint-text-v">(Recommended resolution : 16x16, 32x32)</p>
-       <div className="favicon-preview-v">
-        {formData.siteFavicon ? (
-          <img 
-            src={formatBrandingUrl(formData.siteFavicon, '/favicon.svg')} 
-            alt="Favicon" 
-            style={{ width: '100%', height: '100%', borderRadius: '4px' }} 
-          />
-        ) : 'L'}
+      </div>
+
+      <div className="form-row-v has-preview-v">
+       <label style={{ paddingTop: '10px' }}>Site Favicon*</label>
+       <div className="form-control-col-v">
+        <div className="file-input-group-v">
+         <input type="text" name="siteFavicon" value={formData.siteFavicon} onChange={handleChange} />
+         <button type="button" className="select-btn-v" onClick={() => handleFileSelect('favicon-input')}>Select</button>
+        </div>
+        <p className="hint-text-v">(Recommended resolution : 16x16, 32x32)</p>
+        <div className="favicon-preview-v">
+         {formData.siteFavicon ? (
+           <img 
+             src={formatBrandingUrl(formData.siteFavicon, '/favicon.svg')} 
+             alt="Favicon" 
+             style={{ width: '100%', height: '100%', borderRadius: '4px' }} 
+           />
+         ) : 'L'}
+        </div>
        </div>
       </div>
 
       <div className="form-row-v">
        <label>Email*</label>
-       <input type="email" name="email" value={formData.email} onChange={handleChange} required />
+       <div className="form-control-col-v">
+        <input type="email" name="email" value={formData.email} onChange={handleChange} required />
+       </div>
       </div>
 
-      <div className="form-row-v">
-       <label>Description</label>
-       <textarea name="description" value={formData.description} onChange={handleChange} rows="4"></textarea>
+      <div className="form-row-v has-preview-v">
+       <label style={{ paddingTop: '10px' }}>Description</label>
+       <div className="form-control-col-v">
+        <textarea name="description" value={formData.description} onChange={handleChange} rows="4"></textarea>
+       </div>
       </div>
 
-      <div className="form-row-v">
-       <label>Site Keywords</label>
-       <textarea name="siteKeywords" value={formData.siteKeywords} onChange={handleChange} rows="3"></textarea>
+      <div className="form-row-v has-preview-v">
+       <label style={{ paddingTop: '10px' }}>Site Keywords</label>
+       <div className="form-control-col-v">
+        <textarea name="siteKeywords" value={formData.siteKeywords} onChange={handleChange} rows="3"></textarea>
+       </div>
       </div>
 
-      <div className="form-row-v">
-       <label>Header Code</label>
-       <textarea name="headerCode" value={formData.headerCode} onChange={handleChange} placeholder="Custom CSS OR JS script" rows="4"></textarea>
+      <div className="form-row-v has-preview-v">
+       <label style={{ paddingTop: '10px' }}>Header Code</label>
+       <div className="form-control-col-v">
+        <textarea name="headerCode" value={formData.headerCode} onChange={handleChange} placeholder="Custom CSS OR JS script" rows="4"></textarea>
+       </div>
       </div>
 
-      <div className="form-row-v">
-       <label>Footer Code</label>
-       <textarea name="footerCode" value={formData.footerCode} onChange={handleChange} placeholder="Custom CSS OR JS script" rows="4"></textarea>
+      <div className="form-row-v has-preview-v">
+       <label style={{ paddingTop: '10px' }}>Footer Code</label>
+       <div className="form-control-col-v">
+        <textarea name="footerCode" value={formData.footerCode} onChange={handleChange} placeholder="Custom CSS OR JS script" rows="4"></textarea>
+       </div>
       </div>
 
-      <div className="form-row-v">
-       <label>Copyright Text</label>
-       <textarea name="copyrightText" value={formData.copyrightText} onChange={handleChange} rows="3"></textarea>
+      <div className="form-row-v has-preview-v">
+       <label style={{ paddingTop: '10px' }}>Copyright Text</label>
+       <div className="form-control-col-v">
+        <textarea name="copyrightText" value={formData.copyrightText} onChange={handleChange} rows="3"></textarea>
+       </div>
       </div>
 
      </div>
@@ -242,48 +260,60 @@ const GeneralSettings = () => {
       
       <div className="form-row-v">
        <label>Default Timezone</label>
-       <select name="defaultTimezone" value={formData.defaultTimezone} onChange={handleChange}>
-        <option value="(UTC+05:30) Asia/Kolkata">(UTC+05:30) Asia/Kolkata</option>
-        <option value="UTC">UTC</option>
-       </select>
+       <div className="form-control-col-v">
+        <select name="defaultTimezone" value={formData.defaultTimezone} onChange={handleChange}>
+         <option value="(UTC+05:30) Asia/Kolkata">(UTC+05:30) Asia/Kolkata</option>
+         <option value="UTC">UTC</option>
+        </select>
+       </div>
       </div>
 
       <div className="form-row-v">
        <label>Default Language</label>
-       <select name="defaultLanguage" value={formData.defaultLanguage} onChange={handleChange}>
-        <option value="English">English</option>
-        <option value="Hindi">Hindi</option>
-       </select>
+       <div className="form-control-col-v">
+        <select name="defaultLanguage" value={formData.defaultLanguage} onChange={handleChange}>
+         <option value="English">English</option>
+         <option value="Hindi">Hindi</option>
+        </select>
+       </div>
       </div>
 
       <div className="form-row-v">
        <label>Site Styling</label>
-       <select name="siteStyling" value={formData.siteStyling} onChange={handleChange}>
-        <option value="Style 6">Style 6</option>
-        <option value="Style 5">Style 5</option>
-       </select>
+       <div className="form-control-col-v">
+        <select name="siteStyling" value={formData.siteStyling} onChange={handleChange}>
+         <option value="Style 6">Style 6</option>
+         <option value="Style 5">Style 5</option>
+        </select>
+       </div>
       </div>
 
       <div className="form-row-v">
        <label>Currency Code*</label>
-       <select name="currencyCode" value={formData.currencyCode} onChange={handleChange}>
-        <option value="USD - US Dollar">USD - US Dollar</option>
-        <option value="INR - Indian Rupee">INR - Indian Rupee</option>
-       </select>
+       <div className="form-control-col-v">
+        <select name="currencyCode" value={formData.currencyCode} onChange={handleChange}>
+         <option value="USD - US Dollar">USD - US Dollar</option>
+         <option value="INR - Indian Rupee">INR - Indian Rupee</option>
+        </select>
+       </div>
       </div>
 
       <h3 className="sub-section-title-v">TMDB API</h3>
       
-      <div className="form-row-v">
-       <label>API Read Access Token</label>
-       <textarea name="tmdbApiToken" value={formData.tmdbApiToken} onChange={handleChange} rows="4"></textarea>
+      <div className="form-row-v has-preview-v">
+       <label style={{ paddingTop: '10px' }}>API Read Access Token</label>
+       <div className="form-control-col-v">
+        <textarea name="tmdbApiToken" value={formData.tmdbApiToken} onChange={handleChange} rows="4"></textarea>
+       </div>
       </div>
 
       <div className="form-row-v">
        <label>TMDB API Data Language</label>
-       <select name="tmdbApiLanguage" value={formData.tmdbApiLanguage} onChange={handleChange}>
-        <option value="English (United States)">English (United States)</option>
-       </select>
+       <div className="form-control-col-v">
+        <select name="tmdbApiLanguage" value={formData.tmdbApiLanguage} onChange={handleChange}>
+         <option value="English (United States)">English (United States)</option>
+        </select>
+       </div>
       </div>
 
       <h3 className="sub-section-title-v">Footer Icon</h3>
@@ -291,61 +321,82 @@ const GeneralSettings = () => {
       
       <div className="form-row-v">
        <label>Facebook URL</label>
-       <input type="text" name="facebookUrl" value={formData.facebookUrl} onChange={handleChange} />
+       <div className="form-control-col-v">
+        <input type="text" name="facebookUrl" value={formData.facebookUrl} onChange={handleChange} />
+       </div>
       </div>
 
       <div className="form-row-v">
        <label>Twitter URL</label>
-       <input type="text" name="twitterUrl" value={formData.twitterUrl} onChange={handleChange} />
+       <div className="form-control-col-v">
+        <input type="text" name="twitterUrl" value={formData.twitterUrl} onChange={handleChange} />
+       </div>
       </div>
 
       <div className="form-row-v">
        <label>Instagram URL</label>
-       <input type="text" name="instagramUrl" value={formData.instagramUrl} onChange={handleChange} />
-      </div>
-
-      <h3 className="sub-section-title-v">Apps</h3>
-      <p className="section-hint-v">Leave empty if you don't want to display the app download button.</p>
-
-      <div className="form-row-v">
-       <label>Google Play URL</label>
-       <input type="text" name="googlePlayUrl" value={formData.googlePlayUrl} onChange={handleChange} />
+       <div className="form-control-col-v">
+        <input type="text" name="instagramUrl" value={formData.instagramUrl} onChange={handleChange} />
+       </div>
       </div>
 
       <div className="form-row-v">
-       <label>Apple Store URL</label>
-       <input type="text" name="appleStoreUrl" value={formData.appleStoreUrl} onChange={handleChange} />
+       <label>YouTube URL</label>
+       <div className="form-control-col-v">
+        <input type="text" name="youtubeUrl" value={formData.youtubeUrl} onChange={handleChange} />
+       </div>
       </div>
 
      </div>
 
     </div>
 
-    {/* GDPR Section */}
+    {/* App Download Links Section */}
+    <h2 className="section-main-title-v">App Download Links</h2>
+    <div className="settings-grid-v">
+     <div className="settings-column-v">
+      <div className="form-row-v">
+       <label>Android App URL</label>
+       <div className="form-control-col-v">
+        <input type="text" name="androidAppUrl" value={formData.androidAppUrl} onChange={handleChange} />
+       </div>
+      </div>
+     </div>
+     <div className="settings-column-v">
+      <div className="form-row-v">
+       <label>iOS App URL</label>
+       <div className="form-control-col-v">
+        <input type="text" name="iosAppUrl" value={formData.iosAppUrl} onChange={handleChange} />
+       </div>
+      </div>
+     </div>
+    </div>
+
+    {/* GDPR Consent Section */}
+    <h2 className="section-main-title-v">GDPR Consent Cookie</h2>
     <div className="gdpr-section-v">
-     <h2 className="section-main-title-v">GDPR Cookie Consent</h2>
-     
      <div className="form-row-v">
-      <label>GDPR Cookie Consent</label>
-      <select name="gdprConsent" value={formData.gdprConsent} onChange={handleChange}>
-       <option value="Active">Active</option>
-       <option value="Inactive">Inactive</option>
-      </select>
+      <label>GDPR Consent</label>
+      <div className="form-control-col-v">
+       <select name="gdprConsent" value={formData.gdprConsent} onChange={handleChange}>
+        <option value="YES">YES</option>
+        <option value="NO">NO</option>
+       </select>
+      </div>
      </div>
 
-     <div className="form-row-v">
-      <label>GDPR Consent Title</label>
-      <input type="text" name="gdprTitle" value={formData.gdprTitle} onChange={handleChange} />
-     </div>
-
-     <div className="form-row-v">
-      <label>GDPR Consent Text</label>
-      <textarea name="gdprText" value={formData.gdprText} onChange={handleChange} rows="3"></textarea>
+     <div className="form-row-v has-preview-v">
+      <label style={{ paddingTop: '10px' }}>GDPR Consent Text</label>
+      <div className="form-control-col-v">
+       <textarea name="gdprText" value={formData.gdprText} onChange={handleChange} rows="3"></textarea>
+      </div>
      </div>
 
      <div className="form-row-v">
       <label>GDPR Privacy URL</label>
-      <input type="text" name="gdprPrivacyUrl" value={formData.gdprPrivacyUrl} onChange={handleChange} />
+      <div className="form-control-col-v">
+       <input type="text" name="gdprPrivacyUrl" value={formData.gdprPrivacyUrl} onChange={handleChange} />
+      </div>
      </div>
     </div>
 
@@ -363,8 +414,28 @@ const GeneralSettings = () => {
     
     .settings-grid-v { display: grid; grid-template-columns: 1fr 1fr; gap: 50px; max-width: 1200px; margin-bottom: 40px; }
     
-    .form-row-v { margin-bottom: 18px; }
-    .form-row-v label { display: block; font-weight: 600; color: #aaa; margin-bottom: 8px; font-size: 0.85rem; }
+    .form-row-v { 
+     display: flex; 
+     align-items: center; 
+     justify-content: space-between; 
+     gap: 20px; 
+     margin-bottom: 22px; 
+    }
+    .form-row-v.has-preview-v {
+     align-items: flex-start;
+    }
+    .form-row-v label { 
+     min-width: 170px; 
+     flex: 0 0 170px; 
+     font-weight: 600; 
+     color: #aaa; 
+     margin-bottom: 0; 
+     font-size: 0.88rem; 
+    }
+    .form-control-col-v {
+     flex: 1;
+     width: 100%;
+    }
     
     .form-row-v input, .form-row-v select, .form-row-v textarea { 
      width: 100%; 
@@ -401,6 +472,30 @@ const GeneralSettings = () => {
     .spinner { animation: spin 1s linear infinite; }
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    @media (max-width: 992px) {
+     .settings-grid-v {
+      grid-template-columns: 1fr;
+      gap: 30px;
+     }
+    }
+
+    @media (max-width: 576px) {
+     .general-settings-page {
+      padding: 20px 15px;
+     }
+     .form-row-v {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 8px;
+      margin-bottom: 18px;
+     }
+     .form-row-v label {
+      min-width: auto;
+      flex: none;
+      margin-bottom: 4px;
+     }
+    }
 
     /* Notification */
     .custom-alert-box-v { position: fixed; top: 40px; left: 50%; transform: translateX(-50%); background: #111; border-radius: 12px; padding: 30px 60px; z-index: 9999; box-shadow: 0 20px 50px rgba(0,0,0,0.6); border: 1px solid #333; }

@@ -208,15 +208,36 @@ const TVCategory = () => {
           «
          </button>
          
-         {[...Array(totalPages)].map((_, i) => (
-          <button 
-           key={i + 1}
-           className={`page-btn ${currentPage === i + 1 ? 'active' : ''}`}
-           onClick={() => handlePageChange(i + 1)}
-          >
-           {i + 1}
-          </button>
-         ))}
+         {(() => {
+          const pages = [];
+          const delta = 0;
+          const left = currentPage - delta;
+          const right = currentPage + delta;
+          let last = 0;
+          for (let i = 1; i <= totalPages; i++) {
+           if (i === 1 || i === totalPages || (i >= left && i <= right)) {
+            if (last && i - last > 1) {
+             pages.push('...' + i);
+            }
+            pages.push(i);
+            last = i;
+           }
+          }
+          return pages.map((page) => {
+           if (typeof page === 'string') {
+            return <span key={page} className="page-ellipsis">…</span>;
+           }
+           return (
+            <button
+             key={page}
+             className={`page-btn ${currentPage === page ? 'active' : ''}`}
+             onClick={() => handlePageChange(page)}
+            >
+             {page}
+            </button>
+           );
+          });
+         })()}
 
          <button 
           className="page-btn arrow" 
@@ -310,27 +331,33 @@ const TVCategory = () => {
      border: 1px solid #222;
     }
 
-    .action-bar { margin-bottom: 30px; }
-
-    .add-language-btn {
-     background-color: #b3d332;
-     color: white;
-     border: none;
-     padding: 6px 12px;
-     border-radius: 6px;
-     display: flex;
+    .action-bar { display: flex; gap: 15px; margin-bottom: 30px; align-items: center; }
+     
+    .import-export-btn, .add-category-btn { 
+     height: 42px;
+     padding: 0 18px;
+     border-radius: 8px;
+     display: inline-flex;
      align-items: center;
-     gap: 6px;
+     justify-content: center;
+     gap: 8px;
      font-weight: 800;
-     font-size: 0.9rem;
+     font-size: 0.88rem;
      cursor: pointer;
-     transition: transform 0.2s;
+     box-sizing: border-box;
+     transition: all 0.2s ease;
     }
-
-    .add-language-btn:hover {
-     transform: scale(1.02);
-     background-color: #12a66d;
+    .add-category-btn {
+     background-color: #b3d332;
+     color: #000;
+     border: 1px solid #b3d332;
     }
+    .import-export-btn {
+     background: #1a1a1a;
+     border: 1px solid #333;
+     color: #fff;
+    }
+    .import-export-btn:hover { background: #2a2a2a; border-color: #b3d332; color: #b3d332; }
 
     .loader-container {
      display: flex;
@@ -342,14 +369,14 @@ const TVCategory = () => {
     .spinner { animation: spin 1s linear infinite; color: #00c853; }
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-    .language-grid {
+    .category-grid {
      display: grid;
      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
      gap: 20px;
      margin-bottom: 40px;
     }
 
-    .language-card {
+    .category-card {
      background: linear-gradient(135deg, #1e1e1e 0%, #151515 100%);
      border-radius: 12px;
      padding: 25px 20px;
@@ -359,11 +386,12 @@ const TVCategory = () => {
      align-items: center;
     }
 
-    .card-top h3 { font-size: 1.4rem; font-weight: 700; color: #fff; margin-bottom: 30px; }
+    .card-top h3 { font-size: 1.4rem; font-weight: 700; color: #fff; margin-bottom: 30px; text-align: center; }
 
-    .card-bottom { width: 100%; display: flex; justify-content: space-between; align-items: center; }
+    .card-bottom { width: 100%; display: flex; justify-content: center; align-items: center; gap: 12px; }
 
-    .left-actions { display: flex; gap: 10px; }
+    .left-actions { display: flex; align-items: center; gap: 8px; }
+    .right-actions { display: flex; align-items: center; }
 
     .icon-btn { width: 32px; height: 32px; border-radius: 50%; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; transition: transform 0.2s; }
     .icon-btn:hover { transform: scale(1.1); }
@@ -377,14 +405,15 @@ const TVCategory = () => {
     input:checked + .slider { background-color: #b3d332; }
     input:checked + .slider:before { transform: translateX(18px); }
 
-    .pagination-wrapper { display: flex; justify-content: center; margin-top: 30px; }
-    .pagination-container { display: flex; background-color: #1a1a1a; border-radius: 6px; overflow: hidden; border: 1px solid #333; }
-    .page-btn { background-color: transparent; border: none; color: #fff; width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; font-weight: 700; cursor: pointer; transition: background 0.2s; border-right: 1px solid #333; }
+    .pagination-wrapper { display: flex; justify-content: center; margin-top: 30px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
+    .pagination-container { display: flex; background-color: #1a1a1a; border-radius: 6px; overflow: hidden; border: 1px solid #333; flex-shrink: 0; }
+    .page-btn { background-color: transparent; border: none; color: #fff; min-width: 45px; width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; font-weight: 700; cursor: pointer; transition: background 0.2s; border-right: 1px solid #333; }
     .page-btn:last-child { border-right: none; }
     .page-btn.active { background-color: #ff4d4d; }
     .page-btn:hover:not(.active):not(:disabled) { background-color: #2a2a2a; }
     .page-btn.arrow { font-size: 1.5rem; color: #fff; }
     .page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .page-ellipsis { display: flex; align-items: center; justify-content: center; min-width: 35px; height: 45px; color: #888; font-size: 1.1rem; border-right: 1px solid #333; }
 
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 4000; backdrop-filter: blur(5px); }
     .modal-content-refactored { background: #1a1a1a; width: 100%; max-width: 600px; border-radius: 4px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.8); animation: modalFade 0.2s ease-out; }
@@ -407,12 +436,24 @@ const TVCategory = () => {
     .cancel-btn { background: #333; color: #fff; border: none; padding: 12px 30px; border-radius: 10px; cursor: pointer; font-weight: 600; }
     .confirm-btn { background: #ff4d4d; color: #fff; border: none; padding: 12px 30px; border-radius: 10px; cursor: pointer; font-weight: 600; }
 
-    .custom-alert-box { position: fixed; top: 30px; left: 50%; transform: translateX(-50%); background: #111; border: 1px solid #222; padding: 20px 40px; border-radius: 12px; z-index: 5000; box-shadow: 0 10px 40px rgba(0,0,0,0.5); animation: slideDown 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-    .alert-content { display: flex; flex-direction: column; align-items: center; gap: 15px; }
-    .alert-text { color: #fff; font-size: 1.1rem; font-weight: 700; text-align: center; }
-    @keyframes slideDown { from { transform: translate(-50%, -100%); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
     @keyframes modalFade { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    @media (max-width: 768px) {
+     .tv-category-container { padding: 5px; }
+     .tv-category-inner-box { padding: 15px; }
+     .action-bar { flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+     .add-category-btn, .import-export-btn { flex: 1 1 auto; justify-content: center; padding: 10px 14px; font-size: 0.85rem; }
+     .category-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 25px; }
+     .category-card { padding: 18px 12px; }
+     .card-top h3 { font-size: 1.1rem; margin-bottom: 18px; text-align: center; }
+     .card-bottom { width: 100%; display: flex; justify-content: center; align-items: center; gap: 8px; }
+     .left-actions { gap: 6px; }
+     .icon-btn { width: 30px; height: 30px; }
+     .form-row { flex-direction: column; align-items: stretch; gap: 6px; margin-bottom: 18px; }
+     .form-row label { width: 100%; font-size: 0.95rem; }
+     .input-wrapper { width: 100%; }
+    }
    ` }} />
   </div>
  );

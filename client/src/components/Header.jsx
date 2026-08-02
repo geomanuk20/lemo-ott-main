@@ -85,7 +85,7 @@ const Header = () => {
           type="button"
           className="sidebar-toggle-btn"
           onClick={() => document.body.classList.toggle('sidebar-active')}
-          title="Toggle Sidebar"
+          aria-label="Toggle Sidebar"
         >
           <Menu size={22} />
         </button>

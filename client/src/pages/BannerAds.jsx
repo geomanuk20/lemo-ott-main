@@ -188,6 +188,14 @@ const BannerAds = () => {
     .custom-alert-box-v { position: fixed; top: 40px; left: 50%; transform: translateX(-50%); background: #111; border-radius: 12px; padding: 30px 60px; z-index: 9999; box-shadow: 0 20px 50px rgba(0,0,0,0.6); border: 1px solid #333; }
     .alert-content-v { display: flex; flex-direction: column; align-items: center; gap: 15px; }
     .alert-text-v { color: #fff; font-size: 1.2rem; font-weight: 800; text-align: center; }
+
+    @media (max-width: 768px) {
+     .banner-ads-page { padding: 15px 12px 60px 12px; }
+     .form-row-full-v { flex-direction: column; align-items: stretch; gap: 8px; }
+     .form-row-full-v label { width: 100%; margin-top: 0; }
+     .form-row-full-v textarea { width: 100%; box-sizing: border-box; }
+     .save-btn-v { width: 100%; }
+    }
    ` }} />
   </div>
  );

@@ -42,6 +42,18 @@ body {
   overflow-x: hidden;
 }
 
+/* Mobile: allow horizontal scrolling inside page content areas */
+@media (max-width: 1199px) {
+  body, html {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  .main-content {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
 /* Scrollbar Styling */
 ::-webkit-scrollbar {
   width: 6px;
@@ -1129,5 +1141,20 @@ body.user-subscribed .fe-premium-indicator-v {
 
   .imdb-input-group button {
     width: 100% !important;
+  }
+}
+
+/* ====== Horizontal Scrollbar Styling for Mobile ====== */
+@media (max-width: 1199px) {
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #444;
+    border-radius: 10px;
   }
 }

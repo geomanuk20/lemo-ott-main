@@ -181,12 +181,26 @@ const Slider = () => {
      .slider-page { padding: 20px 30px; animation: fadeIn 0.4s ease-out; }
      
      .slider-controls-top { display: flex; gap: 15px; align-items: center; margin-bottom: 25px; }
-     .add-slider-btn-green { background: #b3d332; color: #fff; border: none; padding: 10px 20px; border-radius: 6px; display: flex; align-items: center; gap: 8px; font-weight: 700; cursor: pointer; transition: opacity 0.2s; }
+     .add-slider-btn-green, .import-export-btn { 
+      height: 42px;
+      padding: 0 18px;
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-weight: 800;
+      font-size: 0.88rem;
+      cursor: pointer;
+      box-sizing: border-box;
+      transition: all 0.2s ease;
+     }
+     .add-slider-btn-green { background: #b3d332; color: #000; border: 1px solid #b3d332; }
      .add-slider-btn-green:hover { opacity: 0.9; }
-     .import-export-btn { background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 10px 20px; border-radius: 6px; display: flex; align-items: center; gap: 8px; font-weight: 700; cursor: pointer; transition: all 0.2s ease; font-size: 0.9rem; }
+     .import-export-btn { background: #1a1a1a; border: 1px solid #333; color: #fff; }
      .import-export-btn:hover { background: #2a2a2a; border-color: #b3d332; color: #b3d332; }
 
-    .slider-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(500px, 1fr)); gap: 30px; }
+    .slider-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 25px; }
     
     .slider-card-premium { background: #1a1a1a; border-radius: 12px; overflow: hidden; border: 1px solid #222; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
     .slider-img-container { aspect-ratio: 16/9; width: 100%; background: #111; overflow: hidden; }
@@ -194,24 +208,24 @@ const Slider = () => {
     .slider-card-premium:hover .slider-img { transform: scale(1.05); }
 
     .slider-info { padding: 15px 20px; }
-    .slider-header-info { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
-    .slider-title { color: #fff; font-size: 1.1rem; font-weight: 700; margin: 0; }
-    .section-badge-alt { background: rgba(22, 196, 127, 0.1); color: #b3d332; font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; border: 1px solid rgba(22, 196, 127, 0.2); }
+    .slider-header-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px; }
+    .slider-title { color: #fff; font-size: 1.1rem; font-weight: 700; margin: 0; word-break: break-word; }
+    .section-badge-alt { background: rgba(22, 196, 127, 0.1); color: #b3d332; font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; border: 1px solid rgba(22, 196, 127, 0.2); white-space: nowrap; }
     
     .display-on-row-alt { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
     .row-label-alt { color: #555; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; margin-right: 5px; }
     .loc-tag { background: rgba(0, 136, 255, 0.1); color: #0088ff; font-size: 0.65rem; font-weight: 800; padding: 2px 8px; border-radius: 3px; text-transform: uppercase; border: 1px solid rgba(0, 136, 255, 0.2); }
     .loc-tag-empty { color: #444; font-size: 0.65rem; font-weight: 700; font-style: italic; }
     
-    .slider-actions-row { display: flex; justify-content: space-between; align-items: center; }
+    .slider-actions-row { display: flex; justify-content: space-between; align-items: center; width: 100%; }
     .left-btns { display: flex; gap: 12px; }
     
-    .circle-btn-green { width: 32px; height: 32px; border-radius: 50%; background: #b3d332; color: #fff; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.2s; }
+    .circle-btn-green { width: 32px; height: 32px; border-radius: 50%; background: #b3d332; color: #000; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.2s; }
     .circle-btn-red { width: 32px; height: 32px; border-radius: 50%; background: #ff4d4d; color: #fff; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.2s; }
     .circle-btn-green:hover, .circle-btn-red:hover { transform: scale(1.1); }
 
     /* Toggle Switch */
-    .switch { position: relative; display: inline-block; width: 44px; height: 22px; }
+    .switch { position: relative; display: inline-block; width: 44px; height: 22px; flex-shrink: 0; }
     .switch input { opacity: 0; width: 0; height: 0; }
     .slider-round { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .4s; border-radius: 34px; }
     .slider-round:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
@@ -234,6 +248,17 @@ const Slider = () => {
 
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+    @media (max-width: 768px) {
+     .slider-page { padding: 15px 10px 60px 10px; }
+     .slider-controls-top { width: 100%; display: flex; gap: 10px; margin-bottom: 20px; }
+     .add-slider-btn-green, .import-export-btn { flex: 1 1 50%; height: 42px; padding: 0 10px; font-size: 0.85rem; justify-content: center; }
+     .slider-grid { grid-template-columns: 1fr; gap: 18px; }
+     .slider-info { padding: 12px 14px; }
+     .slider-title { font-size: 1rem; }
+     .section-badge-alt { font-size: 0.65rem; }
+     .slider-actions-row { width: 100%; }
+    }
    ` }} />
   </div>
  );

@@ -227,6 +227,17 @@ const AddPage = () => {
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
+    @media (max-width: 1199px) {
+     .add-page-container-v { padding: 15px 12px 60px; }
+     .form-container-v { max-width: 100%; }
+     .form-row-v { flex-direction: column; align-items: stretch; gap: 8px; }
+     .form-row-v label { width: 100%; padding-top: 0; font-size: 0.95rem; }
+     .input-wrapper-v { width: 100%; }
+     .editor-outer-v { width: 100%; }
+     .form-actions-v { margin-left: 0; }
+     .save-btn-v { width: 100%; justify-content: center; }
+    }
+
     /* Notification */
     .custom-alert-box-v { position: fixed; top: 40px; left: 50%; transform: translateX(-50%); background: #111; border-radius: 12px; padding: 30px 60px; z-index: 9999; box-shadow: 0 20px 50px rgba(0,0,0,0.6); border: 1px solid #333; }
     .alert-content-v { display: flex; flex-direction: column; align-items: center; gap: 15px; }

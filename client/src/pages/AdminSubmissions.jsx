@@ -325,13 +325,15 @@ const AdminSubmissions = () => {
             <option value="">All Payment Status</option>
             {PAYMENT_FILTERS.filter(Boolean).map(f => <option key={f} value={f}>{f}</option>)}
           </select>
-          <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setCurrentPage(1); }} className="sub-select">
-            <option value="">All Review Status</option>
-            {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
-          <button className="sub-refresh-btn" onClick={fetchSubmissions} title="Refresh">
-            <RefreshCw size={16} />
-          </button>
+          <div className="sub-select-refresh-row">
+            <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setCurrentPage(1); }} className="sub-select">
+              <option value="">All Review Status</option>
+              {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <button className="sub-refresh-btn" onClick={fetchSubmissions} title="Refresh">
+              <RefreshCw size={16} />
+            </button>
+          </div>
         </div>
 
         <div className="sub-filter-right">
@@ -601,18 +603,20 @@ const AdminSubmissions = () => {
         .sub-search-box input { width: 100%; background: #111; border: 1px solid #222; color: #fff; padding: 10px 15px 10px 38px; border-radius: 30px; outline: none; font-size: 0.85rem; box-sizing: border-box; }
         .sub-search-box input:focus { border-color: #b3d332; }
         .sub-search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #555; pointer-events: none; }
-        .sub-select { background: #111; border: 1px solid #222; color: #fff; padding: 9px 12px; border-radius: 8px; outline: none; font-size: 0.85rem; cursor: pointer; flex: 1; min-width: 140px; }
-        .sub-refresh-btn { background: #111; border: 1px solid #222; color: #888; padding: 9px 12px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; transition: 0.2s; flex-shrink: 0; }
+        .sub-select { background: #111; border: 1px solid #222; color: #fff; padding: 0 12px; height: 42px; border-radius: 8px; outline: none; font-size: 0.85rem; cursor: pointer; flex: 1; min-width: 140px; box-sizing: border-box; }
+        .sub-select-refresh-row { display: flex; gap: 8px; width: 100%; align-items: center; }
+        .sub-select-refresh-row .sub-select { flex: 1; min-width: 0; }
+        .sub-refresh-btn { width: 42px; height: 42px; background: #111; border: 1px solid #222; color: #888; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; flex-shrink: 0; box-sizing: border-box; }
         .sub-refresh-btn:hover { border-color: #b3d332; color: #b3d332; }
-        .sub-action-btn { border: none; padding: 9px 14px; border-radius: 8px; font-size: 0.82rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: 0.2s; white-space: nowrap; flex: 1; justify-content: center; }
-        .sub-action-btn.danger { background: rgba(255,77,77,0.15); color: #ff4d4d; }
-        .sub-action-btn.danger:hover { background: rgba(255,77,77,0.25); }
-        .sub-action-btn.import { background: rgba(0,168,255,0.15); color: #00a8ff; }
-        .sub-action-btn.import:hover { background: rgba(0,168,255,0.25); }
-        .sub-action-btn.export { background: rgba(179,211,50,0.15); color: #b3d332; }
-        .sub-action-btn.export:hover { background: rgba(179,211,50,0.25); }
-        .sub-action-btn.export-json { background: rgba(255,193,7,0.12); color: #ffc107; }
-        .sub-action-btn.export-json:hover { background: rgba(255,193,7,0.2); }
+        .sub-action-btn { border: none; height: 42px; padding: 0 14px; border-radius: 8px; font-size: 0.85rem; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: 0.2s; white-space: nowrap; flex: 1; justify-content: center; box-sizing: border-box; }
+        .sub-action-btn.danger { background: #ff4d4d !important; color: #ffffff !important; border: 1px solid #ff4d4d; }
+        .sub-action-btn.danger:hover { background: #ff3333 !important; }
+        .sub-action-btn.import { background: #0088ff !important; color: #ffffff !important; border: 1px solid #0088ff; }
+        .sub-action-btn.import:hover { background: #0077e6 !important; }
+        .sub-action-btn.export { background: #b3d332 !important; color: #000000 !important; border: 1px solid #b3d332; }
+        .sub-action-btn.export:hover { background: #a2c221 !important; }
+        .sub-action-btn.export-json { background: #ffc107 !important; color: #000000 !important; border: 1px solid #ffc107; }
+        .sub-action-btn.export-json:hover { background: #e0a800 !important; }
 
         /* ── Table ────────────────────────────────────────── */
         .sub-table-wrap { background: #0a0a0a; border: 1px solid #1a1a1a; border-radius: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; }
@@ -694,6 +698,30 @@ const AdminSubmissions = () => {
         .sub-confirm-btn:hover { background: #ff3333; }
 
         /* ══ RESPONSIVE BREAKPOINTS ══════════════════════════ */
+
+        @media (max-width: 768px) {
+          .admin-submissions-pg { padding: 15px 12px 60px 12px; }
+          .sub-admin-header { flex-direction: column; align-items: stretch; gap: 12px; margin-bottom: 18px; }
+          .sub-admin-title { font-size: 1.25rem; }
+          .sub-admin-stats { width: 100%; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; box-sizing: border-box; }
+          .stat-pill { min-width: auto; padding: 8px 4px; font-size: 1.1rem; text-align: center; }
+          .stat-pill span { font-size: 0.6rem; }
+          
+          .sub-filter-bar { width: 100%; gap: 10px; }
+          .sub-filter-left { flex-direction: column; width: 100%; gap: 8px; }
+          .sub-search-box { width: 100%; flex: 1 1 100%; min-width: 100%; box-sizing: border-box; }
+          .sub-search-box input { height: 42px; font-size: 0.85rem; }
+          .sub-select { width: 100%; height: 42px; box-sizing: border-box; font-size: 0.85rem; }
+          .sub-select-refresh-row { width: 100%; }
+          .sub-refresh-btn { width: 42px; height: 42px; flex-shrink: 0; }
+          
+          .sub-filter-right { width: 100%; display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; box-sizing: border-box; }
+          .sub-action-btn { width: 100%; height: 42px; justify-content: center; font-size: 0.85rem; font-weight: 800; box-sizing: border-box; }
+          
+          .sub-table-wrap { width: 100%; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; box-sizing: border-box; border-radius: 6px; }
+          .sub-table { min-width: 650px; }
+          .sub-email { max-width: 140px; overflow: hidden; text-overflow: ellipsis; display: block; }
+        }
 
         /* Tablet (≥768px): two-column filter row */
         @media (min-width: 768px) {

@@ -284,6 +284,22 @@ const MaintenanceSettings = () => {
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
+    @media (max-width: 1199px) {
+     .maintenance-settings-page { padding: 15px 12px 60px; }
+     .header-actions-v { justify-content: flex-start; margin-bottom: 16px; }
+     .status-toggle-btn-v { width: 100%; justify-content: center; padding: 10px 16px; font-size: 0.85rem; }
+     .form-content-v { max-width: 100%; }
+     .form-row-full-v { flex-direction: column; align-items: stretch; gap: 8px; margin-bottom: 18px; }
+     .form-row-full-v label { width: 100%; font-size: 0.9rem; }
+     .form-row-full-v input { width: 100%; box-sizing: border-box; }
+     .align-start-v { align-items: stretch; }
+     .mt-10-v { margin-top: 0; }
+     .rich-editor-mock-v { width: 100%; box-sizing: border-box; }
+     .form-actions-left-v { padding-left: 0; }
+     .save-btn-v { width: 100%; justify-content: center; }
+     .info-text-box-v { max-width: 100%; }
+    }
+
     /* Notification */
     .custom-alert-box-v { position: fixed; top: 40px; left: 50%; transform: translateX(-50%); background: #111; border-radius: 12px; padding: 30px 60px; z-index: 9999; box-shadow: 0 20px 50px rgba(0,0,0,0.6); border: 1px solid #333; }
     .alert-content-v { display: flex; flex-direction: column; align-items: center; gap: 15px; }

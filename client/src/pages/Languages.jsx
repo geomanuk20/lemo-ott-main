@@ -229,16 +229,21 @@ const Languages = () => {
          >
           «
          </button>
-         
-         {[...Array(totalPages)].map((_, i) => (
-          <button 
-           key={i + 1}
-           className={`page-btn ${currentPage === i + 1 ? 'active' : ''}`}
-           onClick={() => handlePageChange(i + 1)}
-          >
-           {i + 1}
-          </button>
-         ))}
+         {(() => {
+           const pages = [];
+           let last = 0;
+           for (let i = 1; i <= totalPages; i++) {
+            if (i === 1 || i === totalPages || i === currentPage) {
+             if (last && i - last > 1) pages.push('...' + i);
+             pages.push(i);
+             last = i;
+            }
+           }
+           return pages.map((page) => {
+            if (typeof page === 'string') return <span key={page} className="page-ellipsis">…</span>;
+            return <button key={page} className={`page-btn ${currentPage === page ? 'active' : ''}`} onClick={() => handlePageChange(page)}>{page}</button>;
+           });
+          })()}
 
          <button 
           className="page-btn arrow" 
@@ -396,30 +401,33 @@ const Languages = () => {
      border: 1px solid #222;
     }
 
-    .action-bar { display: flex; gap: 15px; margin-bottom: 30px; }
-    
-    .import-export-btn { background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 6px 16px; border-radius: 6px; display: flex; align-items: center; gap: 8px; font-weight: 700; cursor: pointer; transition: all 0.2s ease; font-size: 0.9rem; }
-    .import-export-btn:hover { background: #2a2a2a; border-color: #b3d332; color: #b3d332; }
-
-    .add-language-btn {
-     background-color: #b3d332;
-     color: white;
-     border: none;
-     padding: 6px 12px;
-     border-radius: 6px;
-     display: flex;
-     align-items: center;
-     gap: 6px;
-     font-weight: 800;
-     font-size: 0.9rem;
-     cursor: pointer;
-     transition: transform 0.2s;
-    }
-
-    .add-language-btn:hover {
-     transform: scale(1.02);
-     background-color: #12a66d;
-    }
+     .action-bar { display: flex; gap: 15px; margin-bottom: 30px; align-items: center; }
+     
+     .import-export-btn, .add-language-btn { 
+      height: 42px;
+      padding: 0 18px;
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-weight: 800;
+      font-size: 0.88rem;
+      cursor: pointer;
+      box-sizing: border-box;
+      transition: all 0.2s ease;
+     }
+     .add-language-btn {
+      background-color: #b3d332;
+      color: #000;
+      border: 1px solid #b3d332;
+     }
+     .import-export-btn {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      color: #fff;
+     }
+     .import-export-btn:hover { background: #2a2a2a; border-color: #b3d332; color: #b3d332; }
 
     .loader-container { width: 100%; min-height: 500px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 40px; }
     .ios-spinner-v { position: relative; width: 40px; height: 40px; }
@@ -456,11 +464,12 @@ const Languages = () => {
      align-items: center;
     }
 
-    .card-top h3 { font-size: 1.4rem; font-weight: 700; color: #fff; margin-bottom: 30px; }
+    .card-top h3 { font-size: 1.4rem; font-weight: 700; color: #fff; margin-bottom: 30px; text-align: center; }
 
-    .card-bottom { width: 100%; display: flex; justify-content: space-between; align-items: center; }
+    .card-bottom { width: 100%; display: flex; justify-content: center; align-items: center; gap: 12px; }
 
-    .left-actions { display: flex; gap: 10px; }
+    .left-actions { display: flex; align-items: center; gap: 8px; }
+    .right-actions { display: flex; align-items: center; }
 
     .icon-btn { width: 32px; height: 32px; border-radius: 50%; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; transition: transform 0.2s; }
     .icon-btn:hover { transform: scale(1.1); }
@@ -548,10 +557,24 @@ const Languages = () => {
 
     .custom-alert-box { position: fixed; top: 30px; left: 50%; transform: translateX(-50%); background: #111; border-radius: 12px; padding: 25px 50px; z-index: 5000; box-shadow: 0 10px 40px rgba(0,0,0,0.5); animation: slideDown 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
     .alert-content { display: flex; flex-direction: column; align-items: center; gap: 15px; }
-    .alert-text { color: #fff; font-size: 1.1rem; font-weight: 700; text-align: center; }
-    @keyframes slideDown { from { transform: translate(-50%, -100%); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
     @keyframes modalFade { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    @media (max-width: 768px) {
+     .language-session-container { padding: 5px; }
+     .language-inner-box { padding: 15px; }
+     .action-bar { flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+     .add-language-btn, .import-export-btn { flex: 1 1 auto; justify-content: center; padding: 10px 14px; font-size: 0.85rem; }
+     .language-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 25px; }
+     .language-card { padding: 18px 12px; }
+     .card-top h3 { font-size: 1.1rem; margin-bottom: 18px; text-align: center; }
+     .card-bottom { width: 100%; display: flex; justify-content: center; align-items: center; gap: 8px; }
+     .left-actions { gap: 6px; }
+     .icon-btn { width: 30px; height: 30px; }
+     .form-row { flex-direction: column; align-items: stretch; gap: 6px; margin-bottom: 18px; }
+     .form-row label { width: 100%; font-size: 0.95rem; }
+     .input-wrapper { width: 100%; }
+    }
    ` }} />
   </div>
  );

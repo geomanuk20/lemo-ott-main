@@ -236,6 +236,31 @@ const AddActor = () => {
 
     /* TinyMCE Dark Theme Adjustments */
     .tox-tinymce { border: 1px solid #333 !important; border-radius: 4px !important; }
+
+    @media (max-width: 768px) {
+     .add-actor-page {
+      padding: 15px 12px;
+     }
+     .form-row-custom {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 6px;
+      margin-bottom: 16px;
+     }
+     .form-row-custom label {
+      width: 100%;
+      padding-top: 0;
+      margin-bottom: 4px;
+      font-size: 0.95rem;
+     }
+     .input-col {
+      width: 100%;
+     }
+     .save-btn-red {
+      width: 100%;
+      padding: 14px;
+     }
+    }
    ` }} />
   </div>
  );

@@ -335,15 +335,21 @@ const TVChannels = () => {
         >
          «
         </button>
-        {[...Array(totalPages)].map((_, i) => (
-         <button 
-          key={i + 1} 
-          className={`page-btn ${currentPage === i + 1 ? 'active' : ''}`}
-          onClick={() => handlePageChange(i + 1)}
-         >
-          {i + 1}
-         </button>
-        ))}
+         {(() => {
+          const pages = [];
+          let last = 0;
+          for (let i = 1; i <= totalPages; i++) {
+           if (i === 1 || i === totalPages || i === currentPage) {
+            if (last && i - last > 1) pages.push('...' + i);
+            pages.push(i);
+            last = i;
+           }
+          }
+          return pages.map((page) => {
+           if (typeof page === 'string') return <span key={page} className="page-ellipsis">…</span>;
+           return <button key={page} className={`page-btn ${currentPage === page ? 'active' : ''}`} onClick={() => handlePageChange(page)}>{page}</button>;
+          });
+         })()}
         <button 
          className="page-btn arrow" 
          onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}

@@ -159,7 +159,7 @@ const HomeSections = () => {
     )}
 
    <div className="language-inner-box">
-    <div className="action-bar" style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+    <div className="action-bar">
      <button className="add-language-btn" onClick={handleAdd}>
       <Plus size={16} strokeWidth={3} />
       <span>Add Section</span>
@@ -320,21 +320,36 @@ const HomeSections = () => {
     .language-session-container { padding: 30px; animation: fadeIn 0.4s ease-out; }
     .language-inner-box { background-color: #111; border-radius: 8px; padding: 25px; min-height: 500px; border: 1px solid #222; }
     
-    .action-bar { margin-bottom: 30px; }
-    .add-language-btn { background-color: #b3d332; color: white; border: none; padding: 8px 16px; border-radius: 6px; display: flex; align-items: center; gap: 6px; font-weight: 800; font-size: 0.9rem; cursor: pointer; transition: transform 0.2s; }
-    .add-language-btn:hover { transform: scale(1.02); background-color: #b3d332; opacity: 0.9; }
-    .import-export-btn { background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 8px 16px; border-radius: 6px; display: flex; align-items: center; gap: 8px; font-weight: 800; cursor: pointer; transition: all 0.2s ease; font-size: 0.9rem; }
+    .action-bar { display: flex; gap: 15px; margin-bottom: 30px; align-items: center; }
+    .add-language-btn, .import-export-btn { 
+     height: 42px;
+     padding: 0 18px;
+     border-radius: 8px;
+     display: inline-flex;
+     align-items: center;
+     justify-content: center;
+     gap: 8px;
+     font-weight: 800;
+     font-size: 0.88rem;
+     cursor: pointer;
+     box-sizing: border-box;
+     transition: all 0.2s ease;
+    }
+    .add-language-btn { background-color: #b3d332; color: #000; border: 1px solid #b3d332; }
+    .add-language-btn:hover { opacity: 0.9; }
+    .import-export-btn { background: #1a1a1a; border: 1px solid #333; color: #fff; }
     .import-export-btn:hover { background: #2a2a2a; border-color: #b3d332; color: #b3d332; }
 
     .language-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; }
     .language-card { background: linear-gradient(135deg, #1e1e1e 0%, #151515 100%); border-radius: 12px; padding: 25px 20px; border: 1px solid #2a2a2a; display: flex; flex-direction: column; align-items: center; }
     
     .card-top h3 { font-size: 1.3rem; font-weight: 700; color: #fff; margin-bottom: 30px; text-align: center; }
-    .card-bottom { width: 100%; display: flex; justify-content: space-between; align-items: center; }
+    .card-bottom { width: 100%; display: flex; justify-content: center; align-items: center; gap: 12px; }
     
-    .left-actions { display: flex; gap: 10px; }
+    .left-actions { display: flex; align-items: center; gap: 8px; }
+    .right-actions { display: flex; align-items: center; }
     .icon-btn { width: 32px; height: 32px; border-radius: 50%; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; transition: transform 0.2s; }
-    .icon-btn.edit { background-color: #b3d332; }
+    .icon-btn.edit { background-color: #b3d332; color: #000; }
     .icon-btn.delete { background-color: #ff4d4d; }
     .icon-btn:hover { transform: scale(1.1); }
 
@@ -411,6 +426,19 @@ const HomeSections = () => {
 
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     @keyframes modalIn { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+    @media (max-width: 768px) {
+     .language-session-container { padding: 5px; }
+     .language-inner-box { padding: 15px; }
+     .action-bar { flex-wrap: nowrap; gap: 10px; margin-bottom: 20px; width: 100%; }
+     .add-language-btn, .import-export-btn { flex: 1 1 50%; height: 42px; padding: 0 10px; font-size: 0.85rem; justify-content: center; }
+     .language-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 25px; }
+     .language-card { padding: 18px 10px; }
+     .card-top h3 { font-size: 1.05rem; margin-bottom: 16px; text-align: center; }
+     .card-bottom { width: 100%; display: flex; justify-content: center; align-items: center; gap: 8px; }
+     .left-actions { gap: 6px; }
+     .icon-btn { width: 28px; height: 28px; }
+    }
    ` }} />
   </div>
  );

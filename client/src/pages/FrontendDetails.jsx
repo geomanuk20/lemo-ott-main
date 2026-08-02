@@ -1850,9 +1850,11 @@ const FrontendDetails = () => {
        border-radius: 8px;
        gap: 4px;
      }
+      .fe-cast-group { flex-direction: column; gap: 6px; width: 100%; }
+      .fe-cast-label { min-width: auto; padding-top: 0; font-size: 0.78rem; width: 100%; }
+      .fe-cast-list { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; }
+      .fe-cast-chip { font-size: 0.78rem; padding: 5px 12px; max-width: 100%; word-break: break-word; }
      .fe-info-meta-top-v { font-size: 0.9rem; margin-bottom: 20px; }
-     .fe-cast-group { flex-direction: column; gap: 6px; }
-     .fe-cast-label { min-width: auto; padding-top: 0; }
      .fe-info-desc-v { font-size: 0.95rem; }
      .fe-related-grid-v { grid-template-columns: repeat(2, 1fr); gap: 15px; }
      .fe-related-grid-v.grid-sports-v {

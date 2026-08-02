@@ -155,9 +155,9 @@ const Transactions = () => {
      </div>
 
      <div className="date-box-v">
-      <input type="text" placeholder="mm/dd/yyyy" />
-      <Search size={18} className="search-icon-v" />
-     </div>
+       <input type="text" placeholder="mm/dd/yyyy" />
+       <Calendar size={18} className="search-icon-v" />
+      </div>
     </div>
 
     <div className="filter-right-v" style={{ display: 'flex', gap: '15px' }}>
@@ -252,15 +252,27 @@ const Transactions = () => {
      <ChevronLeft size={16} />
     </button>
     
-    {[...Array(totalPages)].map((_, i) => (
-     <button 
-      key={i} 
-      onClick={() => paginate(i + 1)}
-      className={`pag-btn-v ${currentPage === i + 1 ? 'active' : ''}`}
-     >
-      {i + 1}
-     </button>
-    ))}
+    {(() => {
+      const pages = [];
+      let last = 0;
+      for (let i = 1; i <= totalPages; i++) {
+       if (i === 1 || i === totalPages || i === currentPage || (i >= currentPage - 1 && i <= currentPage + 1)) {
+        if (last && i - last > 1) pages.push('...' + i);
+        pages.push(i);
+        last = i;
+       }
+      }
+      return pages.map((page) => {
+       if (typeof page === 'string') {
+        return <span key={page} className="pag-ellipsis-v">…</span>;
+       }
+       return (
+        <button key={page} onClick={() => paginate(page)} className={`pag-btn-v ${currentPage === page ? 'active' : ''}`}>
+         {page}
+        </button>
+       );
+      });
+     })()}
 
     <button 
      onClick={() => paginate(currentPage + 1)} 
@@ -294,34 +306,37 @@ const Transactions = () => {
    <style dangerouslySetInnerHTML={{ __html: `
     .transactions-page { padding: 30px; background: #000; min-height: 100vh; color: #fff; }
     
-    .filter-bar-v { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; gap: 20px; }
-    .filter-left-v { display: flex; gap: 15px; flex: 1; }
+    .filter-bar-v { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; gap: 20px; flex-wrap: wrap; }
+    .filter-left-v { display: flex; gap: 12px; align-items: center; flex: 1; flex-wrap: wrap; }
     
-    .premium-select-v { background: #25272b; border: 1px solid #333; color: #fff; padding: 10px 15px; border-radius: 6px; outline: none; width: 220px; font-size: 0.9rem; }
+    .premium-select-v { background: #25272b; border: 1px solid #333; color: #fff; padding: 10px 15px; border-radius: 6px; outline: none; width: 200px; height: 44px; font-size: 0.9rem; box-sizing: border-box; flex-shrink: 0; }
     
-    .search-box-v, .date-box-v { position: relative; flex: 1; max-width: 350px; }
-    .search-box-v input, .date-box-v input { width: 100%; background: #25272b; border: 1px solid #333; color: #fff; padding: 10px 45px 10px 15px; border-radius: 30px; outline: none; font-size: 0.9rem; }
-    .search-icon-v { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); color: #888; }
+    .search-box-v { position: relative; flex: 2; min-width: 220px; }
+    .date-box-v { position: relative; flex: 1; min-width: 160px; }
+    .search-box-v input, .date-box-v input { width: 100%; height: 44px; background: #25272b; border: 1px solid #333; color: #fff; padding: 0 45px 0 15px; border-radius: 30px; outline: none; font-size: 0.9rem; box-sizing: border-box; }
+    .search-box-v input::placeholder, .date-box-v input::placeholder { color: #666; }
+    .search-icon-v { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); color: #888; pointer-events: none; }
     
     .export-btn-v { background: #00a8ff; color: #fff; border: none; padding: 10px 20px; border-radius: 6px; display: flex; align-items: center; gap: 10px; font-weight: 700; cursor: pointer; transition: background 0.3s; }
     .export-btn-v:hover { background: #0097e6; }
 
-    .table-container-p { background: #0a0a0a; border: 1px solid #222; border-radius: 4px; overflow: hidden; }
-    .premium-table-v { width: 100%; border-collapse: collapse; text-align: left; }
-    .premium-table-v th { background: #151515; padding: 15px 20px; font-size: 0.9rem; font-weight: 700; color: #eee; border-bottom: 1px solid #333; border-right: 1px solid #222; }
+    .table-container-p { background: #0a0a0a; border: 1px solid #222; border-radius: 4px; overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; box-sizing: border-box; }
+    .premium-table-v { width: 100%; min-width: 700px; border-collapse: collapse; text-align: left; }
+    .premium-table-v th { background: #151515; padding: 15px 20px; font-size: 0.9rem; font-weight: 700; color: #eee; border-bottom: 1px solid #333; border-right: 1px solid #222; white-space: nowrap; }
     .premium-table-v th:last-child { border-right: none; }
-    .premium-table-v td { padding: 18px 20px; font-size: 0.85rem; color: #888; border-bottom: 1px solid #1a1a1a; border-right: 1px solid #222; vertical-align: middle; }
+    .premium-table-v td { padding: 18px 20px; font-size: 0.85rem; color: #888; border-bottom: 1px solid #1a1a1a; border-right: 1px solid #222; vertical-align: middle; white-space: nowrap; }
     .premium-table-v td:last-child { border-right: none; }
     .premium-table-v tr:hover { background: #111; }
     
     .name-cell-v { color: #0088ff; font-weight: 700; cursor: pointer; }
     .bold-text { color: #eee; font-weight: 700; }
 
-    .pagination-v { display: flex; gap: 5px; margin-top: 30px; background: #111; padding: 5px; border-radius: 6px; width: fit-content; }
-    .pag-btn-v { background: #222; border: none; color: #fff; width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; border-radius: 4px; cursor: pointer; font-weight: 700; transition: all 0.2s; }
+    .pagination-v { display: flex; gap: 5px; margin-top: 30px; background: #111; padding: 5px; border-radius: 6px; width: fit-content; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .pag-btn-v { background: #222; border: none; color: #fff; width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; border-radius: 4px; cursor: pointer; font-weight: 700; transition: all 0.2s; flex-shrink: 0; }
     .pag-btn-v:hover { background: #333; }
-    .pag-btn-v.active { background: #b3d332; }
+    .pag-btn-v.active { background: #b3d332; color: #000; }
     .pag-btn-v:disabled { opacity: 0.3; cursor: not-allowed; }
+    .pag-ellipsis-v { display: flex; align-items: center; justify-content: center; width: 30px; height: 35px; color: #666; font-size: 1rem; flex-shrink: 0; }
 
     .loader-cell { text-align: center; padding: 100px !important; }
     .spinner { animation: spin 1s linear infinite; color: #00a8ff; }
@@ -338,6 +353,16 @@ const Transactions = () => {
     .confirm-btn { background: #ff4d4d; color: #fff; border: none; padding: 12px 30px; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 1rem; transition: background 0.3s; }
     .confirm-btn:hover { background: #ff3333; }
     @keyframes modalFade { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+    @media (max-width: 768px) {
+     .transactions-page-v { padding: 15px 12px 60px 12px; }
+     .filter-bar-v { flex-direction: column; align-items: stretch; gap: 10px; margin-bottom: 20px; }
+     .premium-select-v { width: 100%; box-sizing: border-box; }
+     .search-box-v, .date-box-v { width: 100%; max-width: 100%; box-sizing: border-box; }
+     .export-btn-v { width: 100%; height: 42px; justify-content: center; font-size: 0.88rem; box-sizing: border-box; }
+     .table-container-p { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+     .premium-table-v { min-width: 650px; }
+    }
    ` }} />
   </div>
  );

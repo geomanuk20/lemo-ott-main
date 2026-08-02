@@ -3,13 +3,15 @@ echo "Staging all files..."
 git add .
 
 echo "Committing changes..."
-git commit -m "feat: Hostinger VPS scalable backend setup, Analytics dashboard, custom date pickers & CTA UI fixes
+git commit -m "fix: single row form alignment, mobile view responsiveness & button alignment fixes across admin dashboard
 
-- Added deploy_hostinger.sh, README_HOSTINGER_DEPLOYMENT.md & .env.production.example for 1-click Hostinger VPS deployment
-- Added Analytics sub-menu under Dashboard in Admin Sidebar
-- Created interactive Analytics.jsx page with Charts.js revenue trends, subscription doughnut chart & multi-category top content metrics
-- Added Time Range filtering (7 days, 30 days, year, all) and Custom Date Picker selection (startDate & endDate)
-- Fixed Subscription CTA section padding clipping and Chrome/Safari email autofill dark background override"
+- Fixed single-row horizontal form alignment in GeneralSettings.jsx and PlayerConfig.jsx
+- Fixed Analytics.jsx header action button alignment, custom date pickers, printable report CSS, and touch-scroll category tabs on mobile
+- Fixed mobile view 2-column card grid and centered action controls in Genres.jsx, Languages.jsx, SportsCategory.jsx, TVCategory.jsx, and HomeSections.jsx
+- Fixed Slider.jsx grid minmax overflow, card badges wrapping, and equal height top action buttons
+- Fixed Images.jsx search bar full width and button text clipping on mobile
+- Fixed UsersList.jsx & DeletedUsers.jsx Add User button text visibility, equal action button heights, and scrollable data tables on mobile
+- Removed title tooltip popovers from Header.jsx toggle sidebar button on mobile touch"
 
 echo "Pushing to GitHub..."
 git push origin main

@@ -276,6 +276,16 @@ const DeletedUsers = () => {
     .confirm-btn-p.delete:hover { background: #ff1f1f; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(255, 77, 77, 0.4); }
     .cancel-btn-p:hover { background: #333; }
     @keyframes modalSlide { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+    @media (max-width: 768px) {
+     .users-list-container { padding: 15px 12px 60px 12px; }
+     .users-filter-bar { flex-direction: column; align-items: stretch; gap: 12px; margin-bottom: 20px; }
+     .left-filters { width: 100%; }
+     .search-wrapper-premium { width: 100%; max-width: 100%; }
+     .export-users-btn { width: 100%; height: 42px; justify-content: center; font-size: 0.88rem; }
+     .users-table-wrapper { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+     .users-data-table { min-width: 650px; }
+    }
    ` }} />
   </div>
  );
