@@ -3165,6 +3165,12 @@ app.get('/api/general-settings', async (req, res) => {
       settings = new GeneralSettings();
       await settings.save();
     }
+    if (settings.copyrightText && (settings.copyrightText.includes('Video.com') || settings.copyrightText.includes('viaviweb.com'))) {
+      settings.copyrightText = settings.copyrightText
+        .replace(/Video\.com/gi, 'lemoott.com')
+        .replace(/www\.viaviweb\.com/gi, 'lemoott.com');
+      await settings.save();
+    }
     res.json(settings);
   } catch (err) {
     res.status(500).json({ message: err.message });

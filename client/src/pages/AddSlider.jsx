@@ -492,39 +492,40 @@ const AddSlider = () => {
    </form>
 
    <style dangerouslySetInnerHTML={{ __html: `
-    .add-actor-page { padding: 20px 30px; animation: fadeIn 0.4s ease-out; }
-    .top-nav { margin-bottom: 30px; }
-    .back-link { background: none; border: none; display: flex; align-items: center; gap: 10px; color: #b3d332; font-weight: 800; font-size: 1.2rem; cursor: pointer; padding: 0; }
+    .add-actor-page { padding: 25px 30px; animation: fadeIn 0.4s ease-out; box-sizing: border-box; width: 100%; overflow-x: hidden; }
+    .top-nav { margin-bottom: 25px; }
+    .back-link { background: none; border: none; display: flex; align-items: center; gap: 10px; color: #b3d332; font-weight: 800; font-size: 1.1rem; cursor: pointer; padding: 0; }
     
-    .actor-form { max-width: 1000px; }
-    .form-row-custom { display: flex; margin-bottom: 10px; align-items: flex-start; }
-    .form-row-custom label { width: 140px; color: #fff; font-size: 1rem; font-weight: 600; padding-top: 10px; }
-    .input-col { flex: 1; }
+    .actor-form { max-width: 850px; width: 100%; box-sizing: border-box; }
+    .form-row-custom { display: flex; margin-bottom: 16px; align-items: flex-start; width: 100%; box-sizing: border-box; }
+    .form-row-custom label { width: 180px; color: #8895a5; font-size: 0.95rem; font-weight: 700; padding-top: 12px; flex-shrink: 0; }
+    .input-col { flex: 1; width: 100%; box-sizing: border-box; }
     
     .input-col input[type="text"], 
     .input-col select {
-     width: 100%; background: #1a1a1a; border: 1px solid #333; padding: 12px 20px; color: #fff; border-radius: 4px; outline: none; font-size: 1rem; appearance: none;
+     width: 100%; background: #14171d; border: 1px solid #282f3a; padding: 12px 16px; color: #fff; border-radius: 6px; outline: none; font-size: 0.95rem; appearance: none; box-sizing: border-box; transition: border-color 0.2s;
     }
+    .input-col input[type="text"]:focus, .input-col select:focus { border-color: #b3d332; background: #1a1e26; }
     .input-col select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 15px center; background-size: 18px; }
 
-    .file-input-wrapper { display: flex; gap: 0; }
-    .file-input-wrapper input { border-top-right-radius: 0 !important; border-bottom-right-radius: 0 !important; }
-    .select-btn { background: #333; color: #fff; border: 1px solid #333; padding: 0 25px; border-top-right-radius: 4px; border-bottom-right-radius: 4px; cursor: pointer; font-weight: 600; }
+    .file-input-wrapper { display: flex; gap: 0; width: 100%; box-sizing: border-box; }
+    .file-input-wrapper input { border-top-right-radius: 0 !important; border-bottom-right-radius: 0 !important; flex: 1; min-width: 0; }
+    .select-btn { background: #b3d332; color: #111; border: none; padding: 0 25px; border-top-right-radius: 6px; border-bottom-right-radius: 6px; cursor: pointer; font-weight: 800; font-size: 0.9rem; transition: background 0.2s; }
+    .select-btn:hover { background: #9ebf24; }
     
-    .preview-container-wide { margin-top: 15px; width: 100%; aspect-ratio: 16/9; border-radius: 6px; overflow: hidden; border: 1px solid #333; background: #111; }
+    .preview-container-wide { margin-top: 15px; width: 100%; aspect-ratio: 16/9; border-radius: 6px; overflow: hidden; border: 1px solid #282f3a; background: #111; }
     .slider-preview-img { width: 100%; height: 100%; object-fit: contain; }
     
-    .resolution-text { color: #666; font-size: 0.85rem; margin-top: 8px; font-weight: 500; }
+    .resolution-text { color: #8895a5; font-size: 0.82rem; margin-top: 8px; font-weight: 500; }
     
-    .checkbox-group-grid-alt { display: flex; gap: 20px; padding-top: 5px; flex-wrap: nowrap; overflow-x: auto; }
-    .checkbox-item-alt { display: flex; align-items: center; gap: 8px; cursor: pointer; color: #fff; font-weight: 600; font-size: 1.05rem; white-space: nowrap; }
+    .checkbox-group-grid-alt { display: flex; gap: 15px; padding-top: 5px; flex-wrap: wrap; }
+    .checkbox-item-alt { display: flex; align-items: center; gap: 8px; cursor: pointer; color: #fff; font-weight: 600; font-size: 0.95rem; white-space: nowrap; }
     .checkbox-item-alt input { width: 18px; height: 18px; accent-color: #b3d332; cursor: pointer; }
-    .checkbox-group-grid-alt::-webkit-scrollbar { display: none; }
 
-    .form-footer { margin-top: 40px; }
-    .save-btn-red { background: #b3d332; color: #fff; border: none; padding: 10px 40px; border-radius: 4px; font-weight: 700; font-size: 1rem; cursor: pointer; transition: opacity 0.2s; }
-    .save-btn-red:hover { opacity: 0.9; }
-    .save-btn-red:disabled { opacity: 0.6; cursor: not-allowed; }
+    .form-footer { margin-top: 30px; margin-left: 180px; width: calc(100% - 180px); box-sizing: border-box; }
+    .save-btn-red { background: #b3d332; color: #111; border: none; padding: 12px 40px; border-radius: 6px; font-weight: 800; font-size: 1rem; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 15px rgba(179,211,50,0.2); }
+    .save-btn-red:hover { background: #9ebf24; transform: translateY(-1px); }
+    .save-btn-red:disabled { opacity: 0.6; cursor: not-allowed; box-shadow: none; }
 
     .radio-group-v { display: flex; gap: 30px; padding-top: 10px; }
     .radio-item-v { display: flex; align-items: center; gap: 10px; color: #fff; cursor: pointer; font-weight: 600; }
@@ -533,6 +534,16 @@ const AddSlider = () => {
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     .spinner { animation: spin 1s linear infinite; }
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+    @media (max-width: 768px) {
+      .add-actor-page { padding: 15px 10px 50px 10px; }
+      .form-row-custom { flex-direction: column; align-items: flex-start; gap: 6px; margin-bottom: 16px; }
+      .form-row-custom label { width: 100%; font-size: 0.9rem; padding-top: 0; }
+      .input-col { width: 100%; }
+      .checkbox-group-grid-alt { flex-wrap: wrap; gap: 12px; }
+      .form-footer { margin-left: 0; width: 100%; }
+      .save-btn-red { width: 100%; padding: 14px; font-size: 1rem; }
+    }
    ` }} />
   </div>
  );

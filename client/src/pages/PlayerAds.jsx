@@ -241,51 +241,58 @@ const PlayerAds = () => {
    </form>
 
    <style dangerouslySetInnerHTML={{ __html: `
-    .player-ads-page { background: #000; min-height: 100vh; padding: 30px 50px; color: #fff; animation: fadeIn 0.4s ease; }
+    .player-ads-page { background: #000; min-height: 100vh; padding: 25px 30px; color: #fff; animation: fadeIn 0.4s ease; box-sizing: border-box; width: 100%; overflow-x: hidden; }
     .loading-container-v { background: #000; min-height: 100vh; display: flex; align-items: center; justify-content: center; color: #b3d332; }
     
-    .section-title-v { font-size: 0.9rem; font-weight: 800; margin-bottom: 10px; color: #fff; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #111; padding-bottom: 8px; }
-    .section-desc-v { color: #666; font-size: 0.8rem; line-height: 1.5; margin-bottom: 20px; }
+    .ads-form-v { max-width: 850px; width: 100%; box-sizing: border-box; }
+
+    .section-title-v { font-size: 0.9rem; font-weight: 800; margin-bottom: 10px; color: #fff; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #1a1e26; padding-bottom: 8px; }
+    .section-desc-v { color: #8895a5; font-size: 0.82rem; line-height: 1.5; margin-bottom: 20px; }
     
-    .form-row-full-v { display: flex; align-items: center; margin-bottom: 15px; }
-    .form-row-full-v label { width: 200px; font-weight: 600; color: #aaa; font-size: 0.85rem; flex-shrink: 0; }
+    .form-row-full-v { display: flex; align-items: center; margin-bottom: 16px; width: 100%; box-sizing: border-box; }
+    .form-row-full-v label { width: 200px; font-weight: 600; color: #8895a5; font-size: 0.88rem; flex-shrink: 0; }
     
-    .input-with-hint-v { flex: 1; }
-    .hint-text-v { font-size: 0.7rem; color: #444; margin-top: 4px; }
+    .input-with-hint-v { flex: 1; width: 100%; box-sizing: border-box; }
+    .hint-text-v { font-size: 0.72rem; color: #64748b; margin-top: 4px; }
 
     .form-row-full-v input, .form-row-full-v select { 
      flex: 1;
-     background: #1a1b1e; 
-     border: 1px solid #2a2c31; 
+     width: 100%;
+     min-width: 0;
+     background: #14171d; 
+     border: 1px solid #282f3a; 
      padding: 10px 14px; 
-     border-radius: 4px; 
+     border-radius: 6px; 
      color: #fff; 
      outline: none; 
      font-size: 0.9rem; 
+     box-sizing: border-box;
+     transition: border-color 0.2s;
     }
+    .form-row-full-v input:focus, .form-row-full-v select:focus { border-color: #b3d332; background: #1a1e26; }
 
     .mt-20 { margin-top: 20px; }
     .mt-40 { margin-top: 40px; }
     .mb-30 { margin-bottom: 20px; }
     
-    .note-box-v { background: rgba(255, 0, 0, 0.05); border: 1px solid rgba(255, 0, 0, 0.1); padding: 10px 18px; border-radius: 4px; }
-    .note-box-v p { color: #ff4d4d; font-size: 0.8rem; margin: 0; opacity: 0.9; }
+    .note-box-v { background: rgba(255, 77, 77, 0.08); border: 1px solid rgba(255, 77, 77, 0.2); padding: 12px 18px; border-radius: 6px; }
+    .note-box-v p { color: #ff4d4d; font-size: 0.85rem; margin: 0; font-weight: 600; }
     
-    .ad-source-input-group-v { display: flex; flex: 1; gap: 10px; align-items: center; }
-    .ad-source-input-group-v input { flex: 1; }
-    .ad-upload-btn-v { background: #2a2c31; color: #fff; border: 1px solid #3a3c41; padding: 10px 15px; border-radius: 4px; font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: all 0.2s ease; white-space: nowrap; }
-    .ad-upload-btn-v:hover { background: #3a3c41; border-color: #4a4c51; }
+    .ad-source-input-group-v { display: flex; flex: 1; gap: 10px; align-items: center; width: 100%; box-sizing: border-box; }
+    .ad-source-input-group-v input { flex: 1; min-width: 0; }
+    .ad-upload-btn-v { background: #b3d332; color: #111; border: none; padding: 10px 16px; border-radius: 6px; font-weight: 800; font-size: 0.85rem; cursor: pointer; transition: all 0.2s ease; white-space: nowrap; flex-shrink: 0; }
+    .ad-upload-btn-v:hover { background: #9ebf24; }
     .ad-upload-btn-v:disabled { opacity: 0.6; cursor: not-allowed; }
     
-    .help-texts-v p { font-size: 0.8rem; color: #777; margin-bottom: 6px; line-height: 1.4; }
-    .help-texts-v strong { color: #bbb; margin-right: 5px; text-transform: uppercase; font-size: 0.75rem; }
+    .help-texts-v p { font-size: 0.82rem; color: #8895a5; margin-bottom: 6px; line-height: 1.4; }
+    .help-texts-v strong { color: #e2e8f0; margin-right: 5px; text-transform: uppercase; font-size: 0.75rem; }
 
-    .ad-slot-v { margin-bottom: 25px; border-bottom: 1px solid #111; padding-bottom: 10px; }
+    .ad-slot-v { margin-bottom: 25px; border-bottom: 1px solid #1f242d; padding-bottom: 15px; width: 100%; box-sizing: border-box; }
     .ad-slot-v:last-of-type { border-bottom: none; }
 
-    .form-actions-bottom-v { display: flex; justify-content: flex-end; margin-top: 20px; padding-bottom: 40px; }
-    .save-btn-v { background: #b3d332; color: #fff; border: none; padding: 10px 25px; border-radius: 4px; font-weight: 800; font-size: 0.95rem; cursor: pointer; transition: all 0.3s; }
-    .save-btn-v:hover { background: #b3d332; transform: translateY(-1px); }
+    .form-actions-bottom-v { display: flex; justify-content: flex-start; margin-top: 20px; padding-bottom: 40px; width: 100%; box-sizing: border-box; }
+    .save-btn-v { background: #b3d332; color: #111; border: none; padding: 12px 36px; border-radius: 6px; font-weight: 800; font-size: 0.95rem; cursor: pointer; transition: all 0.2s; }
+    .save-btn-v:hover { background: #9ebf24; transform: translateY(-1px); }
 
     .spinner { animation: spin 1s linear infinite; }
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
@@ -295,6 +302,17 @@ const PlayerAds = () => {
     .custom-alert-box-v { position: fixed; top: 40px; left: 50%; transform: translateX(-50%); background: #111; border-radius: 12px; padding: 30px 60px; z-index: 9999; box-shadow: 0 20px 50px rgba(0,0,0,0.6); border: 1px solid #333; }
     .alert-content-v { display: flex; flex-direction: column; align-items: center; gap: 15px; }
     .alert-text-v { color: #fff; font-size: 1.2rem; font-weight: 800; text-align: center; }
+
+    @media (max-width: 768px) {
+      .player-ads-page { padding: 15px 10px 50px 10px; }
+      .form-row-full-v { flex-direction: column; align-items: flex-start; gap: 6px; margin-bottom: 16px; }
+      .form-row-full-v label { width: 100%; font-size: 0.85rem; }
+      .form-row-full-v input, .form-row-full-v select, .input-with-hint-v { width: 100%; }
+      .ad-source-input-group-v { flex-direction: column; align-items: stretch; gap: 8px; }
+      .ad-upload-btn-v { width: 100%; }
+      .form-actions-bottom-v { justify-content: stretch; width: 100%; }
+      .save-btn-v { width: 100%; padding: 14px; font-size: 1rem; }
+    }
    ` }} />
   </div>
  );

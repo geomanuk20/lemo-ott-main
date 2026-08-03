@@ -320,51 +320,54 @@ const EditPaymentGateway = () => {
       </form>
 
       <style dangerouslySetInnerHTML={{ __html: `
-        .edit-gateway-page { background: #000; min-height: 100vh; padding: 40px 50px; color: #fff; animation: fadeIn 0.4s ease; }
+        .edit-gateway-page { background: #000; min-height: 100vh; padding: 25px 30px; color: #fff; animation: fadeIn 0.4s ease; box-sizing: border-box; width: 100%; overflow-x: hidden; }
         .loading-container-g { background: #000; min-height: 100vh; display: flex; align-items: center; justify-content: center; color: #b3d332; }
         
-        .header-section-g { margin-bottom: 35px; }
-        .back-btn-g { background: transparent; border: none; color: #aaa; display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 0; font-size: 0.85rem; font-weight: 700; margin-bottom: 20px; transition: color 0.2s; }
+        .header-section-g { margin-bottom: 25px; }
+        .back-btn-g { background: transparent; border: none; color: #aaa; display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 0; font-size: 0.85rem; font-weight: 700; margin-bottom: 16px; transition: color 0.2s; }
         .back-btn-g:hover { color: #fff; }
         
-        .page-title-g { font-size: 1.8rem; font-weight: 800; color: #fff; margin: 0 0 8px 0; }
-        .page-subtitle-g { font-size: 0.9rem; color: #777; margin: 0; }
+        .page-title-g { font-size: 1.6rem; font-weight: 800; color: #fff; margin: 0 0 6px 0; }
+        .page-subtitle-g { font-size: 0.88rem; color: #777; margin: 0; }
 
-        .gateway-form-g { background: #0a0a0a; border: 1px solid #1a1a1a; border-radius: 8px; padding: 40px; }
-        .form-content-g { max-width: 700px; }
+        .gateway-form-g { background: #0a0a0a; border: 1px solid #1a1a1a; border-radius: 12px; padding: 28px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); width: 100%; box-sizing: border-box; }
+        .form-content-g { max-width: 750px; width: 100%; box-sizing: border-box; }
         
-        .settings-section-g { margin-bottom: 20px; }
-        .section-header-g { display: flex; align-items: center; gap: 10px; margin-bottom: 25px; }
+        .settings-section-g { margin-bottom: 20px; width: 100%; box-sizing: border-box; }
+        .section-header-g { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
         .section-icon-g { color: #b3d332; }
-        .section-title-g { font-size: 0.95rem; font-weight: 800; color: #fff; margin: 0; text-transform: uppercase; letter-spacing: 0.5px; }
+        .section-title-g { font-size: 0.92rem; font-weight: 800; color: #fff; margin: 0; text-transform: uppercase; letter-spacing: 0.5px; }
         
-        .section-divider-g { height: 1px; background: #1a1a1a; margin: 35px 0; width: 100%; }
+        .section-divider-g { height: 1px; background: #1a1a1a; margin: 25px 0; width: 100%; }
 
-        .form-row-g { display: flex; align-items: center; margin-bottom: 20px; }
-        .form-row-g label { width: 180px; font-weight: 600; color: #aaa; font-size: 0.85rem; flex-shrink: 0; }
+        .form-row-g { display: flex; align-items: center; margin-bottom: 18px; width: 100%; box-sizing: border-box; }
+        .form-row-g label { width: 180px; font-weight: 600; color: #8895a5; font-size: 0.88rem; flex-shrink: 0; }
         
         .form-row-g input, .form-row-g select { 
           flex: 1;
-          background: #111; 
-          border: 1px solid #222; 
+          width: 100%;
+          min-width: 0;
+          background: #14171d; 
+          border: 1px solid #282f3a; 
           padding: 12px 16px; 
           border-radius: 6px; 
           color: #fff; 
           outline: none; 
           font-size: 0.9rem; 
-          transition: all 0.3s;
+          transition: all 0.2s;
+          box-sizing: border-box;
         }
-        .form-row-g input:focus, .form-row-g select:focus { border-color: #b3d332; background: #151515; }
-        .form-row-g input::placeholder { color: #444; }
+        .form-row-g input:focus, .form-row-g select:focus { border-color: #b3d332; background: #1a1e26; }
+        .form-row-g input::placeholder { color: #556270; }
         .disabled-input-g { opacity: 0.6; cursor: not-allowed; background: #1a1a1a !important; }
 
-        .form-actions-g { display: flex; gap: 15px; margin-top: 40px; }
-        .save-btn-g { background: #b3d332; color: #fff; border: none; padding: 12px 30px; border-radius: 6px; font-weight: 800; font-size: 0.9rem; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; }
-        .save-btn-g:hover { background: #b3d332; transform: translateY(-1px); box-shadow: 0 5px 15px rgba(179,211,50,0.3); }
+        .form-actions-g { display: flex; gap: 15px; margin-top: 30px; width: 100%; box-sizing: border-box; }
+        .save-btn-g { background: #b3d332; color: #111; border: none; padding: 12px 30px; border-radius: 6px; font-weight: 800; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
+        .save-btn-g:hover { background: #9ebf24; transform: translateY(-1px); }
         .save-btn-g:disabled { opacity: 0.7; cursor: not-allowed; }
         
-        .cancel-btn-g { background: transparent; border: 1px solid #333; color: #aaa; padding: 12px 30px; border-radius: 6px; font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: all 0.3s; }
-        .cancel-btn-g:hover { border-color: #555; color: #fff; }
+        .cancel-btn-g { background: transparent; border: 1px solid #282f3a; color: #8895a5; padding: 12px 30px; border-radius: 6px; font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; }
+        .cancel-btn-g:hover { border-color: #475569; color: #fff; }
 
         .spinner-g { animation: spin-g 1s linear infinite; }
         @keyframes spin-g { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
@@ -374,6 +377,16 @@ const EditPaymentGateway = () => {
         .custom-alert-box-g { position: fixed; top: 40px; left: 50%; transform: translateX(-50%); background: #111; border-radius: 12px; padding: 30px 60px; z-index: 9999; box-shadow: 0 20px 50px rgba(0,0,0,0.6); border: 1px solid #333; }
         .alert-content-g { display: flex; flex-direction: column; align-items: center; gap: 15px; }
         .alert-text-g { color: #fff; font-size: 1.2rem; font-weight: 800; text-align: center; }
+
+        @media (max-width: 768px) {
+          .edit-gateway-page { padding: 15px 10px 50px 10px; }
+          .gateway-form-g { padding: 18px 14px; border-radius: 10px; }
+          .form-row-g { flex-direction: column; align-items: flex-start; gap: 6px; margin-bottom: 16px; }
+          .form-row-g label { width: 100%; font-size: 0.85rem; }
+          .form-row-g input, .form-row-g select { width: 100%; }
+          .form-actions-g { flex-direction: column; width: 100%; }
+          .save-btn-g, .cancel-btn-g { width: 100%; }
+        }
       `}} />
     </div>
   );

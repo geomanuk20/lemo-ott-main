@@ -282,20 +282,30 @@ const EditUser = () => {
    </div>
 
    <style dangerouslySetInnerHTML={{ __html: `
-    .add-user-page { padding: 30px; animation: fadeIn 0.4s ease-out; }
-    .top-nav-alt { margin-bottom: 30px; }
+    .add-user-page { padding: 25px; max-width: 850px; margin: 0 auto; box-sizing: border-box; width: 100%; animation: fadeIn 0.4s ease-out; }
+    .top-nav-alt { margin-bottom: 25px; }
     .back-link-red { background: none; border: none; display: flex; align-items: center; gap: 8px; color: #b3d332; font-weight: 800; font-size: 1.1rem; cursor: pointer; padding: 0; }
-    .form-row-premium { display: flex; align-items: center; margin-bottom: 20px; }
-    .form-row-premium label { width: 220px; color: #fff; font-size: 1rem; font-weight: 600; }
-    .input-group-premium { flex: 1; }
-    .input-group-premium input, .input-group-premium select { width: 100%; background: #1a1a1a; border: 1px solid #333; padding: 12px 15px; color: #fff; border-radius: 4px; outline: none; font-size: 1rem; }
-    .input-group-premium select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 15px center; background-size: 18px; }
-    .file-picker-custom { display: flex; align-items: center; gap: 10px; background: #1a1a1a; border: 1px solid #333; padding: 5px; border-radius: 4px; }
-    .choose-file-btn { background: #eee; color: #333; border: none; padding: 6px 12px; border-radius: 3px; font-weight: 600; font-size: 0.85rem; cursor: pointer; }
-    .file-name-label { color: #888; font-size: 0.9rem; }
-    .image-preview-container-p { margin-bottom: 15px; width: 120px; height: 120px; border-radius: 12px; overflow: hidden; border: 2px solid #333; background: #111; }
+    
+    .form-container-premium { background: #0a0a0a; border: 1px solid #1f242d; border-radius: 12px; padding: 28px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); width: 100%; box-sizing: border-box; }
+    .premium-form-horizontal { display: flex; flex-direction: column; gap: 18px; width: 100%; box-sizing: border-box; }
+
+    .form-row-premium { display: flex; align-items: center; width: 100%; box-sizing: border-box; }
+    .form-row-premium label { width: 200px; color: #e2e8f0; font-size: 0.95rem; font-weight: 600; flex-shrink: 0; }
+    .input-group-premium { flex: 1; width: 100%; box-sizing: border-box; }
+    
+    .input-group-premium input, .input-group-premium select { width: 100%; background: #14171d; border: 1px solid #282f3a; padding: 12px 15px; color: #fff; border-radius: 6px; outline: none; font-size: 0.95rem; box-sizing: border-box; transition: border-color 0.2s; }
+    .input-group-premium input:focus, .input-group-premium select:focus { border-color: #b3d332; }
+    .input-group-premium select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 15px center; background-size: 18px; }
+    
+    .file-picker-custom { display: flex; align-items: center; gap: 12px; background: #14171d; border: 1px solid #282f3a; padding: 6px 12px; border-radius: 6px; box-sizing: border-box; }
+    .choose-file-btn { background: #e2e8f0; color: #0f172a; border: none; padding: 7px 14px; border-radius: 4px; font-weight: 700; font-size: 0.85rem; cursor: pointer; }
+    .file-name-label { color: #8895a5; font-size: 0.88rem; }
+    .image-preview-container-p { margin-bottom: 12px; width: 100px; height: 100px; border-radius: 12px; overflow: hidden; border: 2px solid #282f3a; background: #111; }
     .image-preview-container-p img { width: 100%; height: 100%; object-fit: cover; }
-    .save-btn-solid-red { background: #b3d332; color: #fff; border: none; padding: 10px 30px; border-radius: 4px; font-weight: 700; font-size: 1rem; cursor: pointer; }
+    
+    .save-btn-solid-red { background: #b3d332; color: #111; border: none; padding: 12px 36px; border-radius: 6px; font-weight: 800; font-size: 1rem; cursor: pointer; transition: background 0.2s; }
+    .save-btn-solid-red:hover { background: #9ebf24; }
+
     .loader-container { height: 40vh; display: flex; align-items: center; justify-content: center; }
     .spinner { animation: spin 1s linear infinite; color: #b3d332; }
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
@@ -304,6 +314,15 @@ const EditUser = () => {
     .alert-content { display: flex; flex-direction: column; align-items: center; gap: 15px; }
     .alert-text { color: #fff; font-size: 1.1rem; font-weight: 700; text-align: center; }
     @keyframes slideDown { from { transform: translate(-50%, -100%); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+
+    @media (max-width: 768px) {
+      .add-user-page { padding: 15px 10px 40px 10px; }
+      .form-container-premium { padding: 18px 14px; border-radius: 10px; }
+      .form-row-premium { flex-direction: column; align-items: flex-start; gap: 6px; }
+      .form-row-premium label { width: 100%; font-size: 0.9rem; }
+      .input-group-premium { width: 100%; }
+      .save-btn-solid-red { width: 100%; padding: 14px; font-size: 1rem; }
+    }
    ` }} />
   </div>
  );

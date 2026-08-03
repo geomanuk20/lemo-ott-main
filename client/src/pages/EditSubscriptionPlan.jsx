@@ -262,42 +262,43 @@ const EditSubscriptionPlan = () => {
    </div>
 
    <style dangerouslySetInnerHTML={{ __html: `
-    .add-plan-page { background: #000; min-height: 100vh; padding: 40px 60px; color: #fff; animation: fadeIn 0.4s ease; }
+    .add-plan-page { background: #000; min-height: 100vh; padding: 30px 40px; color: #fff; animation: fadeIn 0.4s ease; box-sizing: border-box; width: 100%; overflow-x: hidden; }
     .loading-container-v { background: #000; min-height: 100vh; display: flex; align-items: center; justify-content: center; color: #b3d332; }
     
-    .top-nav-v { margin-bottom: 40px; }
-    .back-link-red-v { background: none; border: none; color: #b3d332; display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 1.2rem; cursor: pointer; }
+    .top-nav-v { margin-bottom: 30px; }
+    .back-link-red-v { background: none; border: none; color: #b3d332; display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 1.1rem; cursor: pointer; padding: 0; }
     
-    .form-container-v { max-width: 1000px; margin: 0; }
-    .premium-form-v { display: flex; flex-direction: column; gap: 30px; }
+    .form-container-v { max-width: 850px; margin: 0; width: 100%; box-sizing: border-box; }
+    .premium-form-v { display: flex; flex-direction: column; gap: 22px; width: 100%; box-sizing: border-box; }
     
-    .form-row-v { display: flex; align-items: flex-start; }
-    .form-row-v label { width: 180px; font-weight: 700; color: #eee; padding-top: 14px; font-size: 1rem; flex-shrink: 0; }
+    .form-row-v { display: flex; align-items: flex-start; width: 100%; box-sizing: border-box; }
+    .form-row-v label { width: 200px; font-weight: 700; color: #eee; padding-top: 12px; font-size: 0.95rem; flex-shrink: 0; }
     
-    .input-wrapper-v { flex: 1; position: relative; }
+    .input-wrapper-v { flex: 1; position: relative; width: 100%; box-sizing: border-box; }
     .input-wrapper-v input, .input-wrapper-v select { 
      width: 100%; 
-     background: #25272b; 
-     border: 1px solid #333; 
-     padding: 14px 18px; 
+     background: #14171d; 
+     border: 1px solid #282f3a; 
+     padding: 12px 16px; 
      border-radius: 6px; 
      color: #fff; 
      outline: none; 
-     font-size: 1rem; 
+     font-size: 0.95rem; 
      transition: all 0.2s;
+     box-sizing: border-box;
     }
-    .input-wrapper-v input:focus, .input-wrapper-v select:focus { border-color: #444; background: #2a2d32; }
+    .input-wrapper-v input:focus, .input-wrapper-v select:focus { border-color: #b3d332; background: #1a1e26; }
     
-    .input-row-v { display: flex; gap: 20px; width: 100%; }
-    .input-wrapper-v.half { flex: 1; }
+    .input-row-v { display: flex; gap: 15px; width: 100%; box-sizing: border-box; }
+    .input-wrapper-v.half { flex: 1; min-width: 0; }
 
-    .helper-text-v { font-size: 0.85rem; color: #777; margin-top: 10px; line-height: 1.5; }
-    .helper-text-v a { color: #0088ff; text-decoration: none; font-weight: 700; }
+    .helper-text-v { font-size: 0.85rem; color: #8895a5; margin-top: 8px; line-height: 1.5; }
+    .helper-text-v a { color: #3b82f6; text-decoration: none; font-weight: 700; }
 
-    .form-actions-v { margin-left: 180px; margin-top: 15px; }
-    .save-btn-v { background: #b3d332; color: #fff; border: none; padding: 12px 30px; border-radius: 4px; font-weight: 800; font-size: 1.05rem; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 15px rgba(179,211,50,0.2); }
-    .save-btn-v:hover { background: #b3d332; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(179,211,50,0.3); }
-    .save-btn-v:disabled { background: #555; cursor: not-allowed; box-shadow: none; }
+    .form-actions-v { margin-left: 200px; margin-top: 10px; width: calc(100% - 200px); box-sizing: border-box; }
+    .save-btn-v { background: #b3d332; color: #111; border: none; padding: 12px 36px; border-radius: 6px; font-weight: 800; font-size: 1rem; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 15px rgba(179,211,50,0.2); }
+    .save-btn-v:hover { background: #9ebf24; transform: translateY(-1px); }
+    .save-btn-v:disabled { background: #555; color: #888; cursor: not-allowed; box-shadow: none; }
 
     .spinner { animation: spin 1s linear infinite; }
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
@@ -308,6 +309,16 @@ const EditSubscriptionPlan = () => {
     .alert-content-v { display: flex; flex-direction: column; align-items: center; gap: 15px; }
     .alert-text-v { color: #fff; font-size: 1.2rem; font-weight: 800; text-align: center; }
     @keyframes slideDown { from { transform: translate(-50%, -150%); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+
+    @media (max-width: 768px) {
+      .add-plan-page { padding: 15px 10px 50px 10px; }
+      .form-row-v { flex-direction: column; align-items: flex-start; gap: 6px; }
+      .form-row-v label { width: 100%; padding-top: 0; font-size: 0.9rem; }
+      .input-wrapper-v { width: 100%; }
+      .input-row-v { flex-direction: row; width: 100%; gap: 10px; }
+      .form-actions-v { margin-left: 0; margin-top: 15px; width: 100%; }
+      .save-btn-v { width: 100%; padding: 14px; font-size: 1rem; }
+    }
    ` }} />
   </div>
  );

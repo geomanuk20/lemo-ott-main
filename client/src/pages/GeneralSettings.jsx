@@ -129,7 +129,20 @@ const GeneralSettings = () => {
  }
 
  return (
-  <div className="general-settings-page">
+  <>
+   {notification && (
+    <div className="gs-notification-toast">
+     <div className="gs-toast-inner">
+      {notification.type === 'success' ? (
+       <CheckCircle2 size={22} color="#1a1a1a" strokeWidth={2.5} />
+      ) : (
+       <XCircle size={22} color="#1a1a1a" strokeWidth={2.5} />
+      )}
+      <span className="gs-toast-text">{notification.message}</span>
+     </div>
+    </div>
+   )}
+   <div className="general-settings-page">
    <input 
     type="file" 
     id="logo-input" 
@@ -142,19 +155,6 @@ const GeneralSettings = () => {
     style={{ display: 'none' }} 
     onChange={(e) => handleFileUpload(e, 'siteFavicon')} 
    />
-
-   {notification && (
-    <div className="custom-alert-box-v">
-     <div className="alert-content-v">
-      {notification.type === 'success' ? (
-       <CheckCircle2 size={42} color="#00c853" strokeWidth={2.5} />
-      ) : (
-       <XCircle size={42} color="#ff4d4d" strokeWidth={2.5} />
-      )}
-      <span className="alert-text-v">{notification.message}</span>
-     </div>
-    </div>
-   )}
 
    <form onSubmit={handleSubmit} className="settings-form-v">
     <div className="settings-grid-v">
@@ -499,10 +499,12 @@ const GeneralSettings = () => {
 
     /* Notification */
     .custom-alert-box-v { position: fixed; top: 40px; left: 50%; transform: translateX(-50%); background: #111; border-radius: 12px; padding: 30px 60px; z-index: 9999; box-shadow: 0 20px 50px rgba(0,0,0,0.6); border: 1px solid #333; }
-    .alert-content-v { display: flex; flex-direction: column; align-items: center; gap: 15px; }
-    .alert-text-v { color: #fff; font-size: 1.2rem; font-weight: 800; text-align: center; }
+    .gs-notification-toast { position: fixed; top: 24px; left: 50%; transform: translateX(-50%); z-index: 99999; pointer-events: none; }
+    .gs-toast-inner { display: flex; align-items: center; gap: 10px; background: #b3d332; color: #1a1a1a; padding: 12px 24px; border-radius: 50px; font-size: 0.95rem; font-weight: 700; white-space: nowrap; box-shadow: 0 8px 30px rgba(0,0,0,0.35); }
+    .gs-toast-text { color: #1a1a1a; font-size: 0.95rem; font-weight: 700; }
    ` }} />
   </div>
+  </>
  );
 };
 

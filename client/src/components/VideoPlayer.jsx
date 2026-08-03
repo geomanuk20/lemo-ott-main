@@ -2213,6 +2213,24 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
         -1px 1px 2px #000,
         0px 2px 4px rgba(0,0,0,0.8) !important;
     }
+    /* Anti-Download Video Protection Rules */
+    video, .video-skin, .video-player-container {
+      -webkit-touch-callout: none !important;
+      -webkit-user-select: none !important;
+      -khtml-user-select: none !important;
+      -moz-user-select: none !important;
+      -ms-user-select: none !important;
+      user-select: none !important;
+    }
+    video::-internal-media-controls-download-button,
+    video::-webkit-media-controls-download-button {
+      display: none !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
+    video::-webkit-media-controls-enclosure {
+      overflow: hidden !important;
+    }
   `;
 
   const liveStyles = getNormalizedContentType() === 'live' ? `
@@ -2313,6 +2331,10 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
             key={`${getStreamSrc()}_${processedSubs.map(s => s.url).join(',')}`}
             src={getStreamSrc()} 
             playsInline 
+            controlsList="nodownload no-remote-playback noremoteplayback"
+            disablePictureInPicture={true}
+            onContextMenu={(e) => e.preventDefault()}
+            onDragStart={(e) => e.preventDefault()}
             crossOrigin="anonymous"
             autoPlay={isAutoplayEnabled}
             onEnded={onEnded}

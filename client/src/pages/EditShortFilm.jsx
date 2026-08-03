@@ -715,19 +715,20 @@ const EditShortFilm = () => {
     .dropdown-option input[type="checkbox"] { width: 16px; height: 16px; accent-color: #b3d332; cursor: pointer; }
     .checkbox-option { transition: background 0.2s; }
     .imdb-input-group { display: flex; gap: 15px; max-width: 800px; }
-    .imdb-input-group input { flex: 1; background: transparent; border: 1px solid #333; padding: 12px 15px; color: #fff; border-radius: 4px; outline: none; }
-    .fetch-btn { background: #444; color: #fff; border: none; padding: 0 25px; border-radius: 4px; font-weight: 700; cursor: pointer; }
+    .imdb-input-group input { flex: 1; background: #14171d; border: 1px solid #282f3a; padding: 12px 15px; color: #fff; border-radius: 6px; outline: none; }
+    .fetch-btn { background: #b3d332; color: #111; border: none; padding: 12px 25px; border-radius: 6px; font-weight: 800; font-size: 0.9rem; cursor: pointer; transition: background 0.2s; }
+    .fetch-btn:hover { background: #9ebf24; }
     .section-title { font-size: 1.8rem; font-weight: 800; margin-bottom: 30px; border-left: 5px solid #b3d332; padding-left: 15px; line-height: 1; }
     .form-columns { display: flex; gap: 50px; }
     .form-column { flex: 1; display: flex; flex-direction: column; gap: 20px; }
     .form-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; }
     .form-group label { font-weight: 700; font-size: 1rem; }
-    .form-group input, .form-group select, .form-group textarea { background: #1a1a1a; border: 1px solid #333; padding: 12px 15px; color: #fff; border-radius: 4px; outline: none; width: 100%; }
+    .form-group input, .form-group select, .form-group textarea { background: #14171d; border: 1px solid #282f3a; padding: 12px 15px; color: #fff; border-radius: 6px; outline: none; width: 100%; }
     .form-row { display: flex; gap: 20px; }
     .half { flex: 1; }
     .file-input-group { display: flex; }
     .file-input-group input { flex: 1; border-top-right-radius: 0; border-bottom-right-radius: 0; }
-    .select-btn { background: #444; color: #fff; border: none; padding: 0 15px; border-top-right-radius: 4px; border-bottom-right-radius: 4px; cursor: pointer; font-weight: 700; }
+    .select-btn { background: #282f3a; color: #fff; border: none; padding: 0 18px; border-top-right-radius: 6px; border-bottom-right-radius: 6px; cursor: pointer; font-weight: 700; }
     .custom-radio-group { display: flex; align-items: center; }
     .radio-item { display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 0.95rem; font-weight: 700; position: relative; }
     .radio-item input { position: absolute; opacity: 0; cursor: pointer; }
@@ -738,10 +739,22 @@ const EditShortFilm = () => {
     .mt-20 { margin-top: 20px; }
     .mt-40 { margin-top: 40px; }
     .subtitle-row { display: flex; gap: 15px; }
-    .save-movie-btn { background: #b3d332; color: #fff; border: none; padding: 12px 40px; border-radius: 4px; display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.1rem; cursor: pointer; transition: transform 0.2s; }
-    .save-movie-btn:hover { transform: translateY(-2px); }
+    .save-movie-btn { background: #b3d332; color: #111; border: none; padding: 12px 40px; border-radius: 6px; display: flex; align-items: center; justify-content: center; gap: 10px; font-weight: 800; font-size: 1.05rem; cursor: pointer; transition: all 0.2s; }
+    .save-movie-btn:hover { background: #9ebf24; transform: translateY(-1px); }
     .video-source-row { display: grid; grid-template-columns: 180px 1fr; align-items: center; gap: 20px; margin-bottom: 20px; }
     .form-row-custom.stacked { display: grid; grid-template-columns: 180px 1fr; align-items: center; gap: 20px; margin-bottom: 20px; }
+
+    @media (max-width: 768px) {
+      .add-movie-page { padding: 15px 10px 50px 10px; }
+      .imdb-import-section { padding: 18px 14px; border-radius: 10px; }
+      .imdb-input-group { flex-direction: column; width: 100%; gap: 10px; }
+      .fetch-btn { width: 100%; padding: 14px; font-size: 1rem; }
+      .form-columns { flex-direction: column; gap: 20px; }
+      .form-row { flex-direction: column; gap: 15px; }
+      .video-source-row, .form-row-custom.stacked { grid-template-columns: 1fr; gap: 8px; }
+      .subtitle-row { flex-direction: column; gap: 10px; }
+      .save-movie-btn { width: 100%; padding: 14px; font-size: 1rem; }
+    }
    ` }} />
   </div>
  );

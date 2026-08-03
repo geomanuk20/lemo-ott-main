@@ -70,7 +70,7 @@ const FrontendFooter = ({ settings = null, menuSettings = null }) => {
 
         </div>
         <div className="footer-bottom-v">
-          <p>{settings?.copyrightText || '© 2024 VIDEO OTT Platform. All Rights Reserved.'}</p>
+          <p>{settings?.copyrightText ? settings.copyrightText.replace(/Video\.com/gi, 'lemoott.com').replace(/www\.viaviweb\.com/gi, 'lemoott.com') : `© ${new Date().getFullYear()} lemoott.com. All Rights Reserved.`}</p>
           <div className="footer-icons-v">
             {settings?.facebookUrl && (
               <a href={settings.facebookUrl} target="_blank" rel="noopener noreferrer" aria-label="Facebook">

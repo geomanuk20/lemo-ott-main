@@ -12,9 +12,36 @@ const Header = () => {
 
   // Get current page name from path
   const getPageTitle = () => {
-    const path = location.pathname.split('/').pop();
-    if (!path || path === 'admin') return 'DASHBOARD';
-    return path.toUpperCase().replace('-', ' ');
+    if (location.pathname.includes('/users/edit/')) return 'EDIT USER';
+    if (location.pathname.includes('/users/history/')) return 'USER HISTORY';
+    if (location.pathname.includes('/short-films/add')) return 'ADD SHORT FILM';
+    if (location.pathname.includes('/short-films/edit/')) return 'EDIT SHORT FILM';
+    if (location.pathname.includes('/movies/add')) return 'ADD MOVIE';
+    if (location.pathname.includes('/movies/edit/')) return 'EDIT MOVIE';
+    if (location.pathname.includes('/shows/add')) return 'ADD SHOW';
+    if (location.pathname.includes('/shows/edit/')) return 'EDIT SHOW';
+    if (location.pathname.includes('/shorts/add')) return 'ADD SHORT';
+    if (location.pathname.includes('/shorts/edit/')) return 'EDIT SHORT';
+    if (location.pathname.includes('/short-web-series/add')) return 'ADD SHORT WEB SERIES';
+    if (location.pathname.includes('/short-web-series/edit/')) return 'EDIT SHORT WEB SERIES';
+    if (location.pathname.includes('/subscription-plan/edit/')) return 'EDIT SUBSCRIPTION PLAN';
+    if (location.pathname.includes('/subscription-plan/add')) return 'ADD SUBSCRIPTION PLAN';
+    if (location.pathname.includes('/coupons/edit/')) return 'EDIT COUPON';
+    if (location.pathname.includes('/coupons/add')) return 'ADD COUPON';
+    if (location.pathname.includes('/slider/edit/')) return 'EDIT SLIDER';
+    if (location.pathname.includes('/slider/add')) return 'ADD SLIDER';
+    if (location.pathname.includes('/home-sections/edit/')) return 'EDIT HOME SECTION';
+    if (location.pathname.includes('/home-sections/add')) return 'ADD HOME SECTION';
+    if (location.pathname.includes('/payment-gateway/edit/')) return 'CONFIGURE PAYMENT GATEWAY';
+
+    const segments = location.pathname.split('/').filter(Boolean);
+    if (segments.length <= 1) return 'DASHBOARD';
+
+    const isId = (str) => /^[0-9a-fA-F]{24}$/.test(str) || /^[0-9a-fA-F-]{32,}$/.test(str);
+    const validSegment = [...segments].reverse().find(seg => !isId(seg) && seg !== 'admin');
+
+    if (!validSegment) return 'DASHBOARD';
+    return validSegment.toUpperCase().replace(/-/g, ' ');
   };
 
   const fetchHeaderProfile = async () => {

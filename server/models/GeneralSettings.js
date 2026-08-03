@@ -1,15 +1,15 @@
 const mongoose = require('mongoose');
 
 const GeneralSettingsSchema = new mongoose.Schema({
-  siteName: { type: String, default: 'Viaavi Streaming - Watch TV Shows, Movies Online' },
+  siteName: { type: String, default: 'LEMO OTT — Streaming Movies, Shows & Short Films' },
   siteLogo: { type: String, default: '' },
   siteFavicon: { type: String, default: '' },
-  email: { type: String, default: 'info@viavilab.com' },
-  description: { type: String, default: 'Viaavi Streaming is Best Script for Streaming Website & Application...' },
-  siteKeywords: { type: String, default: 'Video Streaming, Streaming Website...' },
+  email: { type: String, default: 'support@lemoott.com' },
+  description: { type: String, default: 'LEMO OTT is the premium streaming platform for short films, web series, and movies.' },
+  siteKeywords: { type: String, default: 'LEMO OTT, Short Films, Web Series, Video Streaming...' },
   headerCode: { type: String, default: '' },
   footerCode: { type: String, default: '' },
-  copyrightText: { type: String, default: 'Copyright © 2024 www.viaviweb.com All Rights Reserved.' },
+  copyrightText: { type: String, default: 'Copyright © 2026 lemoott.com. All Rights Reserved.' },
   
   defaultTimezone: { type: String, default: '(UTC+05:30) Asia/Kolkata' },
   defaultLanguage: { type: String, default: 'English' },
