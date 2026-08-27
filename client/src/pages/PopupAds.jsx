@@ -319,18 +319,18 @@ const PopupAds = () => {
 
               <div className="form-row-full-v">
                 <label>Open Link In New Tab</label>
-                <div className="checkbox-toggle-wrap">
-                  <label className="toggle-switch">
+                <div className="toggle-field-wrapper">
+                  <label className="custom-switch-label">
                     <input 
                       type="checkbox" 
                       name="openInNewTab" 
                       checked={formData.openInNewTab} 
                       onChange={handleChange} 
                     />
-                    <span className="slider round"></span>
+                    <span className="custom-switch-slider"></span>
                   </label>
-                  <span className="toggle-label-text">
-                    {formData.openInNewTab ? 'Open destination in a new browser tab (_blank)' : 'Open in the same tab'}
+                  <span className="toggle-text-hint">
+                    {formData.openInNewTab ? 'Open in a new tab (_blank)' : 'Open in the same tab'}
                   </span>
                 </div>
               </div>
@@ -417,17 +417,17 @@ const PopupAds = () => {
 
             <div className="form-row-full-v">
               <label>Show Close ('✕') Button</label>
-              <div className="checkbox-toggle-wrap">
-                <label className="toggle-switch">
+              <div className="toggle-field-wrapper">
+                <label className="custom-switch-label">
                   <input 
                     type="checkbox" 
                     name="showCloseButton" 
                     checked={formData.showCloseButton} 
                     onChange={handleChange} 
                   />
-                  <span className="slider round"></span>
+                  <span className="custom-switch-slider"></span>
                 </label>
-                <span className="toggle-label-text">
+                <span className="toggle-text-hint">
                   {formData.showCloseButton ? 'Visible top-right close icon' : 'Hidden close button'}
                 </span>
               </div>
@@ -767,23 +767,42 @@ const PopupAds = () => {
         .input-unit-wrap input { max-width: 120px; }
         .unit-tag { color: #8895a5; font-size: 0.82rem; }
 
-        .checkbox-toggle-wrap { display: flex; align-items: center; gap: 12px; }
-        .toggle-switch {
-          position: relative;
-          display: inline-block;
-          width: 44px;
-          height: 24px;
+        .toggle-field-wrapper {
+          display: flex;
+          align-items: center;
+          gap: 12px;
         }
-        .toggle-switch input { opacity: 0; width: 0; height: 0; }
-        .slider {
+        .custom-switch-label {
+          position: relative !important;
+          display: inline-block !important;
+          width: 48px !important;
+          min-width: 48px !important;
+          max-width: 48px !important;
+          height: 24px !important;
+          flex-shrink: 0 !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          cursor: pointer !important;
+        }
+        .custom-switch-label input {
+          opacity: 0;
+          width: 0;
+          height: 0;
+          margin: 0;
+          position: absolute;
+        }
+        .custom-switch-slider {
           position: absolute;
           cursor: pointer;
-          top: 0; left: 0; right: 0; bottom: 0;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
           background-color: #252b36;
-          transition: .3s;
+          transition: 0.3s;
           border-radius: 24px;
         }
-        .slider:before {
+        .custom-switch-slider:before {
           position: absolute;
           content: "";
           height: 18px;
@@ -791,12 +810,20 @@ const PopupAds = () => {
           left: 3px;
           bottom: 3px;
           background-color: white;
-          transition: .3s;
+          transition: 0.3s;
           border-radius: 50%;
         }
-        input:checked + .slider { background-color: #b3d332; }
-        input:checked + .slider:before { transform: translateX(20px); background-color: #000; }
-        .toggle-label-text { font-size: 0.85rem; color: #8895a5; }
+        .custom-switch-label input:checked + .custom-switch-slider {
+          background-color: #b3d332;
+        }
+        .custom-switch-label input:checked + .custom-switch-slider:before {
+          transform: translateX(24px);
+          background-color: #000;
+        }
+        .toggle-text-hint {
+          font-size: 0.85rem;
+          color: #8895a5;
+        }
 
         .form-actions-left-v {
           display: flex;
