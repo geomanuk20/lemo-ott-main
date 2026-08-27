@@ -199,34 +199,39 @@ const FrontendPopupAd = () => {
 
         .fe-popup-ad-card {
           position: relative;
-          background: #11141b;
-          border: 1px solid rgba(179, 211, 50, 0.28);
+          background: #0d0f14;
+          border: 1px solid rgba(179, 211, 50, 0.35);
           border-radius: 16px;
-          max-width: 540px;
+          max-width: 580px;
+          max-height: 92vh;
           width: 100%;
           overflow: hidden;
-          box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85), 0 0 35px rgba(179, 211, 50, 0.12);
+          display: flex;
+          flex-direction: column;
+          box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9), 0 0 35px rgba(179, 211, 50, 0.15);
           animation: feScaleUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
           color: #fff;
         }
 
         .fe-popup-ad-close {
           position: absolute;
-          top: 12px;
-          right: 12px;
-          background: rgba(0, 0, 0, 0.65);
-          border: 1px solid rgba(255, 255, 255, 0.2);
+          top: 14px;
+          right: 14px;
+          background: rgba(0, 0, 0, 0.75);
+          border: 1px solid rgba(255, 255, 255, 0.3);
           color: #fff;
-          width: 34px;
-          height: 34px;
+          width: 36px;
+          height: 36px;
           border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
           cursor: pointer;
-          z-index: 20;
+          z-index: 50;
           transition: all 0.2s ease;
-          backdrop-filter: blur(4px);
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.5);
         }
         .fe-popup-ad-close:hover {
           background: #ff4d4d;
@@ -238,7 +243,7 @@ const FrontendPopupAd = () => {
           padding: 16px 20px;
           background: #151922;
           border-bottom: 1px solid #202633;
-          padding-right: 50px;
+          padding-right: 55px;
         }
         .fe-popup-ad-header h3 {
           margin: 0;
@@ -251,13 +256,14 @@ const FrontendPopupAd = () => {
         .fe-popup-ad-body {
           display: flex;
           flex-direction: column;
+          overflow: auto;
         }
 
         .fe-popup-ad-image-box {
           position: relative;
           width: 100%;
           overflow: hidden;
-          background: #090a0d;
+          background: #000;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -267,13 +273,14 @@ const FrontendPopupAd = () => {
         }
         .fe-popup-ad-img {
           width: 100%;
-          max-height: 400px;
-          object-fit: cover;
+          height: auto;
+          max-height: 82vh;
+          object-fit: contain;
           display: block;
-          transition: transform 0.4s ease;
+          transition: transform 0.3s ease;
         }
         .fe-popup-ad-image-box.clickable:hover .fe-popup-ad-img {
-          transform: scale(1.02);
+          transform: scale(1.015);
         }
 
         .fe-popup-ad-footer {

@@ -951,8 +951,8 @@ const PopupAds = () => {
         }
         .ad-popup-content-box { display: flex; flex-direction: column; }
         .ad-popup-image-link { display: block; overflow: hidden; }
-        .ad-popup-img { width: 100%; max-height: 360px; object-fit: cover; display: block; transition: transform 0.3s; }
-        .ad-popup-img:hover { transform: scale(1.02); }
+        .ad-popup-img { width: 100%; height: auto; max-height: 75vh; object-fit: contain; display: block; transition: transform 0.3s; }
+        .ad-popup-img:hover { transform: scale(1.015); }
 
         .ad-placeholder-box {
           padding: 50px 20px;
