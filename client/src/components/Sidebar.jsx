@@ -209,6 +209,7 @@ const Sidebar = () => {
           { name: 'Menu', icon: <List size={16} />, path: '/admin/settings/menu' },
           { name: 'reCAPTCHA', icon: <Shield size={16} />, path: '/admin/settings/recaptcha' },
           { name: 'Website Banner Ads', icon: <Image size={16} />, path: '/admin/settings/banner-ads' },
+          { name: 'Popup Ads', icon: <Layers size={16} />, path: '/admin/settings/popup-ads' },
           { name: 'Site Maintenance', icon: <Wrench size={16} />, path: '/admin/settings/maintenance' },
         ]
       },

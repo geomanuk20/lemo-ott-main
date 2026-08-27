@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import FrontendNavbar from './FrontendNavbar';
 import FrontendSidebar from './FrontendSidebar';
 import FrontendFooter from './FrontendFooter';
+import FrontendPopupAd from './FrontendPopupAd';
 
 const isActive = (status) => {
   if (status === undefined || status === null) return true;
@@ -225,6 +226,8 @@ const FrontendLayout = ({ children, isTransparent = true, showFooter = true, sho
         {children}
         {showFooter && <FrontendFooter settings={settings} menuSettings={menuSettings} />}
       </main>
+
+      <FrontendPopupAd />
 
 
       <style dangerouslySetInnerHTML={{ __html: `

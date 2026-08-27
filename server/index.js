@@ -261,6 +261,9 @@ const reCaptchaSettingsSchema = new mongoose.Schema({
 const ReCaptchaSettings = mongoose.model('ReCaptchaSettings', reCaptchaSettingsSchema);
 
 const bannerAdsSchema = new mongoose.Schema({
+  status: { type: String, default: 'ON' },
+  popupAdStatus: { type: String, default: 'OFF' },
+  popupAd: { type: String, default: '' },
   homeTop: { type: String, default: '' },
   homeBottom: { type: String, default: '' },
   listTop: { type: String, default: '' },
@@ -271,6 +274,23 @@ const bannerAdsSchema = new mongoose.Schema({
   otherPagesBottom: { type: String, default: '' }
 });
 const BannerAds = mongoose.model('BannerAds', bannerAdsSchema);
+
+const popupAdsSchema = new mongoose.Schema({
+  status: { type: String, default: 'OFF' },
+  title: { type: String, default: '' },
+  imageUrl: { type: String, default: '' },
+  targetUrl: { type: String, default: '' },
+  openInNewTab: { type: Boolean, default: true },
+  displayType: { type: String, default: 'image' },
+  customCode: { type: String, default: '' },
+  delaySeconds: { type: Number, default: 2 },
+  autoCloseSeconds: { type: Number, default: 0 },
+  showCloseButton: { type: Boolean, default: true },
+  frequency: { type: String, default: 'every_session' },
+  targetPages: { type: String, default: 'all' },
+  buttonText: { type: String, default: '' }
+}, { timestamps: true });
+const PopupAds = mongoose.model('PopupAds', popupAdsSchema);
 
 const maintenanceSettingsSchema = new mongoose.Schema({
   status: { type: Boolean, default: false },
@@ -4010,6 +4030,48 @@ const seedBannerAds = async () => {
     console.error('Error seeding banner ads:', err);
   }
 };
+
+// Popup Ads Routes
+app.get('/api/popup-ads', async (req, res) => {
+  try {
+    let ads = await PopupAds.findOne();
+    if (!ads) {
+      ads = new PopupAds();
+      await ads.save();
+    }
+    res.json(ads);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.put('/api/popup-ads', async (req, res) => {
+  try {
+    let ads = await PopupAds.findOne();
+    const cleanBody = sanitizeSettingsBody(req.body);
+    if (!ads) {
+      ads = new PopupAds(cleanBody);
+    } else {
+      Object.assign(ads, cleanBody);
+    }
+    await ads.save();
+    res.json(ads);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+const seedPopupAds = async () => {
+  try {
+    const count = await PopupAds.countDocuments();
+    if (count === 0) {
+      await PopupAds.create({});
+      console.log('Default popup ads seeded');
+    }
+  } catch (err) {
+    console.error('Error seeding popup ads:', err);
+  }
+};
 // Maintenance Settings Routes
 app.get('/api/maintenance-settings', async (req, res) => {
   try {
@@ -4161,6 +4223,7 @@ const runAllSeeds = async () => {
     await seedAndroidApp();
     await seedMaintenanceSettings();
     await seedBannerAds();
+    await seedPopupAds();
     await seedReCaptchaSettings();
     await seedMenuSettings();
     await seedSocialLoginSettings();

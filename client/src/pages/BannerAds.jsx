@@ -15,6 +15,9 @@ const BannerAds = () => {
  const [notification, setNotification] = useState(null);
  
  const [formData, setFormData] = useState({
+  status: 'ON',
+  popupAdStatus: 'OFF',
+  popupAd: '',
   homeTop: '',
   homeBottom: '',
   listTop: '',
@@ -102,11 +105,38 @@ const BannerAds = () => {
      
      <div className="section-header-v">
       <Layout size={18} className="section-icon-v" />
-      <h2 className="section-title-v">Banner Ads</h2>
+      <h2 className="section-title-v">Website Banner & Popup Ads</h2>
+     </div>
+
+     <div className="form-row-full-v">
+      <label>Banner Ads Status</label>
+      <select name="status" value={formData.status || 'ON'} onChange={handleChange}>
+       <option value="ON">ON</option>
+       <option value="OFF">OFF</option>
+      </select>
+     </div>
+
+     <div className="form-row-full-v">
+      <label>Popup Ads Status</label>
+      <select name="popupAdStatus" value={formData.popupAdStatus || 'OFF'} onChange={handleChange}>
+       <option value="ON">ON</option>
+       <option value="OFF">OFF</option>
+      </select>
+     </div>
+
+     <div className="form-row-full-v align-start-v">
+      <label className="mt-8-v">Popup Ad (Code / Image)</label>
+      <textarea 
+       name="popupAd" 
+       value={formData.popupAd || ''} 
+       onChange={handleChange}
+       placeholder="<a href='#' target='_blank'><img src='...' /></a>"
+       spellCheck="false"
+      />
      </div>
 
      <div className="note-box-v">
-      <p><strong>Note:</strong> Leave empty if not want to display</p>
+      <p><strong>Note:</strong> Leave empty if not want to display. For advanced popup ads, use the dedicated <a href="/admin/settings/popup-ads" style={{color: '#b3d332', textDecoration: 'underline'}}>Frontend Popup Ads Settings</a>.</p>
      </div>
 
      <div className="ads-fields-container-v mt-20">
@@ -155,9 +185,23 @@ const BannerAds = () => {
     .note-box-v { background: rgba(58, 176, 240, 0.1); border: 1px solid rgba(58, 176, 240, 0.2); padding: 12px 20px; border-radius: 4px; margin-bottom: 25px; }
     .note-box-v p { color: #3ab0f0; font-size: 0.85rem; margin: 0; }
 
-    .form-row-full-v { display: flex; align-items: flex-start; margin-bottom: 18px; }
+    .form-row-full-v { display: flex; align-items: center; margin-bottom: 18px; }
+    .form-row-full-v.align-start-v { align-items: flex-start; }
     .form-row-full-v label { width: 220px; font-weight: 600; color: #aaa; font-size: 0.85rem; flex-shrink: 0; }
     .mt-8-v { margin-top: 8px; }
+
+    .form-row-full-v select, .form-row-full-v input {
+      flex: 1;
+      background: #1a1b1e; 
+      border: 1px solid #2a2c31; 
+      padding: 10px 16px; 
+      border-radius: 4px; 
+      color: #fff; 
+      outline: none; 
+      font-size: 0.9rem;
+      transition: border-color 0.2s;
+    }
+    .form-row-full-v select:focus, .form-row-full-v input:focus { border-color: #b3d332; }
 
     .form-row-full-v textarea { 
      flex: 1;

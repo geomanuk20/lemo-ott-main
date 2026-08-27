@@ -84,6 +84,7 @@ import SocialLoginSettings from './pages/SocialLoginSettings';
 import MenuSettings from './pages/MenuSettings';
 import ReCaptchaSettings from './pages/ReCaptchaSettings';
 import BannerAds from './pages/BannerAds';
+import PopupAds from './pages/PopupAds';
 import MaintenanceSettings from './pages/MaintenanceSettings';
 import AndroidAppVerify from './pages/AndroidAppVerify';
 import AndroidAppSettings from './pages/AndroidAppSettings';
@@ -555,6 +556,7 @@ function App() {
           <Route path="settings/menu" element={<MenuSettings />} />
           <Route path="settings/recaptcha" element={<ReCaptchaSettings />} />
           <Route path="settings/banner-ads" element={<BannerAds />} />
+          <Route path="settings/popup-ads" element={<PopupAds />} />
           <Route path="settings/maintenance" element={<MaintenanceSettings />} />
           <Route path="android-app/verify" element={<AndroidAppVerify />} />
           <Route path="android-app/settings" element={<AndroidAppSettings />} />
