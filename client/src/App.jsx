@@ -542,6 +542,7 @@ function App() {
           <Route path="cast-crew/directors" element={<Directors />} />
           <Route path="cast-crew/directors/add" element={<AddDirector />} />
           <Route path="cast-crew/directors/edit/:id" element={<EditDirector />} />
+          <Route path="users" element={<Navigate to="list" replace />} />
           <Route path="users/list" element={<UsersList />} />
           <Route path="users/list/add" element={<AddUser />} />
           <Route path="users/list/edit/:id" element={<EditUser />} />
@@ -550,6 +551,14 @@ function App() {
           <Route path="users/sub-admin/add" element={<AddAdmin />} />
           <Route path="users/sub-admin/edit/:id" element={<EditAdmin />} />
           <Route path="users/deleted" element={<DeletedUsers />} />
+          <Route path="tv-shows" element={<Navigate to="shows" replace />} />
+          <Route path="sports" element={<Navigate to="video" replace />} />
+          <Route path="live-tv" element={<Navigate to="channel" replace />} />
+          <Route path="cast-crew" element={<Navigate to="actors" replace />} />
+          <Route path="pages" element={<Navigate to="list" replace />} />
+          <Route path="player-settings" element={<Navigate to="config" replace />} />
+          <Route path="settings" element={<Navigate to="general" replace />} />
+          <Route path="android-app" element={<Navigate to="settings" replace />} />
           <Route path="subscription-plan" element={<SubscriptionPlan />} />
           <Route path="subscription-plan/add" element={<AddSubscriptionPlan />} />
           <Route path="subscription-plan/edit/:id" element={<EditSubscriptionPlan />} />

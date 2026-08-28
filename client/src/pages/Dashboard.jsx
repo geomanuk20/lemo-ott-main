@@ -88,7 +88,7 @@ const Dashboard = () => {
   { label: 'Short Films', value: backendStats?.shortFilms || '0', colorClass: 'stat-movies', path: '/admin/short-films' },
   { label: 'Short Web Series', value: backendStats?.shortWebSeries || '0', colorClass: 'stat-shows', path: '/admin/short-web-series' },
   { label: 'Live TV', value: backendStats?.liveTv || '0', colorClass: 'stat-livetv', path: '/admin/live-tv/channel', masterOnly: true },
-  { label: 'Users', value: backendStats?.users || '0', colorClass: 'stat-users', path: '/admin/users', masterOnly: true },
+  { label: 'Users', value: backendStats?.users || '0', colorClass: 'stat-users', path: '/admin/users/list', masterOnly: true },
   { label: 'Transactions', value: backendStats?.transactions || '0', colorClass: 'stat-trans', path: '/admin/transactions', masterOnly: true },
  ];
 
