@@ -672,7 +672,7 @@ const FrontendDetails = () => {
   setTimeout(() => setNotification(null), 4000);
  };
 
- const formatImageUrl = (item, typePref = 'poster') => {
+ const formatImageUrl = (item, typePref = 'thumbnail') => {
   if (!item) return '';
   // If we passed a string directly instead of an object
   if (typeof item === 'string') {
@@ -681,7 +681,15 @@ const FrontendDetails = () => {
    return `/${cleanPath}`;
   }
   
-  const url = item[typePref] || item.poster || item.logo || item.thumbnail || item.image || '';
+  let url = '';
+  if (typePref && item[typePref]) {
+    url = item[typePref];
+  } else if (typePref === 'poster') {
+    url = item.poster || item.thumbnail || item.landscapePoster || item.backdrop || item.logo || item.image || '';
+  } else {
+    url = item.thumbnail || item.landscapePoster || item.backdrop || item.poster || item.logo || item.image || '';
+  }
+
   if (!url || typeof url !== 'string' || url.trim() === '') return '';
   if (url.startsWith('http') || url.startsWith('//') || url.startsWith('data:')) return url;
   const cleanPath = url.startsWith('/') ? url.substring(1) : url;
@@ -805,10 +813,17 @@ const FrontendDetails = () => {
       <div className="fe-details-visual-v">
        <div className="fe-poster-wrapper-v">
         {(() => {
-         const imgUrl = formatImageUrl(data, 'poster') || formatImageUrl(data, 'thumbnail') || (data.showId && typeof data.showId === 'object' && (formatImageUrl(data.showId, 'poster') || formatImageUrl(data.showId, 'thumbnail')));
-         console.log('[DEBUG] Detail Image URL:', imgUrl);
-         return <img src={imgUrl} alt={getTitle(data)} />;
-        })()}
+          const imgUrl = 
+            formatImageUrl(data, 'thumbnail') || 
+            formatImageUrl(data, 'landscapePoster') || 
+            (data.showId && typeof data.showId === 'object' && (
+              formatImageUrl(data.showId, 'thumbnail') || 
+              formatImageUrl(data.showId, 'landscapePoster') || 
+              formatImageUrl(data.showId, 'poster')
+            )) ||
+            formatImageUrl(data, 'poster');
+          return <img src={imgUrl} alt={getTitle(data)} />;
+         })()}
         <div className="fe-poster-overlay-v">
          {data.upcoming === 'Yes' ? (
            <div className="fe-upcoming-badge-overlay-v">
