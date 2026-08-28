@@ -94,8 +94,10 @@ const Transactions = () => {
    Plan: tx.plan || 'N/A',
    Amount: tx.amount !== undefined ? tx.amount : 'N/A',
    'Payment Gateway': tx.gateway || 'N/A',
+   'Coupon Code': tx.couponCode || 'None',
    'Payment ID': tx.paymentId || 'N/A',
    'Payment Date': tx.paymentDate || 'N/A',
+   Status: tx.status || 'Completed'
   }));
 
   const worksheet = XLSX.utils.json_to_sheet(dataToExport);
@@ -137,11 +139,13 @@ const Transactions = () => {
       className="premium-select-v"
      >
       <option value="">Filter by Gateway</option>
+      <option value="PhonePe">PhonePe</option>
       <option value="Stripe">Stripe</option>
       <option value="Payu">Payu</option>
       <option value="Cashfree">Cashfree</option>
       <option value="Apple">Apple</option>
       <option value="IAP">IAP</option>
+      <option value="Free Activation">Free Activation</option>
      </select>
 
      <div className="search-box-v">
@@ -153,11 +157,6 @@ const Transactions = () => {
       />
       <Search size={18} className="search-icon-v" />
      </div>
-
-     <div className="date-box-v">
-       <input type="text" placeholder="mm/dd/yyyy" />
-       <Calendar size={18} className="search-icon-v" />
-      </div>
     </div>
 
     <div className="filter-right-v" style={{ display: 'flex', gap: '15px' }}>
@@ -178,7 +177,7 @@ const Transactions = () => {
     <table className="premium-table-v">
      <thead>
       <tr>
-       <th style={{ width: '50px' }}>
+       <th style={{ width: '40px', textAlign: 'center' }}>
         <input 
          type="checkbox" 
          onChange={handleSelectAll}
@@ -191,28 +190,30 @@ const Transactions = () => {
        <th>Plan</th>
        <th>Amount</th>
        <th>Payment Gateway</th>
+       <th>Coupon Code</th>
        <th>Payment ID</th>
        <th>Payment Date</th>
-       <th>Action</th>
+       <th>Status</th>
+       <th style={{ textAlign: 'center' }}>Action</th>
       </tr>
      </thead>
      <tbody>
       {loading ? (
        <tr>
-        <td colSpan="9" className="loader-cell">
+        <td colSpan="11" className="loader-cell">
          <Loader size="small" inline={true} />
         </td>
        </tr>
       ) : currentItems.length === 0 ? (
        <tr>
-        <td colSpan="9" style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
+        <td colSpan="11" style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
          No transactions found.
         </td>
        </tr>
       ) : (
        currentItems.map((tx) => (
         <tr key={tx._id}>
-         <td>
+         <td style={{ textAlign: 'center' }}>
           <input 
            type="checkbox" 
            checked={selectedIds.includes(tx._id)}
@@ -223,17 +224,50 @@ const Transactions = () => {
          <td className="name-cell-v">{tx.name}</td>
          <td>{tx.email}</td>
          <td className="bold-text">{tx.plan}</td>
-         <td className="bold-text">{tx.amount}</td>
+         <td className="bold-text" style={{ color: '#b3d332' }}>{tx.amount}</td>
          <td>{tx.gateway}</td>
-         <td>{tx.paymentId}</td>
+         <td>
+          {tx.couponCode ? (
+            <span style={{ 
+              background: 'rgba(179, 211, 50, 0.15)', 
+              color: '#b3d332', 
+              border: '1px solid rgba(179, 211, 50, 0.35)', 
+              padding: '3px 9px', 
+              borderRadius: '4px', 
+              fontWeight: 800, 
+              fontSize: '0.82rem',
+              fontFamily: 'monospace',
+              letterSpacing: '0.5px'
+            }}>
+              {tx.couponCode}
+            </span>
+          ) : (
+            <span style={{ color: '#555', fontSize: '0.9rem' }}>—</span>
+          )}
+         </td>
+         <td><span style={{ fontFamily: 'monospace', fontSize: '0.82rem', color: '#ccc' }}>{tx.paymentId}</span></td>
          <td>{tx.paymentDate}</td>
          <td>
+          <span style={{
+            background: tx.status === 'Pending' ? 'rgba(255, 152, 0, 0.15)' : 'rgba(0, 204, 102, 0.15)',
+            color: tx.status === 'Pending' ? '#ff9800' : '#00cc66',
+            border: `1px solid ${tx.status === 'Pending' ? 'rgba(255, 152, 0, 0.35)' : 'rgba(0, 204, 102, 0.35)'}`,
+            padding: '3px 8px',
+            borderRadius: '4px',
+            fontWeight: 700,
+            fontSize: '0.75rem',
+            textTransform: 'uppercase'
+          }}>
+            {tx.status || 'Completed'}
+          </span>
+         </td>
+         <td style={{ textAlign: 'center' }}>
           <button 
            onClick={() => confirmDeleteSingle(tx._id)}
-           style={{ background: 'none', border: 'none', color: '#ff4d4d', cursor: 'pointer', padding: '5px' }}
+           style={{ background: 'rgba(255,77,77,0.1)', border: '1px solid rgba(255,77,77,0.25)', color: '#ff4d4d', cursor: 'pointer', padding: '6px 8px', borderRadius: '4px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
            title="Delete Transaction"
           >
-           <Trash2 size={16} />
+           <Trash2 size={15} />
           </button>
          </td>
         </tr>
@@ -262,9 +296,9 @@ const Transactions = () => {
         last = i;
        }
       }
-      return pages.map((page) => {
+      return pages.map((page, idx) => {
        if (typeof page === 'string') {
-        return <span key={page} className="pag-ellipsis-v">…</span>;
+        return <span key={idx} className="pag-ellipsis-v">...</span>;
        }
        return (
         <button key={page} onClick={() => paginate(page)} className={`pag-btn-v ${currentPage === page ? 'active' : ''}`}>
@@ -304,64 +338,61 @@ const Transactions = () => {
    )}
 
    <style dangerouslySetInnerHTML={{ __html: `
-    .transactions-page { padding: 30px; background: #000; min-height: 100vh; color: #fff; }
+    .transactions-page { width: 100%; box-sizing: border-box; }
     
-    .filter-bar-v { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; gap: 20px; flex-wrap: wrap; }
+    .filter-bar-v { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; gap: 15px; flex-wrap: wrap; width: 100%; }
     .filter-left-v { display: flex; gap: 12px; align-items: center; flex: 1; flex-wrap: wrap; }
     
-    .premium-select-v { background: #25272b; border: 1px solid #333; color: #fff; padding: 10px 15px; border-radius: 6px; outline: none; width: 200px; height: 44px; font-size: 0.9rem; box-sizing: border-box; flex-shrink: 0; }
+    .premium-select-v { background: #14171d; border: 1px solid #282f3a; color: #fff; padding: 10px 15px; border-radius: 6px; outline: none; width: 180px; height: 42px; font-size: 0.9rem; box-sizing: border-box; flex-shrink: 0; }
     
     .search-box-v { position: relative; flex: 2; min-width: 220px; }
     .date-box-v { position: relative; flex: 1; min-width: 160px; }
-    .search-box-v input, .date-box-v input { width: 100%; height: 44px; background: #25272b; border: 1px solid #333; color: #fff; padding: 0 45px 0 15px; border-radius: 30px; outline: none; font-size: 0.9rem; box-sizing: border-box; }
+    .search-box-v input, .date-box-v input { width: 100%; height: 42px; background: #14171d; border: 1px solid #282f3a; color: #fff; padding: 0 45px 0 15px; border-radius: 6px; outline: none; font-size: 0.9rem; box-sizing: border-box; }
     .search-box-v input::placeholder, .date-box-v input::placeholder { color: #666; }
     .search-icon-v { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); color: #888; pointer-events: none; }
     
-    .export-btn-v { background: #00a8ff; color: #fff; border: none; padding: 10px 20px; border-radius: 6px; display: flex; align-items: center; gap: 10px; font-weight: 700; cursor: pointer; transition: background 0.3s; }
+    .export-btn-v { background: #00a8ff; color: #fff; border: none; padding: 10px 18px; border-radius: 6px; display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: background 0.3s; }
     .export-btn-v:hover { background: #0097e6; }
 
-    .table-container-p { background: #0a0a0a; border: 1px solid #222; border-radius: 4px; overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; box-sizing: border-box; }
-    .premium-table-v { width: 100%; min-width: 700px; border-collapse: collapse; text-align: left; }
-    .premium-table-v th { background: #151515; padding: 15px 20px; font-size: 0.9rem; font-weight: 700; color: #eee; border-bottom: 1px solid #333; border-right: 1px solid #222; white-space: nowrap; }
+    .table-container-p { background: #0d0e12; border: 1px solid #222834; border-radius: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; box-sizing: border-box; }
+    .premium-table-v { width: 100%; min-width: 1000px; border-collapse: collapse; text-align: left; }
+    .premium-table-v th { background: #151821; padding: 14px 16px; font-size: 0.86rem; font-weight: 700; color: #eee; border-bottom: 1px solid #282f3a; border-right: 1px solid #1c202a; white-space: nowrap; }
     .premium-table-v th:last-child { border-right: none; }
-    .premium-table-v td { padding: 18px 20px; font-size: 0.85rem; color: #888; border-bottom: 1px solid #1a1a1a; border-right: 1px solid #222; vertical-align: middle; white-space: nowrap; }
+    .premium-table-v td { padding: 14px 16px; font-size: 0.85rem; color: #aaa; border-bottom: 1px solid #181b22; border-right: 1px solid #1c202a; vertical-align: middle; white-space: nowrap; }
     .premium-table-v td:last-child { border-right: none; }
-    .premium-table-v tr:hover { background: #111; }
-    
-    .name-cell-v { color: #0088ff; font-weight: 700; cursor: pointer; }
+    .premium-table-v tr:hover { background: rgba(255,255,255,0.02); }
+       .name-cell-v { color: #00a8ff; font-weight: 700; }
     .bold-text { color: #eee; font-weight: 700; }
 
-    .pagination-v { display: flex; gap: 5px; margin-top: 30px; background: #111; padding: 5px; border-radius: 6px; width: fit-content; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    .pag-btn-v { background: #222; border: none; color: #fff; width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; border-radius: 4px; cursor: pointer; font-weight: 700; transition: all 0.2s; flex-shrink: 0; }
-    .pag-btn-v:hover { background: #333; }
+    .pagination-v { display: flex; gap: 5px; margin-top: 25px; background: #11141a; padding: 6px; border-radius: 6px; width: fit-content; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid #222834; }
+    .pag-btn-v { background: #1a1e27; border: none; color: #fff; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; border-radius: 4px; cursor: pointer; font-weight: 700; transition: all 0.2s; flex-shrink: 0; }
+    .pag-btn-v:hover { background: #282f3a; }
     .pag-btn-v.active { background: #b3d332; color: #000; }
     .pag-btn-v:disabled { opacity: 0.3; cursor: not-allowed; }
-    .pag-ellipsis-v { display: flex; align-items: center; justify-content: center; width: 30px; height: 35px; color: #666; font-size: 1rem; flex-shrink: 0; }
+    .pag-ellipsis-v { display: flex; align-items: center; justify-content: center; width: 30px; height: 34px; color: #666; font-size: 1rem; flex-shrink: 0; }
 
-    .loader-cell { text-align: center; padding: 100px !important; }
-    .spinner { animation: spin 1s linear infinite; color: #00a8ff; }
-    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .loader-cell { text-align: center; padding: 80px !important; }
 
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 4000; backdrop-filter: blur(5px); }
-    .delete-modal-content { background: #1a1a1a; width: 90%; max-width: 450px; padding: 30px; border-radius: 20px; text-align: center; border: 1px solid #333; animation: modalFade 0.2s ease-out; }
+    .delete-modal-content { background: #1a1e27; width: 90%; max-width: 450px; padding: 30px; border-radius: 12px; text-align: center; border: 1px solid #333; animation: modalFade 0.2s ease-out; }
     .delete-icon-wrapper { margin-bottom: 20px; }
-    .delete-modal-content h2 { color: #fff; margin-bottom: 10px; font-size: 1.8rem; font-weight: 700; }
+    .delete-modal-content h2 { color: #fff; margin-bottom: 10px; font-size: 1.6rem; font-weight: 700; }
     .delete-modal-content p { color: #aaa; margin-bottom: 30px; font-size: 0.95rem; }
     .delete-modal-footer { display: flex; gap: 15px; justify-content: center; }
-    .cancel-btn { background: #333; color: #fff; border: none; padding: 12px 30px; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 1rem; transition: background 0.3s; }
-    .cancel-btn:hover { background: #444; }
-    .confirm-btn { background: #ff4d4d; color: #fff; border: none; padding: 12px 30px; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 1rem; transition: background 0.3s; }
+    .cancel-btn { background: #282f3a; color: #fff; border: none; padding: 10px 25px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.95rem; transition: background 0.3s; }
+    .cancel-btn:hover { background: #353e4c; }
+    .confirm-btn { background: #ff4d4d; color: #fff; border: none; padding: 10px 25px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.95rem; transition: background 0.3s; }
     .confirm-btn:hover { background: #ff3333; }
     @keyframes modalFade { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
     @media (max-width: 768px) {
-     .transactions-page-v { padding: 15px 12px 60px 12px; }
-     .filter-bar-v { flex-direction: column; align-items: stretch; gap: 10px; margin-bottom: 20px; }
-     .premium-select-v { width: 100%; box-sizing: border-box; }
-     .search-box-v, .date-box-v { width: 100%; max-width: 100%; box-sizing: border-box; }
-     .export-btn-v { width: 100%; height: 42px; justify-content: center; font-size: 0.88rem; box-sizing: border-box; }
-     .table-container-p { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-     .premium-table-v { min-width: 650px; }
+     .transactions-page { padding: 10px 0; }
+     .filter-bar-v { flex-direction: column; align-items: stretch; gap: 10px; }
+     .premium-select-v { width: 100%; }
+     .search-box-v { width: 100%; min-width: unset; }
+     .export-btn-v { width: 100%; height: 42px; justify-content: center; }
+     .table-container-p { width: 100%; overflow-x: auto; }
+     .premium-table-v { min-width: 900px; }
     }
    ` }} />
   </div>
