@@ -1,7 +1,33 @@
 import React from 'react';
 
 const Loader = ({ size = 'default', inline = false, overlay = false }) => {
-  const spinnerSize = size === 'small' ? 36 : size === 'large' ? 72 : 52;
+  if (size === 'button' || size === 'tiny') {
+    return (
+      <span style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        verticalAlign: 'middle'
+      }}>
+        <span style={{
+          display: 'inline-block',
+          width: 16,
+          height: 16,
+          borderRadius: '50%',
+          border: '2px solid rgba(0, 0, 0, 0.25)',
+          borderTopColor: '#000',
+          animation: 'loader-spin 0.6s linear infinite'
+        }} />
+        <style>{`
+          @keyframes loader-spin {
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
+      </span>
+    );
+  }
+
+  const spinnerSize = size === 'small' ? 32 : size === 'large' ? 72 : 52;
   const borderWidth = size === 'small' ? 3 : 4;
 
   const spinner = (
@@ -45,8 +71,8 @@ const Loader = ({ size = 'default', inline = false, overlay = false }) => {
   if (inline) {
     return (
       <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '60px 0', width: '100%'
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        padding: '6px 0'
       }}>
         {spinner}
       </div>

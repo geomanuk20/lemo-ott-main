@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Outlet, Navigate, useLocation } from 'react-router-dom';
+import { ToastProvider } from './context/ToastContext';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -418,14 +419,28 @@ function App() {
       }
     };
     fetchBranding();
+
+    // Global Theme Initializer & Sync
+    const savedTheme = localStorage.getItem('lemo_user_theme') || 'oled_dark';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    document.body.setAttribute('data-theme', savedTheme);
+
+    const handleThemeChange = (e) => {
+      const newTheme = e.detail || localStorage.getItem('lemo_user_theme') || 'oled_dark';
+      document.documentElement.setAttribute('data-theme', newTheme);
+      document.body.setAttribute('data-theme', newTheme);
+    };
+    window.addEventListener('themeChange', handleThemeChange);
+    return () => window.removeEventListener('themeChange', handleThemeChange);
   }, []);
 
   return (
     <Router>
-      <ScrollToTop />
-      <TokenValidator />
-      <MaintenanceWrapper>
-        <Routes>
+      <ToastProvider>
+        <ScrollToTop />
+        <TokenValidator />
+        <MaintenanceWrapper>
+          <Routes>
         {/* Frontend Route */}
         <Route path="/" element={<Home />} />
         <Route path="/movies" element={<FrontendMovies />} />
@@ -544,7 +559,6 @@ function App() {
           <Route path="transactions" element={<Transactions />} />
           <Route path="submissions" element={<AdminSubmissions />} />
           <Route path="payment-gateway" element={<PaymentGateway />} />
-          <Route path="payment-gateway/edit/:id" element={<EditPaymentGateway />} />
           <Route path="pages/list" element={<PagesList />} />
           <Route path="pages/add" element={<AddPage />} />
           <Route path="pages/edit/:id" element={<EditPage />} />
@@ -566,6 +580,7 @@ function App() {
         </Route>
       </Routes>
       </MaintenanceWrapper>
+      </ToastProvider>
     </Router>
   );
 }

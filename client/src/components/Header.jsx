@@ -162,6 +162,83 @@ const Header = () => {
       </div>
 
       <style dangerouslySetInnerHTML={{ __html: `
+        .header {
+          height: var(--header-height, 65px);
+          background-color: var(--bg-sidebar, #0f1117);
+          display: flex !important;
+          align-items: center !important;
+          justify-content: space-between !important;
+          padding: 0 24px !important;
+          border-bottom: 2px solid var(--accent-red, #ff2a2a);
+          position: sticky;
+          top: 0;
+          z-index: 90;
+          width: 100%;
+          box-sizing: border-box;
+        }
+
+        .header .header-title-section {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          min-width: 0;
+        }
+
+        .header .header-title-section h1 {
+          font-size: 1.15rem;
+          font-weight: 700;
+          letter-spacing: 0.5px;
+          margin: 0;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .header .header-actions {
+          display: flex !important;
+          align-items: center !important;
+          gap: 18px !important;
+          margin-left: auto !important;
+          flex-shrink: 0 !important;
+          width: auto !important;
+        }
+
+        .header .header-icon {
+          color: var(--text-primary, #ffffff);
+          cursor: pointer;
+          transition: color 0.2s;
+        }
+
+        .header .header-icon:hover {
+          color: var(--accent-red, #ff2a2a);
+        }
+
+        .header .profile-container {
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+        }
+
+        .header .profile-img {
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          object-fit: cover;
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          display: block;
+        }
+
+        @media (max-width: 768px) {
+          .header {
+            padding: 0 14px !important;
+          }
+          .header .header-actions {
+            gap: 14px !important;
+            margin-left: auto !important;
+            width: auto !important;
+          }
+        }
+
         .custom-header-alert {
           position: fixed;
           top: 30px;

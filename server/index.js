@@ -273,8 +273,33 @@ const bannerAdsSchema = new mongoose.Schema({
   otherPagesTop: { type: String, default: '' },
   otherPagesBottom: { type: String, default: '' }
 });
-const BannerAds = mongoose.model('BannerAds', bannerAdsSchema);
+const popupAdItemSchema = new mongoose.Schema({
+  title: { type: String, default: '' },
+  imageUrl: { type: String, default: '' },
+  targetUrl: { type: String, default: '' },
+  buttonText: { type: String, default: '' },
+  openInNewTab: { type: Boolean, default: true },
+  displayType: { type: String, default: 'image' },
+  customCode: { type: String, default: '' },
+  status: { type: String, default: 'ON' },
+  order: { type: Number, default: 0 }
+}, { timestamps: true });
+const PopupAdItem = mongoose.model('PopupAdItem', popupAdItemSchema);
 
+const popupAdSettingsSchema = new mongoose.Schema({
+  status: { type: String, default: 'OFF' },
+  displayMode: { type: String, default: 'carousel' },
+  carouselInterval: { type: Number, default: 4 },
+  carouselAutoplay: { type: Boolean, default: true },
+  delaySeconds: { type: Number, default: 2 },
+  autoCloseSeconds: { type: Number, default: 0 },
+  showCloseButton: { type: Boolean, default: true },
+  frequency: { type: String, default: 'every_session' },
+  targetPages: { type: String, default: 'all' }
+}, { timestamps: true });
+const PopupAdSettings = mongoose.model('PopupAdSettings', popupAdSettingsSchema);
+
+// Legacy schema kept for backward-compatibility / migration
 const popupAdsSchema = new mongoose.Schema({
   status: { type: String, default: 'OFF' },
   title: { type: String, default: '' },
@@ -3077,6 +3102,43 @@ app.get('/api/player-ads', async (req, res) => {
       ads = new PlayerAds();
       await ads.save();
     }
+
+    // Auto-migrate legacy slots to builtInAds if empty
+    if (!ads.builtInAds || ads.builtInAds.length === 0) {
+      const migrated = [];
+      if (ads.ad1Source || ads.ad1Timestart) {
+        migrated.push({
+          title: 'Ad 1',
+          source: ads.ad1Source || '',
+          timestart: ads.ad1Timestart || '00:00:10',
+          targetLink: ads.ad1TargetLink || '#',
+          skipAfter: 5
+        });
+      }
+      if (ads.ad2Source) {
+        migrated.push({
+          title: 'Ad 2',
+          source: ads.ad2Source || '',
+          timestart: ads.ad2Timestart || '00:30:00',
+          targetLink: ads.ad2TargetLink || '#',
+          skipAfter: 5
+        });
+      }
+      if (ads.ad3Source) {
+        migrated.push({
+          title: 'Ad 3',
+          source: ads.ad3Source || '',
+          timestart: ads.ad3Timestart || '01:30:00',
+          targetLink: ads.ad3TargetLink || '#',
+          skipAfter: 5
+        });
+      }
+      if (migrated.length > 0) {
+        ads.builtInAds = migrated;
+        await ads.save();
+      }
+    }
+
     res.json(ads);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -3092,6 +3154,27 @@ app.put('/api/player-ads', async (req, res) => {
     } else {
       Object.assign(ads, cleanBody);
     }
+
+    // Sync legacy slots from builtInAds array
+    if (Array.isArray(cleanBody.builtInAds)) {
+      ads.builtInAds = cleanBody.builtInAds;
+      if (cleanBody.builtInAds[0]) {
+        ads.ad1Source = cleanBody.builtInAds[0].source || '';
+        ads.ad1Timestart = cleanBody.builtInAds[0].timestart || '00:00:10';
+        ads.ad1TargetLink = cleanBody.builtInAds[0].targetLink || '#';
+      }
+      if (cleanBody.builtInAds[1]) {
+        ads.ad2Source = cleanBody.builtInAds[1].source || '';
+        ads.ad2Timestart = cleanBody.builtInAds[1].timestart || '00:30:00';
+        ads.ad2TargetLink = cleanBody.builtInAds[1].targetLink || '#';
+      }
+      if (cleanBody.builtInAds[2]) {
+        ads.ad3Source = cleanBody.builtInAds[2].source || '';
+        ads.ad3Timestart = cleanBody.builtInAds[2].timestart || '01:30:00';
+        ads.ad3TargetLink = cleanBody.builtInAds[2].targetLink || '#';
+      }
+    }
+
     await ads.save();
     res.json(ads);
   } catch (err) {
@@ -4031,42 +4114,187 @@ const seedBannerAds = async () => {
   }
 };
 
-// Popup Ads Routes
+// Popup Ads Routes (Multi-Ad & Master Settings)
 app.get('/api/popup-ads', async (req, res) => {
   try {
-    let ads = await PopupAds.findOne();
-    if (!ads) {
-      ads = new PopupAds();
-      await ads.save();
+    let settings = await PopupAdSettings.findOne();
+    if (!settings) {
+      // Check if legacy settings exist to migrate
+      const legacy = await PopupAds.findOne();
+      settings = new PopupAdSettings({
+        status: legacy?.status || 'OFF',
+        delaySeconds: legacy?.delaySeconds ?? 2,
+        autoCloseSeconds: legacy?.autoCloseSeconds ?? 0,
+        showCloseButton: legacy?.showCloseButton ?? true,
+        frequency: legacy?.frequency || 'every_session',
+        targetPages: legacy?.targetPages || 'all',
+        displayMode: 'carousel',
+        carouselInterval: 4,
+        carouselAutoplay: true
+      });
+      await settings.save();
     }
-    res.json(ads);
+
+    let ads = await PopupAdItem.find().sort({ order: 1, createdAt: -1 });
+    
+    // Migration: If no PopupAdItem exists but legacy PopupAds has content, migrate it
+    if (ads.length === 0) {
+      const legacy = await PopupAds.findOne();
+      if (legacy && (legacy.imageUrl || legacy.customCode)) {
+        const migratedAd = await PopupAdItem.create({
+          title: legacy.title || '',
+          imageUrl: legacy.imageUrl || '',
+          targetUrl: legacy.targetUrl || '',
+          buttonText: legacy.buttonText || '',
+          openInNewTab: legacy.openInNewTab !== undefined ? legacy.openInNewTab : true,
+          displayType: legacy.displayType || 'image',
+          customCode: legacy.customCode || '',
+          status: legacy.status === 'ON' ? 'ON' : 'ON',
+          order: 0
+        });
+        ads = [migratedAd];
+      }
+    }
+
+    const settingsObj = settings.toObject();
+    res.json({
+      ...settingsObj,
+      settings: settingsObj,
+      ads
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-app.put('/api/popup-ads', async (req, res) => {
+// Update Master Settings
+app.put('/api/popup-ads/settings', async (req, res) => {
   try {
-    let ads = await PopupAds.findOne();
+    let settings = await PopupAdSettings.findOne();
     const cleanBody = sanitizeSettingsBody(req.body);
-    if (!ads) {
-      ads = new PopupAds(cleanBody);
+    if (!settings) {
+      settings = new PopupAdSettings(cleanBody);
     } else {
-      Object.assign(ads, cleanBody);
+      Object.assign(settings, cleanBody);
     }
-    await ads.save();
-    res.json(ads);
+    await settings.save();
+
+    // Also sync master status to legacy PopupAds
+    let legacy = await PopupAds.findOne();
+    if (legacy) {
+      legacy.status = settings.status;
+      await legacy.save();
+    }
+
+    res.json(settings);
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
 });
 
+// Fallback legacy PUT /api/popup-ads
+app.put('/api/popup-ads', async (req, res) => {
+  try {
+    let settings = await PopupAdSettings.findOne();
+    const cleanBody = sanitizeSettingsBody(req.body);
+    if (!settings) {
+      settings = new PopupAdSettings(cleanBody);
+    } else {
+      Object.assign(settings, cleanBody);
+    }
+    await settings.save();
+    res.json(settings);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+// Create Ad Item
+app.post('/api/popup-ads/items', async (req, res) => {
+  try {
+    const { title, imageUrl, targetUrl, buttonText, openInNewTab, displayType, customCode, status, order } = req.body;
+    const newAd = new PopupAdItem({
+      title: title || '',
+      imageUrl: imageUrl || '',
+      targetUrl: targetUrl || '',
+      buttonText: buttonText || '',
+      openInNewTab: openInNewTab !== undefined ? openInNewTab : true,
+      displayType: displayType || 'image',
+      customCode: customCode || '',
+      status: status || 'ON',
+      order: order !== undefined ? Number(order) : 0
+    });
+    await newAd.save();
+    res.status(201).json(newAd);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+// Update Ad Item
+app.put('/api/popup-ads/items/:id', async (req, res) => {
+  try {
+    const updated = await PopupAdItem.findByIdAndUpdate(
+      req.params.id,
+      { $set: req.body },
+      { new: true, runValidators: true }
+    );
+    if (!updated) {
+      return res.status(404).json({ message: 'Popup ad item not found' });
+    }
+    res.json(updated);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+// Toggle Ad Item Status
+app.patch('/api/popup-ads/items/:id/status', async (req, res) => {
+  try {
+    const { status } = req.body;
+    const updated = await PopupAdItem.findByIdAndUpdate(
+      req.params.id,
+      { status: status === 'ON' ? 'ON' : 'OFF' },
+      { new: true }
+    );
+    if (!updated) {
+      return res.status(404).json({ message: 'Popup ad item not found' });
+    }
+    res.json(updated);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+// Delete Ad Item
+app.delete('/api/popup-ads/items/:id', async (req, res) => {
+  try {
+    const deleted = await PopupAdItem.findByIdAndDelete(req.params.id);
+    if (!deleted) {
+      return res.status(404).json({ message: 'Popup ad item not found' });
+    }
+    res.json({ message: 'Popup ad item deleted successfully', id: req.params.id });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 const seedPopupAds = async () => {
   try {
-    const count = await PopupAds.countDocuments();
-    if (count === 0) {
-      await PopupAds.create({});
-      console.log('Default popup ads seeded');
+    const settingsCount = await PopupAdSettings.countDocuments();
+    if (settingsCount === 0) {
+      await PopupAdSettings.create({
+        status: 'OFF',
+        displayMode: 'carousel',
+        carouselInterval: 4,
+        carouselAutoplay: true,
+        delaySeconds: 2,
+        autoCloseSeconds: 0,
+        showCloseButton: true,
+        frequency: 'every_session',
+        targetPages: 'all'
+      });
+      console.log('Default popup ads settings seeded');
     }
   } catch (err) {
     console.error('Error seeding popup ads:', err);

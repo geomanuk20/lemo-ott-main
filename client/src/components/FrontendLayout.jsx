@@ -231,7 +231,7 @@ const FrontendLayout = ({ children, isTransparent = true, showFooter = true, sho
 
 
       <style dangerouslySetInnerHTML={{ __html: `
-        .frontend-wrapper { background: #050505; color: #fff; min-height: 100vh; font-family: 'Inter', sans-serif; overflow-x: hidden; position: relative; }
+        .frontend-wrapper { background: var(--bg-main, #050505); color: var(--text-primary, #fff); min-height: 100vh; font-family: 'Inter', sans-serif; overflow-x: hidden; position: relative; transition: background-color 0.3s ease, color 0.3s ease; }
         .fe-main-content { position: relative; z-index: 10; }
         .fe-main-content:has(.fe-cinema-overlay-v) { z-index: 99999 !important; }
       ` }} />

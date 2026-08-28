@@ -549,26 +549,46 @@ function AdsController({ isAdPlaying, adsConfig, playedAdsRef, triggerAd, vastPr
 
     // 2. Handle Built-in Ads
     if (adsConfig.defaultAds === 'Built-in Advertisement') {
-      const checkAd = (num) => {
-        const source = adsConfig[`ad${num}Source`];
-        const timeStr = adsConfig[`ad${num}Timestart`];
-        const targetLink = adsConfig[`ad${num}TargetLink`];
+      if (Array.isArray(adsConfig.builtInAds) && adsConfig.builtInAds.length > 0) {
+        adsConfig.builtInAds.forEach((slot, idx) => {
+          const source = slot.source;
+          const timeStr = slot.timestart;
+          const targetLink = slot.targetLink;
+          const key = `slot_${slot._id || idx}_${timeStr}`;
 
-        if (source && timeStr && !playedAdsRef.current.has(String(num))) {
-          const adStart = timeToSeconds(timeStr);
-          if (currentTime >= adStart && currentTime < adStart + 5) {
-            playedAdsRef.current.add(String(num));
-            if (!paused && pause) {
-              pause(); // Pause main video
+          if (source && timeStr && !playedAdsRef.current.has(key)) {
+            const adStart = timeToSeconds(timeStr);
+            if (currentTime >= adStart && currentTime < adStart + 4) {
+              playedAdsRef.current.add(key);
+              if (!paused && pause) {
+                pause(); // Pause main video
+              }
+              triggerAd(source, targetLink, slot.skipAfter ?? 5);
             }
-            triggerAd(source, targetLink);
           }
-        }
-      };
+        });
+      } else {
+        const checkAd = (num) => {
+          const source = adsConfig[`ad${num}Source`];
+          const timeStr = adsConfig[`ad${num}Timestart`];
+          const targetLink = adsConfig[`ad${num}TargetLink`];
 
-      checkAd(1);
-      checkAd(2);
-      checkAd(3);
+          if (source && timeStr && !playedAdsRef.current.has(String(num))) {
+            const adStart = timeToSeconds(timeStr);
+            if (currentTime >= adStart && currentTime < adStart + 4) {
+              playedAdsRef.current.add(String(num));
+              if (!paused && pause) {
+                pause(); // Pause main video
+              }
+              triggerAd(source, targetLink, 5);
+            }
+          }
+        };
+
+        checkAd(1);
+        checkAd(2);
+        checkAd(3);
+      }
     }
   }, [currentTime, adsConfig, vastPreRoll, paused, pause, triggerAd, playedAdsRef]);
 
@@ -986,12 +1006,13 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
     }
   }, []);
 
-  const triggerAd = (mediaUrl, clickUrl) => {
+  const triggerAd = (mediaUrl, clickUrl, customSkipSeconds = 5) => {
     if (!mediaUrl) return;
     setAdMediaUrl(mediaUrl);
     setAdClickUrl(clickUrl || '#');
     setIsAdPlaying(true);
-    setAdSecondsLeft(5); // Minimum 5 seconds to skip ad
+    const skipDuration = Math.max(0, Number(customSkipSeconds) || 0);
+    setAdSecondsLeft(skipDuration);
 
     // Pause the Mux Player
     if (activePlayer === 'MUX_PLAYER' && playerRef.current) {
@@ -1004,14 +1025,16 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
 
     // Set countdown timer
     if (timerRef.current) clearInterval(timerRef.current);
-    let timeRemaining = 5;
-    timerRef.current = setInterval(() => {
-      timeRemaining -= 1;
-      setAdSecondsLeft(timeRemaining);
-      if (timeRemaining <= 0) {
-        clearInterval(timerRef.current);
-      }
-    }, 1000);
+    let timeRemaining = skipDuration;
+    if (timeRemaining > 0) {
+      timerRef.current = setInterval(() => {
+        timeRemaining -= 1;
+        setAdSecondsLeft(timeRemaining);
+        if (timeRemaining <= 0) {
+          clearInterval(timerRef.current);
+        }
+      }, 1000);
+    }
   };
 
   const skipAd = () => {
@@ -1130,23 +1153,40 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
 
     // 2. Handle Built-in Ads
     if (adsConfig.defaultAds === 'Built-in Advertisement') {
-      const checkAd = (num) => {
-        const source = adsConfig[`ad${num}Source`];
-        const timeStr = adsConfig[`ad${num}Timestart`];
-        const targetLink = adsConfig[`ad${num}TargetLink`];
+      if (Array.isArray(adsConfig.builtInAds) && adsConfig.builtInAds.length > 0) {
+        adsConfig.builtInAds.forEach((slot, idx) => {
+          const source = slot.source;
+          const timeStr = slot.timestart;
+          const targetLink = slot.targetLink;
+          const key = `slot_${slot._id || idx}_${timeStr}`;
 
-        if (source && timeStr && !playedAdsRef.current.has(String(num))) {
-          const adStart = timeToSeconds(timeStr);
-          if (currentTime >= adStart && currentTime < adStart + 5) {
-            playedAdsRef.current.add(String(num));
-            triggerAd(source, targetLink);
+          if (source && timeStr && !playedAdsRef.current.has(key)) {
+            const adStart = timeToSeconds(timeStr);
+            if (currentTime >= adStart && currentTime < adStart + 4) {
+              playedAdsRef.current.add(key);
+              triggerAd(source, targetLink, slot.skipAfter ?? 5);
+            }
           }
-        }
-      };
+        });
+      } else {
+        const checkAd = (num) => {
+          const source = adsConfig[`ad${num}Source`];
+          const timeStr = adsConfig[`ad${num}Timestart`];
+          const targetLink = adsConfig[`ad${num}TargetLink`];
 
-      checkAd(1);
-      checkAd(2);
-      checkAd(3);
+          if (source && timeStr && !playedAdsRef.current.has(String(num))) {
+            const adStart = timeToSeconds(timeStr);
+            if (currentTime >= adStart && currentTime < adStart + 4) {
+              playedAdsRef.current.add(String(num));
+              triggerAd(source, targetLink, 5);
+            }
+          }
+        };
+
+        checkAd(1);
+        checkAd(2);
+        checkAd(3);
+      }
     }
   };
 

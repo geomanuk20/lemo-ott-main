@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import Loader from '../components/Loader';
 import { Link, useNavigate } from 'react-router-dom';
+import { useToast } from '../context/ToastContext';
 import FrontendLayout from '../components/FrontendLayout';
 import FrontendFooter from '../components/FrontendFooter';
 import { formatImageUrl } from '../utils/image';
@@ -117,6 +118,7 @@ const isSliderActive = (slide, menuSettings) => {
 
 const Home = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const triggerAudioActivation = () => {
     try {
       const audio = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA");
@@ -1245,11 +1247,11 @@ const Home = () => {
          onClick={() => {
           const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
           if (!subEmail.trim()) {
-           setSubMessage({ text: 'Please enter your email address first.', type: 'error' });
+           toast.error('Please enter your email address first.');
            return;
           }
           if (!emailRegex.test(subEmail)) {
-           setSubMessage({ text: 'Please enter a valid email format.', type: 'error' });
+           toast.error('Please enter a valid email format.');
            return;
           }
           
@@ -1265,22 +1267,6 @@ const Home = () => {
          Subscribe Now
         </button>
        </div>
-        {subMessage.text && (
-         <div className={`lemo-toast-notification-v ${subMessage.type}`}>
-          <div className="lemo-toast-accent-v" />
-          <div className="lemo-toast-body-v">
-           {subMessage.type === 'error' ? (
-            <AlertCircle size={18} className="lemo-toast-icon-v error" />
-           ) : (
-            <Check size={18} className="lemo-toast-icon-v success" />
-           )}
-           <span>{subMessage.text}</span>
-          </div>
-          <button className="lemo-toast-close-v" onClick={() => setSubMessage({ text: '', type: '' })}>
-           <X size={14} />
-          </button>
-         </div>
-        )}
       </div>
      </div>
 
@@ -1337,7 +1323,7 @@ const Home = () => {
    <style dangerouslySetInnerHTML={{
     __html: `
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
-    .frontend-wrapper { background: #050505; color: #fff; min-height: 100vh; font-family: 'Inter', sans-serif; overflow-x: hidden; }
+    .frontend-wrapper { background: var(--bg-main, #050505); color: var(--text-primary, #fff); min-height: 100vh; font-family: 'Inter', sans-serif; overflow-x: hidden; transition: background-color 0.3s ease, color 0.3s ease; }
     
     /* Shorts row styling */
     .fe-shorts-list-v { display: flex; gap: 24px; overflow-x: auto; padding: 20px 0; scrollbar-width: none; }

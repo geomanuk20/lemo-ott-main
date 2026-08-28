@@ -1,12 +1,26 @@
 const mongoose = require('mongoose');
 
+const BuiltInAdItemSchema = new mongoose.Schema({
+  title: { type: String, default: '' },
+  source: { type: String, default: '' },
+  timestart: { type: String, default: '00:00:10' },
+  targetLink: { type: String, default: '#' },
+  skipAfter: { type: Number, default: 5 }
+}, { _id: true });
+
 const PlayerAdsSchema = new mongoose.Schema({
-  defaultAds: { type: String, default: 'VAST, VMAP and IMA' },
+  defaultAds: { type: String, default: 'Built-in Advertisement' },
   sourceType: { type: String, default: 'URL' },
   sourceUrl: { type: String, default: 'https://cdn.theplayer.com/demos/ads/vast/vast.xml' },
   
-  // Ad slots
-  ad1Source: { type: String, default: 'https://cdn.theplayer.com/demos/ads/vast/vast.xml' },
+  // Dynamic multi-ad slots
+  builtInAds: {
+    type: [BuiltInAdItemSchema],
+    default: []
+  },
+  
+  // Legacy Ad slots (kept for backward compatibility)
+  ad1Source: { type: String, default: '' },
   ad1Timestart: { type: String, default: '00:00:10' },
   ad1TargetLink: { type: String, default: '#' },
   

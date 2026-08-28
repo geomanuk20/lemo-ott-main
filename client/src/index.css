@@ -1,12 +1,16 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
-:root {
-  --bg-main: #0a0a0a;
-  --bg-sidebar: #0f0f0f;
-  --bg-card: #151515;
+:root,
+[data-theme="oled_dark"] {
+  --bg-main: #050505;
+  --bg-sidebar: #0a0a0a;
+  --bg-card: #101010;
+  --bg-card-inner: #151515;
   --bg-hover: #1f1f1f;
   --text-primary: #ffffff;
   --text-secondary: #999999;
+  --text-muted: #666666;
+  --accent-lime: #b3d332;
   --accent-red: #e50914;
   --sidebar-width: 260px;
   --header-height: 70px;
@@ -22,6 +26,32 @@
   --card-users: #4d94ff;
   --card-trans: #ff4d4d;
   --card-revenue: #00cc66;
+}
+
+[data-theme="midnight_navy"] {
+  --bg-main: #060b14;
+  --bg-sidebar: #0c1322;
+  --bg-card: #131c31;
+  --bg-card-inner: #1a253e;
+  --bg-hover: #22304e;
+  --text-primary: #ffffff;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --accent-lime: #b3d332;
+  --border-color: rgba(56, 189, 248, 0.16);
+}
+
+[data-theme="light_mode"] {
+  --bg-main: #f4f6fa;
+  --bg-sidebar: #ffffff;
+  --bg-card: #ffffff;
+  --bg-card-inner: #f8fafc;
+  --bg-hover: #f1f5f9;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --accent-lime: #65a30d;
+  --border-color: #e2e8f0;
 }
 
 * {
@@ -829,78 +859,6 @@ body {
   justify-content: center;
 }
 
-/* Premium Unified Global Alert / Toast Styles */
-.custom-alert-box,
-.custom-alert-box-v,
-.custom-alert-box-p { 
-  position: fixed !important; 
-  bottom: 40px !important; 
-  top: auto !important;
-  left: 50% !important; 
-  transform: translateX(-50%) !important; 
-  background: #b3d332 !important; 
-  color: #fff !important; 
-  padding: 12px 25px !important; 
-  border-radius: 50px !important; 
-  display: flex !important; 
-  align-items: center !important; 
-  justify-content: center !important;
-  z-index: 99999 !important; 
-  box-shadow: 0 15px 30px rgba(0,0,0,0.4) !important; 
-  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important; 
-  border: 1px solid rgba(255,255,255,0.25) !important;
-  height: auto !important;
-  width: auto !important;
-  min-width: unset !important;
-  max-width: 90% !important;
-}
-
-.custom-alert-box.error,
-.custom-alert-box-v.error,
-.custom-alert-box-p.error { 
-  background: #ff4d4d !important; 
-}
-
-.custom-alert-box .alert-content,
-.custom-alert-box-v .alert-content,
-.custom-alert-box-p .alert-content,
-.custom-alert-box .alert-content-v,
-.custom-alert-box-v .alert-content-v,
-.custom-alert-box-p .alert-content-v { 
-  display: flex !important; 
-  align-items: center !important; 
-  flex-direction: row !important;
-  gap: 12px !important; 
-}
-
-/* Make the svg icons look small, crisp and white */
-.custom-alert-box svg,
-.custom-alert-box-v svg,
-.custom-alert-box-p svg {
-  width: 20px !important;
-  height: 20px !important;
-  color: #fff !important;
-  stroke: #fff !important;
-}
-
-.custom-alert-box .alert-text,
-.custom-alert-box-v .alert-text,
-.custom-alert-box-p .alert-text { 
-  color: #fff !important; 
-  font-size: 1rem !important; 
-  font-weight: 700 !important; 
-  text-align: left !important; 
-  letter-spacing: -0.2px !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  line-height: normal !important;
-}
-
-@keyframes slideUp { 
-  from { transform: translate(-50%, 20px); opacity: 0; } 
-  to { transform: translate(-50%, 0); opacity: 1; } 
-}
-
 /* Premium Unified Custom Select Dropdowns */
 select,
 .form-row-full-v select {
@@ -1158,3 +1116,577 @@ body.user-subscribed .fe-premium-indicator-v {
     border-radius: 10px;
   }
 }
+
+/* ==========================================================================
+   LEMO OTT GLOBAL TOAST & ALERT NOTIFICATION SYSTEM
+   ========================================================================== */
+
+.lemo-toast-portal-root {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 9999999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 420px;
+  width: calc(100% - 48px);
+  pointer-events: none;
+}
+
+.lemo-toast-card-item {
+  pointer-events: auto;
+  position: relative;
+  background: #0c0e14;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 14px 16px 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+  animation: lemoToastSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+}
+
+.lemo-toast-accent-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 5px;
+}
+
+.lemo-toast-accent-bar.error {
+  background: #ff4d4d;
+  box-shadow: 0 0 16px rgba(255, 77, 77, 0.8);
+}
+.lemo-toast-accent-bar.success {
+  background: #b3d332;
+  box-shadow: 0 0 16px rgba(179, 211, 50, 0.8);
+}
+.lemo-toast-accent-bar.warning {
+  background: #ffb020;
+  box-shadow: 0 0 16px rgba(255, 176, 32, 0.8);
+}
+.lemo-toast-accent-bar.info {
+  background: #00c0ff;
+  box-shadow: 0 0 16px rgba(0, 192, 255, 0.8);
+}
+
+.lemo-toast-icon-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.lemo-toast-icon-badge.error {
+  background: rgba(255, 77, 77, 0.14);
+  border: 1px solid rgba(255, 77, 77, 0.35);
+  box-shadow: 0 0 10px rgba(255, 77, 77, 0.2);
+}
+.toast-icon-error { color: #ff4d4d; }
+
+.lemo-toast-icon-badge.success {
+  background: rgba(179, 211, 50, 0.14);
+  border: 1px solid rgba(179, 211, 50, 0.35);
+  box-shadow: 0 0 10px rgba(179, 211, 50, 0.2);
+}
+.toast-icon-success { color: #b3d332; }
+
+.lemo-toast-icon-badge.warning {
+  background: rgba(255, 176, 32, 0.14);
+  border: 1px solid rgba(255, 176, 32, 0.35);
+  box-shadow: 0 0 10px rgba(255, 176, 32, 0.2);
+}
+.toast-icon-warning { color: #ffb020; }
+
+.lemo-toast-icon-badge.info {
+  background: rgba(0, 192, 255, 0.14);
+  border: 1px solid rgba(0, 192, 255, 0.35);
+  box-shadow: 0 0 10px rgba(0, 192, 255, 0.2);
+}
+.toast-icon-info { color: #00c0ff; }
+
+.lemo-toast-message-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.lemo-toast-text {
+  margin: 0;
+  color: #fff;
+  font-size: 0.94rem;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: -0.2px;
+  word-break: break-word;
+}
+
+.lemo-toast-dismiss-btn {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+.lemo-toast-dismiss-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Modernized Global Legacy Alert Boxes (e.g. across admin forms) */
+.custom-alert-box,
+.custom-alert-box-v,
+.custom-alert-box-p,
+.custom-alert-box-g {
+  position: fixed !important;
+  top: 24px !important;
+  right: 24px !important;
+  bottom: auto !important;
+  left: auto !important;
+  height: auto !important;
+  min-height: unset !important;
+  transform: none !important;
+  background: #0c0e14 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-left: 5px solid #b3d332 !important;
+  border-radius: 14px !important;
+  padding: 14px 22px !important;
+  z-index: 9999999 !important;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.85) !important;
+  animation: lemoToastSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  max-width: 420px !important;
+  width: auto !important;
+}
+
+.alert-content,
+.alert-content-v,
+.alert-content-p,
+.alert-content-g {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+
+.alert-text,
+.alert-text-v,
+.alert-text-p,
+.alert-text-g {
+  color: #fff !important;
+  font-size: 0.94rem !important;
+  font-weight: 700 !important;
+  text-align: left !important;
+  line-height: 1.35 !important;
+}
+
+@keyframes lemoToastSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-16px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 768px) {
+  .lemo-toast-portal-root,
+  .custom-alert-box,
+  .custom-alert-box-v,
+  .custom-alert-box-p,
+  .custom-alert-box-g {
+    top: 16px !important;
+    right: 16px !important;
+    left: 16px !important;
+    max-width: none !important;
+    width: auto !important;
+  }
+}
+
+/* ==========================================================================
+   GLOBAL LIGHT MODE STYLING ENGINE (ALL PAGES, HEADER, FOOTER & CARDS)
+   ========================================================================== */
+
+[data-theme="light_mode"] {
+  color-scheme: light;
+}
+
+[data-theme="light_mode"] body,
+[data-theme="light_mode"] html,
+[data-theme="light_mode"] #root,
+[data-theme="light_mode"] .frontend-wrapper,
+[data-theme="light_mode"] .fe-main-content,
+[data-theme="light_mode"] .fe-page-container-v,
+[data-theme="light_mode"] .fe-details-container-v,
+[data-theme="light_mode"] .movies-page-v,
+[data-theme="light_mode"] .shows-page-v,
+[data-theme="light_mode"] .sports-page-v,
+[data-theme="light_mode"] .livetv-page-v {
+  background-color: #f4f6fa !important;
+  color: #0f172a !important;
+}
+
+/* Header & Navbar Light Mode */
+[data-theme="light_mode"] .fe-navbar-v.scrolled {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06) !important;
+}
+
+[data-theme="light_mode"] .fe-nav-center-v a,
+[data-theme="light_mode"] .fe-nav-icon,
+[data-theme="light_mode"] .fe-account-v span,
+[data-theme="light_mode"] .fe-mobile-toggle-v {
+  color: #0f172a !important;
+}
+
+[data-theme="light_mode"] .fe-dropdown-menu-v {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.1) !important;
+}
+
+[data-theme="light_mode"] .fe-dropdown-item-v {
+  color: #475569 !important;
+}
+
+[data-theme="light_mode"] .fe-dropdown-item-v:hover {
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+[data-theme="light_mode"] .fe-dropdown-divider-v {
+  background: #e2e8f0 !important;
+}
+
+/* Mobile Sidebar Light Mode */
+[data-theme="light_mode"] .fe-mobile-sidebar-v {
+  background: #ffffff !important;
+  border-right: 1px solid #e2e8f0 !important;
+  color: #0f172a !important;
+  box-shadow: 10px 0 30px rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-theme="light_mode"] .fe-sidebar-link-v,
+[data-theme="light_mode"] .fe-sidebar-item-v {
+  color: #475569 !important;
+}
+
+[data-theme="light_mode"] .fe-sidebar-link-v:hover,
+[data-theme="light_mode"] .fe-sidebar-link-v.active {
+  background: #f1f5f9 !important;
+  color: #65a30d !important;
+}
+
+/* Footer Light Mode */
+[data-theme="light_mode"] .fe-footer-v {
+  background: #ffffff !important;
+  border-top: 1px solid #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+[data-theme="light_mode"] .footer-col-v h4 {
+  color: #0f172a !important;
+}
+
+[data-theme="light_mode"] .footer-col-v a {
+  color: #64748b !important;
+}
+
+[data-theme="light_mode"] .footer-col-v a:hover {
+  color: #65a30d !important;
+}
+
+[data-theme="light_mode"] .footer-brand-v p,
+[data-theme="light_mode"] .footer-bottom-v,
+[data-theme="light_mode"] .footer-icons-v {
+  color: #64748b !important;
+}
+
+[data-theme="light_mode"] .footer-bottom-v {
+  border-top: 1px solid #e2e8f0 !important;
+}
+
+/* Cards & Content Across Pages in Light Mode */
+[data-theme="light_mode"] .fe-section-title-v,
+[data-theme="light_mode"] .fe-slider-title-v,
+[data-theme="light_mode"] .fe-card-title-v,
+[data-theme="light_mode"] .section-title-v,
+[data-theme="light_mode"] .fe-page-title-v,
+[data-theme="light_mode"] .fe-hero-title-v {
+  color: #0f172a !important;
+}
+
+[data-theme="light_mode"] .fe-card-v,
+[data-theme="light_mode"] .fe-grid-card-v,
+[data-theme="light_mode"] .fe-movie-card,
+[data-theme="light_mode"] .fe-channel-card-v,
+[data-theme="light_mode"] .fe-sports-card-v,
+[data-theme="light_mode"] .watchlist-card-v {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04) !important;
+}
+
+[data-theme="light_mode"] .fe-card-v:hover,
+[data-theme="light_mode"] .watchlist-card-v:hover {
+  box-shadow: 0 12px 25px rgba(0, 0, 0, 0.09) !important;
+}
+
+[data-theme="light_mode"] .fe-card-meta-v,
+[data-theme="light_mode"] .fe-meta-text-v,
+[data-theme="light_mode"] .fe-desc-v,
+[data-theme="light_mode"] .fe-section-subtitle-v {
+  color: #64748b !important;
+}
+
+[data-theme="light_mode"] .fe-cta-container-v,
+[data-theme="light_mode"] .fe-subscription-banner-v {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05) !important;
+}
+
+[data-theme="light_mode"] .fe-cta-container-v h2,
+[data-theme="light_mode"] .fe-subscription-banner-v h2 {
+  color: #0f172a !important;
+}
+
+[data-theme="light_mode"] .fe-cta-container-v p,
+[data-theme="light_mode"] .fe-subscription-banner-v p {
+  color: #64748b !important;
+}
+
+[data-theme="light_mode"] .fe-email-input-v {
+  background: #f8fafc !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+/* Modals in Light Mode */
+[data-theme="light_mode"] .fe-quick-modal-v,
+[data-theme="light_mode"] .fe-invoice-modal-v {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #0f172a !important;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.15) !important;
+}
+
+[data-theme="light_mode"] .fe-quick-modal-v h2,
+[data-theme="light_mode"] .fe-invoice-modal-v h3 {
+  color: #0f172a !important;
+}
+
+[data-theme="light_mode"] .fe-quick-modal-v p,
+[data-theme="light_mode"] .invoice-detail-row-v .label-v {
+  color: #64748b !important;
+}
+
+[data-theme="light_mode"] .invoice-detail-row-v .value-v {
+  color: #0f172a !important;
+}
+
+/* Listing Pages (Movies, Shows, Sports, Live TV, Short Films, Web Series) Light Mode */
+[data-theme="light_mode"] .fe-movies-content,
+[data-theme="light_mode"] .fe-shows-content,
+[data-theme="light_mode"] .fe-sports-content,
+[data-theme="light_mode"] .fe-livetv-content,
+[data-theme="light_mode"] .fe-webseries-content,
+[data-theme="light_mode"] .movies-grid-container {
+  background: #f4f6fa !important;
+  color: #0f172a !important;
+  border-top-color: #e2e8f0 !important;
+  box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.05) !important;
+}
+
+[data-theme="light_mode"] .fe-movies-hero,
+[data-theme="light_mode"] .fe-shows-hero,
+[data-theme="light_mode"] .fe-sports-hero {
+  color: #0f172a !important;
+}
+
+[data-theme="light_mode"] .fe-movies-hero .hero-overlay,
+[data-theme="light_mode"] .hero-overlay {
+  background: linear-gradient(to right, rgba(244, 246, 250, 0.96) 0%, rgba(244, 246, 250, 0.85) 50%, rgba(244, 246, 250, 0.5) 100%), linear-gradient(to top, #f4f6fa 0%, transparent 40%) !important;
+}
+
+[data-theme="light_mode"] .hero-content h1 {
+  color: #0f172a !important;
+  text-shadow: none !important;
+}
+
+[data-theme="light_mode"] .hero-content p {
+  color: #334155 !important;
+  text-shadow: none !important;
+}
+
+[data-theme="light_mode"] .movie-title-v,
+[data-theme="light_mode"] .fe-movie-card-new .movie-title-v,
+[data-theme="light_mode"] .show-title-v,
+[data-theme="light_mode"] .sport-title-v,
+[data-theme="light_mode"] .channel-name-v {
+  color: #0f172a !important;
+}
+
+[data-theme="light_mode"] .card-info-new {
+  color: #475569 !important;
+}
+
+[data-theme="light_mode"] .card-meta-top .year-text,
+[data-theme="light_mode"] .year-text {
+  color: #64748b !important;
+}
+
+[data-theme="light_mode"] .card-meta-top .age-badge,
+[data-theme="light_mode"] .age-badge {
+  color: #475569 !important;
+  border-color: #cbd5e1 !important;
+  background: #e2e8f0 !important;
+}
+
+[data-theme="light_mode"] .card-image-wrapper {
+  background: #e2e8f0 !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Navbar Top Link Visibility in Light Mode */
+[data-theme="light_mode"] .fe-navbar-v {
+  background: rgba(244, 246, 250, 0.85);
+  backdrop-filter: blur(10px);
+}
+
+[data-theme="light_mode"] .fe-navbar-v.transparent {
+  background: rgba(244, 246, 250, 0.8) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+[data-theme="light_mode"] .fe-nav-center-v a {
+  color: #0f172a !important;
+  opacity: 0.85 !important;
+}
+
+[data-theme="light_mode"] .fe-nav-center-v a:hover,
+[data-theme="light_mode"] .fe-nav-center-v a.active {
+  opacity: 1 !important;
+  color: #65a30d !important;
+}
+
+[data-theme="light_mode"] .fe-nav-icon {
+  color: #0f172a !important;
+}
+
+[data-theme="light_mode"] .fe-account-v span {
+  color: #0f172a !important;
+}
+
+[data-theme="light_mode"] .fe-profile-v {
+  border-color: #cbd5e1 !important;
+  background: #e2e8f0 !important;
+}
+
+[data-theme="light_mode"] .fe-dropdown-arrow-v {
+  color: #64748b !important;
+}
+
+/* Video Details Page in Light Mode */
+[data-theme="light_mode"] .fe-details-container-v,
+[data-theme="light_mode"] .fe-details-page-v {
+  background: #f4f6fa !important;
+  color: #0f172a !important;
+}
+
+[data-theme="light_mode"] .fe-details-title-v,
+[data-theme="light_mode"] .details-title-v {
+  color: #0f172a !important;
+}
+
+[data-theme="light_mode"] .fe-details-desc-v,
+[data-theme="light_mode"] .details-desc-v {
+  color: #475569 !important;
+}
+
+/* Home Page Sections in Light Mode */
+[data-theme="light_mode"] .fe-content-v,
+[data-theme="light_mode"] .fe-experience-section-v,
+[data-theme="light_mode"] .fe-watch-online-v,
+[data-theme="light_mode"] .fe-experience-info-v {
+  background-color: #f4f6fa !important;
+  color: #0f172a !important;
+}
+
+[data-theme="light_mode"] .row-title-v,
+[data-theme="light_mode"] .watch-online-title-v,
+[data-theme="light_mode"] .exp-main-title-v,
+[data-theme="light_mode"] .exp-feature-text-v h3,
+[data-theme="light_mode"] .badge-title-v,
+[data-theme="light_mode"] .meta-title-v,
+[data-theme="light_mode"] .online-movie-meta-v .meta-title-v {
+  color: #0f172a !important;
+}
+
+[data-theme="light_mode"] .exp-feature-text-v p,
+[data-theme="light_mode"] .watch-online-tag-v,
+[data-theme="light_mode"] .badge-tag-v,
+[data-theme="light_mode"] .meta-top-v {
+  color: #64748b !important;
+}
+
+[data-theme="light_mode"] .exp-badge-v {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-theme="light_mode"] .empty-section-v {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #64748b !important;
+}
+
+[data-theme="light_mode"] .online-movie-poster-v {
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-theme="light_mode"] .fe-movie-card-v {
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-theme="light_mode"] .fe-hero-v .fe-hero-overlay-v {
+  background: linear-gradient(to top, #f4f6fa 0%, rgba(244, 246, 250, 0.4) 25%, transparent 60%), linear-gradient(to right, rgba(244, 246, 250, 0.9) 0%, rgba(244, 246, 250, 0.5) 45%, transparent 75%) !important;
+}
+
+[data-theme="light_mode"] .fe-hero-title-v {
+  color: #0f172a !important;
+  text-shadow: none !important;
+}
+
+[data-theme="light_mode"] .fe-hero-desc-v,
+[data-theme="light_mode"] .fe-hero-tag-v span,
+[data-theme="light_mode"] .meta-item-v {
+  color: #334155 !important;
+  text-shadow: none !important;
+}
+
+[data-theme="light_mode"] .meta-cc-v {
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+
+
