@@ -25,6 +25,7 @@ const AddShortFilm = () => {
  const [actorSearch, setActorSearch] = useState('');
  const [directorSearch, setDirectorSearch] = useState('');
  const [genreSearch, setGenreSearch] = useState('');
+ const [modalPreviewImage, setModalPreviewImage] = useState(null);
 
  const [formData, setFormData] = useState({
   imdbId: '',
@@ -392,11 +393,15 @@ const AddShortFilm = () => {
          <input type="file" ref={thumbnailInputRef} style={{ display: 'none' }} accept="image/*" onChange={(e) => handleFileChange(e, 'thumbnail')} />
         </div>
         {formData.thumbnail && (
-          <div style={{ marginTop: '10px', display: 'inline-flex', padding: '4px', background: 'rgba(255,255,255,0.04)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
+          <div 
+            style={{ marginTop: '10px', display: 'inline-flex', width: 'fit-content', padding: '4px', background: 'rgba(255,255,255,0.04)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.12)', cursor: 'pointer', transition: 'transform 0.2s' }}
+            onClick={() => setModalPreviewImage(formData.thumbnail.startsWith('http') ? formData.thumbnail : `/${formData.thumbnail.replace(/^\//, '')}`)}
+            title="Click to view full image"
+          >
             <img 
               src={formData.thumbnail.startsWith('http') ? formData.thumbnail : `/${formData.thumbnail.replace(/^\//, '')}`} 
               alt="Thumbnail preview" 
-              style={{ width: '130px', height: '74px', objectFit: 'cover', borderRadius: '6px' }}
+              style={{ width: '130px', height: '74px', objectFit: 'cover', borderRadius: '6px', display: 'block' }}
               onError={(e) => { e.target.style.display = 'none'; }}
             />
           </div>
@@ -410,11 +415,15 @@ const AddShortFilm = () => {
          <input type="file" ref={posterInputRef} style={{ display: 'none' }} accept="image/*" onChange={(e) => handleFileChange(e, 'poster')} />
         </div>
         {formData.poster && (
-          <div style={{ marginTop: '10px', display: 'inline-flex', padding: '4px', background: 'rgba(255,255,255,0.04)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
+          <div 
+            style={{ marginTop: '10px', display: 'inline-flex', width: 'fit-content', padding: '4px', background: 'rgba(255,255,255,0.04)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.12)', cursor: 'pointer', transition: 'transform 0.2s' }}
+            onClick={() => setModalPreviewImage(formData.poster.startsWith('http') ? formData.poster : `/${formData.poster.replace(/^\//, '')}`)}
+            title="Click to view full image"
+          >
             <img 
               src={formData.poster.startsWith('http') ? formData.poster : `/${formData.poster.replace(/^\//, '')}`} 
               alt="Poster preview" 
-              style={{ width: '70px', height: '105px', objectFit: 'cover', borderRadius: '6px' }}
+              style={{ width: '70px', height: '105px', objectFit: 'cover', borderRadius: '6px', display: 'block' }}
               onError={(e) => { e.target.style.display = 'none'; }}
             />
           </div>
@@ -748,6 +757,58 @@ const AddShortFilm = () => {
       .save-movie-btn { width: 100%; padding: 14px; font-size: 1rem; }
     }
    ` }} />
+
+    {modalPreviewImage && (
+      <div 
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          background: 'rgba(0, 0, 0, 0.88)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 999999,
+          padding: '20px'
+        }}
+        onClick={() => setModalPreviewImage(null)}
+      >
+        <div style={{ position: 'relative', maxWidth: '90vw', maxHeight: '90vh' }} onClick={e => e.stopPropagation()}>
+          <button 
+            type="button"
+            style={{
+              position: 'absolute',
+              top: '-15px',
+              right: '-15px',
+              background: '#b3d332',
+              border: 'none',
+              borderRadius: '50%',
+              width: '32px',
+              height: '32px',
+              color: '#000',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 10px rgba(0,0,0,0.5)',
+              zIndex: 10
+            }}
+            onClick={() => setModalPreviewImage(null)}
+          >
+            <X size={18} />
+          </button>
+          <img 
+            src={modalPreviewImage} 
+            alt="Enlarged Preview" 
+            style={{ maxWidth: '100%', maxHeight: '85vh', borderRadius: '12px', boxShadow: '0 20px 50px rgba(0,0,0,0.8)', objectFit: 'contain', border: '1px solid rgba(255,255,255,0.15)' }} 
+          />
+        </div>
+      </div>
+    )}
   </div>
  );
 };
