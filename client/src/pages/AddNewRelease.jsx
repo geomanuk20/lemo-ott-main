@@ -390,6 +390,16 @@ const AddNewRelease = () => {
          <button type="button" className="select-btn" onClick={() => thumbnailInputRef.current.click()}>Select</button>
          <input type="file" ref={thumbnailInputRef} style={{ display: 'none' }} accept="image/*" onChange={(e) => handleFileChange(e, 'thumbnail')} />
         </div>
+        {formData.thumbnail && (
+          <div style={{ marginTop: '10px', display: 'inline-flex', padding: '4px', background: 'rgba(255,255,255,0.04)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
+            <img 
+              src={formData.thumbnail.startsWith('http') ? formData.thumbnail : `/${formData.thumbnail.replace(/^\//, '')}`} 
+              alt="Thumbnail preview" 
+              style={{ width: '130px', height: '74px', objectFit: 'cover', borderRadius: '6px' }}
+              onError={(e) => { e.target.style.display = 'none'; }}
+            />
+          </div>
+        )}
        </div>
        <div className="form-group">
         <label>Poster</label>
@@ -398,6 +408,16 @@ const AddNewRelease = () => {
          <button type="button" className="select-btn" onClick={() => posterInputRef.current.click()}>Select</button>
          <input type="file" ref={posterInputRef} style={{ display: 'none' }} accept="image/*" onChange={(e) => handleFileChange(e, 'poster')} />
         </div>
+        {formData.poster && (
+          <div style={{ marginTop: '10px', display: 'inline-flex', padding: '4px', background: 'rgba(255,255,255,0.04)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
+            <img 
+              src={formData.poster.startsWith('http') ? formData.poster : `/${formData.poster.replace(/^\//, '')}`} 
+              alt="Poster preview" 
+              style={{ width: '70px', height: '105px', objectFit: 'cover', borderRadius: '6px' }}
+              onError={(e) => { e.target.style.display = 'none'; }}
+            />
+          </div>
+        )}
        </div>
       </div>
      </div>
