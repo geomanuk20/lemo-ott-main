@@ -1274,9 +1274,9 @@ const Home = () => {
     {showModal && selectedContent && (
      <div className="fe-quick-modal-overlay-v" onClick={() => setShowModal(false)}>
       <div className="fe-quick-modal-v" onClick={e => e.stopPropagation()}>
-       <button className="close-modal-v" onClick={() => setShowModal(false)}><Loader size="small" inline={true} /></button>
+       <button className="close-modal-v" onClick={() => setShowModal(false)}><X size={20} /></button>
        <div className="modal-banner-v">
-        <img src={formatImageUrl(selectedContent, 'slider')} alt="" />
+        <img src={formatImageUrl(selectedContent, 'thumbnail') || formatImageUrl(selectedContent, 'landscape') || formatImageUrl(selectedContent, 'slider')} alt="" />
         <div className="banner-overlay-v"></div>
         <div className="banner-content-v">
          <h2 className="modal-title-v">{selectedContent.title || selectedContent.name || selectedContent.channelName}</h2>

@@ -16,13 +16,15 @@ export const formatImageUrl = (item, type = 'poster') => {
   // Extract URL based on type
   let url = '';
   if (type === 'landscape') {
-    url = item.landscapePoster || item.poster || item.logo || item.thumbnail || item.posterImage || item.image || item.imageUrl || '';
+    url = item.thumbnail || item.landscapePoster || item.backdrop || item.poster || item.logo || item.posterImage || item.image || item.imageUrl || '';
   } else if (type === 'poster') {
-    url = item.poster || item.logo || item.thumbnail || item.posterImage || item.image || item.imageUrl || '';
+    url = item.poster || item.posterImage || item.thumbnail || item.logo || item.image || item.imageUrl || '';
   } else if (type === 'slider') {
-    url = item.image || item.sliderImage || item.imageUrl || item.poster || item.thumbnail || item.logo || '';
+    url = item.image || item.sliderImage || item.thumbnail || item.landscapePoster || item.backdrop || item.imageUrl || item.poster || item.logo || '';
+  } else if (type === 'thumbnail') {
+    url = item.thumbnail || item.landscapePoster || item.backdrop || item.image || item.poster || item.logo || '';
   } else {
-    url = item.image || item.imageUrl || item.poster || '';
+    url = item.thumbnail || item.landscapePoster || item.image || item.imageUrl || item.poster || '';
   }
 
   return resolvePath(url);
