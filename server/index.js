@@ -2725,7 +2725,27 @@ try {
 app.get('/api/coupons', async (req, res) => {
   try {
     const coupons = await Coupon.find();
-    res.json(coupons);
+    const Transaction = require('./models/Transaction');
+
+    // Ensure couponUsed strictly matches successful completed purchases
+    const couponsWithRealUsage = await Promise.all(coupons.map(async (c) => {
+      const couponObj = c.toObject();
+      if (couponObj.couponCode) {
+        const completedTxCount = await Transaction.countDocuments({
+          couponCode: { $regex: new RegExp('^' + couponObj.couponCode.trim() + '$', 'i') },
+          status: { $nin: ['Pending', 'Failed', 'Cancelled', 'Error'] }
+        });
+        
+        if (c.couponUsed !== completedTxCount) {
+          c.couponUsed = completedTxCount;
+          await c.save();
+        }
+        couponObj.couponUsed = completedTxCount;
+      }
+      return couponObj;
+    }));
+
+    res.json(couponsWithRealUsage);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -2745,6 +2765,19 @@ app.get('/api/coupons/:id', async (req, res) => {
   try {
     const coupon = await Coupon.findById(req.params.id);
     if (!coupon) return res.status(404).json({ message: 'Coupon not found' });
+    
+    const Transaction = require('./models/Transaction');
+    if (coupon.couponCode) {
+      const completedTxCount = await Transaction.countDocuments({
+        couponCode: { $regex: new RegExp('^' + coupon.couponCode.trim() + '$', 'i') },
+        status: { $nin: ['Pending', 'Failed', 'Cancelled', 'Error'] }
+      });
+      if (coupon.couponUsed !== completedTxCount) {
+        coupon.couponUsed = completedTxCount;
+        await coupon.save();
+      }
+    }
+    
     res.json(coupon);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -2792,9 +2825,15 @@ app.post('/api/coupons/validate', async (req, res) => {
       return res.status(400).json({ message: 'This coupon has expired' });
     }
 
-    // Usage check
-    if (coupon.couponUsed !== undefined && coupon.usersAllow !== undefined) {
-      if (coupon.couponUsed >= coupon.usersAllow) {
+    // Usage check strictly based on successful completed purchases
+    if (coupon.usersAllow !== undefined) {
+      const Transaction = require('./models/Transaction');
+      const actualCompleted = await Transaction.countDocuments({
+        couponCode: { $regex: new RegExp('^' + coupon.couponCode.trim() + '$', 'i') },
+        status: { $nin: ['Pending', 'Failed', 'Cancelled', 'Error'] }
+      });
+      
+      if (actualCompleted >= coupon.usersAllow) {
         return res.status(400).json({ message: 'This coupon has reached its usage limit' });
       }
     }
