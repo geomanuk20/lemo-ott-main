@@ -177,24 +177,24 @@ const Transactions = () => {
     <table className="premium-table-v">
      <thead>
       <tr>
-       <th style={{ width: '40px', textAlign: 'center' }}>
+       <th style={{ width: '36px', textAlign: 'center' }}>
         <input 
          type="checkbox" 
          onChange={handleSelectAll}
          checked={currentItems.length > 0 && selectedIds.length === currentItems.length}
-         style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+         style={{ width: '15px', height: '15px', cursor: 'pointer' }}
         />
        </th>
        <th>Name</th>
        <th>Email</th>
        <th>Plan</th>
        <th>Amount</th>
-       <th>Payment Gateway</th>
-       <th>Coupon Code</th>
+       <th>Gateway</th>
+       <th>Coupon</th>
        <th>Payment ID</th>
-       <th>Payment Date</th>
+       <th>Date</th>
        <th>Status</th>
-       <th style={{ textAlign: 'center' }}>Action</th>
+       <th style={{ textAlign: 'center', width: '50px' }}>Action</th>
       </tr>
      </thead>
      <tbody>
@@ -218,24 +218,32 @@ const Transactions = () => {
            type="checkbox" 
            checked={selectedIds.includes(tx._id)}
            onChange={() => handleSelectOne(tx._id)}
-           style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+           style={{ width: '15px', height: '15px', cursor: 'pointer' }}
           />
          </td>
-         <td className="name-cell-v">{tx.name}</td>
-         <td>{tx.email}</td>
-         <td className="bold-text">{tx.plan}</td>
-         <td className="bold-text" style={{ color: '#b3d332' }}>{tx.amount}</td>
-         <td>{tx.gateway}</td>
+         <td className="name-cell-v">
+          <span style={{ display: 'block', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={tx.name}>
+           {tx.name}
+          </span>
+         </td>
          <td>
+          <span style={{ display: 'block', maxWidth: '170px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={tx.email}>
+           {tx.email}
+          </span>
+         </td>
+         <td className="bold-text" style={{ whiteSpace: 'nowrap' }}>{tx.plan}</td>
+         <td className="bold-text" style={{ color: '#b3d332', whiteSpace: 'nowrap' }}>{tx.amount}</td>
+         <td style={{ whiteSpace: 'nowrap' }}>{tx.gateway}</td>
+         <td style={{ whiteSpace: 'nowrap' }}>
           {tx.couponCode ? (
             <span style={{ 
               background: 'rgba(179, 211, 50, 0.15)', 
               color: '#b3d332', 
               border: '1px solid rgba(179, 211, 50, 0.35)', 
-              padding: '3px 9px', 
+              padding: '2px 7px', 
               borderRadius: '4px', 
               fontWeight: 800, 
-              fontSize: '0.82rem',
+              fontSize: '0.78rem',
               fontFamily: 'monospace',
               letterSpacing: '0.5px'
             }}>
@@ -245,29 +253,36 @@ const Transactions = () => {
             <span style={{ color: '#555', fontSize: '0.9rem' }}>—</span>
           )}
          </td>
-         <td><span style={{ fontFamily: 'monospace', fontSize: '0.82rem', color: '#ccc' }}>{tx.paymentId}</span></td>
-         <td>{tx.paymentDate}</td>
          <td>
+          <span 
+            style={{ display: 'block', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'monospace', fontSize: '0.78rem', color: '#ccc' }} 
+            title={tx.paymentId}
+          >
+           {tx.paymentId}
+          </span>
+         </td>
+         <td style={{ whiteSpace: 'nowrap', fontSize: '0.8rem' }}>{tx.paymentDate}</td>
+         <td style={{ whiteSpace: 'nowrap' }}>
           <span style={{
             background: tx.status === 'Pending' ? 'rgba(255, 152, 0, 0.15)' : 'rgba(0, 204, 102, 0.15)',
             color: tx.status === 'Pending' ? '#ff9800' : '#00cc66',
             border: `1px solid ${tx.status === 'Pending' ? 'rgba(255, 152, 0, 0.35)' : 'rgba(0, 204, 102, 0.35)'}`,
-            padding: '3px 8px',
+            padding: '2px 7px',
             borderRadius: '4px',
             fontWeight: 700,
-            fontSize: '0.75rem',
+            fontSize: '0.72rem',
             textTransform: 'uppercase'
           }}>
             {tx.status || 'Completed'}
           </span>
          </td>
-         <td style={{ textAlign: 'center' }}>
+         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
           <button 
            onClick={() => confirmDeleteSingle(tx._id)}
-           style={{ background: 'rgba(255,77,77,0.1)', border: '1px solid rgba(255,77,77,0.25)', color: '#ff4d4d', cursor: 'pointer', padding: '6px 8px', borderRadius: '4px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+           style={{ background: 'rgba(255,77,77,0.1)', border: '1px solid rgba(255,77,77,0.25)', color: '#ff4d4d', cursor: 'pointer', padding: '5px 7px', borderRadius: '4px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
            title="Delete Transaction"
           >
-           <Trash2 size={15} />
+           <Trash2 size={14} />
           </button>
          </td>
         </tr>
@@ -346,22 +361,22 @@ const Transactions = () => {
     .premium-select-v { background: #14171d; border: 1px solid #282f3a; color: #fff; padding: 10px 15px; border-radius: 6px; outline: none; width: 180px; height: 42px; font-size: 0.9rem; box-sizing: border-box; flex-shrink: 0; }
     
     .search-box-v { position: relative; flex: 2; min-width: 220px; }
-    .date-box-v { position: relative; flex: 1; min-width: 160px; }
-    .search-box-v input, .date-box-v input { width: 100%; height: 42px; background: #14171d; border: 1px solid #282f3a; color: #fff; padding: 0 45px 0 15px; border-radius: 6px; outline: none; font-size: 0.9rem; box-sizing: border-box; }
-    .search-box-v input::placeholder, .date-box-v input::placeholder { color: #666; }
+    .search-box-v input { width: 100%; height: 42px; background: #14171d; border: 1px solid #282f3a; color: #fff; padding: 0 45px 0 15px; border-radius: 6px; outline: none; font-size: 0.9rem; box-sizing: border-box; }
+    .search-box-v input::placeholder { color: #666; }
     .search-icon-v { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); color: #888; pointer-events: none; }
     
     .export-btn-v { background: #00a8ff; color: #fff; border: none; padding: 10px 18px; border-radius: 6px; display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: background 0.3s; }
     .export-btn-v:hover { background: #0097e6; }
 
     .table-container-p { background: #0d0e12; border: 1px solid #222834; border-radius: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; box-sizing: border-box; }
-    .premium-table-v { width: 100%; min-width: 1000px; border-collapse: collapse; text-align: left; }
-    .premium-table-v th { background: #151821; padding: 14px 16px; font-size: 0.86rem; font-weight: 700; color: #eee; border-bottom: 1px solid #282f3a; border-right: 1px solid #1c202a; white-space: nowrap; }
+    .premium-table-v { width: 100%; border-collapse: collapse; text-align: left; }
+    .premium-table-v th { background: #151821; padding: 12px 10px; font-size: 0.82rem; font-weight: 700; color: #eee; border-bottom: 1px solid #282f3a; border-right: 1px solid #1c202a; white-space: nowrap; }
     .premium-table-v th:last-child { border-right: none; }
-    .premium-table-v td { padding: 14px 16px; font-size: 0.85rem; color: #aaa; border-bottom: 1px solid #181b22; border-right: 1px solid #1c202a; vertical-align: middle; white-space: nowrap; }
+    .premium-table-v td { padding: 12px 10px; font-size: 0.82rem; color: #aaa; border-bottom: 1px solid #181b22; border-right: 1px solid #1c202a; vertical-align: middle; }
     .premium-table-v td:last-child { border-right: none; }
     .premium-table-v tr:hover { background: rgba(255,255,255,0.02); }
-       .name-cell-v { color: #00a8ff; font-weight: 700; }
+    
+    .name-cell-v { color: #00a8ff; font-weight: 700; }
     .bold-text { color: #eee; font-weight: 700; }
 
     .pagination-v { display: flex; gap: 5px; margin-top: 25px; background: #11141a; padding: 6px; border-radius: 6px; width: fit-content; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid #222834; }
@@ -392,7 +407,7 @@ const Transactions = () => {
      .search-box-v { width: 100%; min-width: unset; }
      .export-btn-v { width: 100%; height: 42px; justify-content: center; }
      .table-container-p { width: 100%; overflow-x: auto; }
-     .premium-table-v { min-width: 900px; }
+     .premium-table-v { min-width: 850px; }
     }
    ` }} />
   </div>
