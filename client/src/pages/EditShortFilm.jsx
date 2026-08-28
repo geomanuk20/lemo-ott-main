@@ -210,20 +210,6 @@ const EditShortFilm = () => {
     </button>
    </div>
 
-   <div className="imdb-import-section">
-    <label>Import From IMDb</label>
-    <div className="imdb-input-group">
-     <input 
-      type="text" 
-      placeholder="Enter IMDb ID (e.g. tt1469304)" 
-      name="imdbId"
-      value={formData.imdbId}
-      onChange={handleChange}
-     />
-     <button type="button" className="fetch-btn">FETCH</button>
-    </div>
-    <p className="hint">(Recommended : Search by IMDb ID for better result)</p>
-   </div>
 
    <form onSubmit={handleSave} className="movie-form">
     <div className="form-sections-wrapper">

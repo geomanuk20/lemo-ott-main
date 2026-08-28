@@ -131,20 +131,6 @@ const AddShow = () => {
     </button>
    </div>
 
-   <div className="imdb-import-section">
-    <label>Import From IMDb</label>
-    <div className="imdb-input-group">
-     <input 
-      type="text" 
-      name="imdbId"
-      value={formData.imdbId}
-      onChange={handleChange}
-      placeholder="Enter IMDb ID (e.g. tt11856010) or Title (e.g. House of Cards)" 
-     />
-     <button type="button" className="fetch-btn" onClick={fetchImdbData}>FETCH</button>
-    </div>
-    <p className="hint">(Recommended : Search by IMDb ID for better result)</p>
-   </div>
 
    <form onSubmit={handleSubmit}>
     <div className="form-grid">

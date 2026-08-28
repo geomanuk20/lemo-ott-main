@@ -134,20 +134,6 @@ const AddEpisode = () => {
     </button>
    </div>
 
-   <div className="imdb-import-section">
-    <label>Import From IMDb</label>
-    <div className="imdb-input-group">
-     <input 
-      type="text" 
-      placeholder="Enter IMDb ID (e.g. tt2161930)" 
-      value={formData.imdbId}
-      onChange={(e) => setFormData({...formData, imdbId: e.target.value})}
-     />
-     <button type="button" className="fetch-btn">FETCH</button>
-    </div>
-    <p className="imdb-note">(Recommended : Search by IMDb ID for better result)</p>
-    <p className="imdb-note">Note: Keep in mind that the information about some episodes may be missing since it relies on fetching data from the TMDb API.</p>
-   </div>
 
    <form onSubmit={handleSave}>
     <div className="form-grid">
