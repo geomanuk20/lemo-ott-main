@@ -97,9 +97,10 @@ const EditAdmin = () => {
     message: `Server error occurred (Status: ${response.status})` 
    }));
 
+   const isCustomer = formData.role === 'customer' || formData.role === 'user';
    if (response.ok) {
-    showNotification(formData.role === 'user' ? 'Changed to Normal User successfully!' : 'Admin updated successfully!', 'success');
-    setTimeout(() => navigate(formData.role === 'user' ? '/admin/users/list' : '/admin/users/sub-admin'), 1500);
+    showNotification(isCustomer ? 'Changed to Customer successfully!' : 'Admin updated successfully!', 'success');
+    setTimeout(() => navigate(isCustomer ? '/admin/users/list' : '/admin/users/sub-admin'), 1500);
    } else {
     showNotification(responseData.message || 'Error updating admin', 'error');
    }
@@ -205,32 +206,32 @@ const EditAdmin = () => {
       </div>
      </div>
 
-     <div className="form-group-p">
-      <label>Admin Type</label>
-      <select 
-       name="role"
-       value={formData.role}
-       onChange={handleInputChange}
-       className="admin-select-p"
-      >
-       <option value="sub-admin">Sub Admin</option>
-       <option value="admin">Master Admin</option>
-       <option value="user">Normal User</option>
-      </select>
-     </div>
+      <div className="form-group-p">
+       <label>Admin Type</label>
+       <select 
+        name="role"
+        value={formData.role === 'user' ? 'customer' : formData.role}
+        onChange={handleInputChange}
+        className="admin-select-p"
+       >
+        <option value="sub-admin">Sub Admin</option>
+        <option value="admin">Master Admin</option>
+        <option value="customer">Customer</option>
+       </select>
+      </div>
 
-     <div className="permission-info-p">
-      <p className="permission-title">
-       Permission for {formData.role === 'admin' ? 'Master Admin' : formData.role === 'sub-admin' ? 'Sub Admin' : 'Normal User'}
-      </p>
-      <p className="permission-list">
-       {formData.role === 'admin' 
-        ? '(All Permission)' 
-        : formData.role === 'sub-admin'
-        ? '(Language, Genres, Movies, New Release, TV Shows, Seasons, Episodes, Sports Category, Sports Video, Cast & Crew, Slider, Home Section)'
-        : '(Standard Frontend User - No Admin Panel Access)'}
-      </p>
-     </div>
+      <div className="permission-info-p">
+       <p className="permission-title">
+        Permission for {formData.role === 'admin' ? 'Master Admin' : formData.role === 'sub-admin' ? 'Sub Admin' : 'Customer'}
+       </p>
+       <p className="permission-list">
+        {formData.role === 'admin' 
+         ? '(All Permission)' 
+         : formData.role === 'sub-admin'
+         ? '(Language, Genres, Movies, New Release, TV Shows, Seasons, Episodes, Sports Category, Sports Video, Cast & Crew, Slider, Home Section)'
+         : '(Standard Frontend Customer - No Admin Panel Access)'}
+       </p>
+      </div>
 
      <div className="form-group-p">
       <label>Status</label>
