@@ -574,6 +574,9 @@ function App() {
           <Route path="careers" element={<AdminCareers />} />
           <Route path="career" element={<AdminCareers />} />
           <Route path="payment-gateway" element={<PaymentGateway />} />
+          <Route path="payment-gateway/edit/:id" element={<EditPaymentGateway />} />
+          <Route path="payment-gateways" element={<PaymentGateway />} />
+          <Route path="payment-gateways/edit/:id" element={<EditPaymentGateway />} />
           <Route path="pages/list" element={<PagesList />} />
           <Route path="pages/add" element={<AddPage />} />
           <Route path="pages/edit/:id" element={<EditPage />} />
