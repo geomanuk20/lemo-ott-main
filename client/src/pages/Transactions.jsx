@@ -7,7 +7,8 @@ import {
  Loader2,
  Calendar,
  Trash2,
- AlertTriangle
+ AlertTriangle,
+ X
 } from 'lucide-react';
 import Loader from '../components/Loader';
 import * as XLSX from 'xlsx';
@@ -20,6 +21,9 @@ const Transactions = () => {
  const [searchTerm, setSearchTerm] = useState('');
  const [gatewayFilter, setGatewayFilter] = useState('');
  const [statusFilter, setStatusFilter] = useState('');
+ const [datePreset, setDatePreset] = useState('');
+ const [startDate, setStartDate] = useState('');
+ const [endDate, setEndDate] = useState('');
  const [currentPage, setCurrentPage] = useState(1);
  const [selectedIds, setSelectedIds] = useState([]);
  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -81,6 +85,48 @@ const Transactions = () => {
   setDeletingId(null);
  };
 
+ const handleDatePresetChange = (preset) => {
+  setDatePreset(preset);
+  setCurrentPage(1);
+  const now = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  const formatYMD = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+  if (preset === 'current_month') {
+   const start = new Date(now.getFullYear(), now.getMonth(), 1);
+   const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+   setStartDate(formatYMD(start));
+   setEndDate(formatYMD(end));
+  } else if (preset === 'last_month') {
+   const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+   const end = new Date(now.getFullYear(), now.getMonth(), 0);
+   setStartDate(formatYMD(start));
+   setEndDate(formatYMD(end));
+  } else if (preset === 'today') {
+   const todayStr = formatYMD(now);
+   setStartDate(todayStr);
+   setEndDate(todayStr);
+  } else if (preset === 'yesterday') {
+   const yest = new Date(now);
+   yest.setDate(yest.getDate() - 1);
+   const yestStr = formatYMD(yest);
+   setStartDate(yestStr);
+   setEndDate(yestStr);
+  } else if (preset === 'custom') {
+   // User can pick custom dates
+  } else {
+   setStartDate('');
+   setEndDate('');
+  }
+ };
+
+ const clearDateFilter = () => {
+  setDatePreset('');
+  setStartDate('');
+  setEndDate('');
+  setCurrentPage(1);
+ };
+
  const filteredTransactions = transactions.filter(tx => {
   const q = searchTerm.toLowerCase();
   const matchesSearch = !q ||
@@ -95,7 +141,11 @@ const Transactions = () => {
     (statusFilter === 'pending' && txStatus === 'pending') ||
     (statusFilter === 'failed' && txStatus === 'failed');
 
-  return matchesSearch && matchesGateway && matchesStatus;
+  const txDate = tx.paymentDate || (tx.createdAt ? tx.createdAt.split('T')[0] : '');
+  const matchesStartDate = !startDate || (txDate && txDate >= startDate);
+  const matchesEndDate = !endDate || (txDate && txDate <= endDate);
+
+  return matchesSearch && matchesGateway && matchesStatus && matchesStartDate && matchesEndDate;
  });
 
  const handleExport = () => {
@@ -169,6 +219,52 @@ const Transactions = () => {
        <option value="pending">Pending</option>
        <option value="failed">Failed</option>
       </select>
+
+      <select 
+       value={datePreset} 
+       onChange={(e) => handleDatePresetChange(e.target.value)}
+       className="premium-select-v"
+      >
+       <option value="">Filter by Date</option>
+       <option value="current_month">Current Month</option>
+       <option value="today">Today</option>
+       <option value="yesterday">Yesterday</option>
+       <option value="last_month">Last Month</option>
+       <option value="custom">Date Range Select...</option>
+      </select>
+
+      {(datePreset === 'custom' || startDate || endDate) && (
+       <div className="date-picker-group-v">
+        <div className="date-input-wrap">
+         <span className="date-label-inline">From</span>
+         <input 
+          type="date" 
+          value={startDate} 
+          onChange={(e) => { setStartDate(e.target.value); setDatePreset('custom'); setCurrentPage(1); }}
+          className="date-input-v"
+         />
+        </div>
+        <span className="date-sep-v">-</span>
+        <div className="date-input-wrap">
+         <span className="date-label-inline">To</span>
+         <input 
+          type="date" 
+          value={endDate} 
+          onChange={(e) => { setEndDate(e.target.value); setDatePreset('custom'); setCurrentPage(1); }}
+          className="date-input-v"
+         />
+        </div>
+        {(startDate || endDate || datePreset) && (
+         <button 
+          onClick={clearDateFilter} 
+          className="date-clear-btn-v" 
+          title="Clear date filter"
+         >
+          <X size={14} />
+         </button>
+        )}
+       </div>
+      )}
 
       <div className="search-box-v">
        <input 
@@ -408,8 +504,16 @@ const Transactions = () => {
     .filter-bar-v { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; gap: 15px; flex-wrap: wrap; width: 100%; }
     .filter-left-v { display: flex; gap: 12px; align-items: center; flex: 1; flex-wrap: wrap; }
     
-    .premium-select-v { background: #14171d; border: 1px solid #282f3a; color: #fff; padding: 10px 15px; border-radius: 6px; outline: none; width: 180px; height: 42px; font-size: 0.9rem; box-sizing: border-box; flex-shrink: 0; }
-    
+    .premium-select-v { background: #14171d; border: 1px solid #282f3a; color: #fff; padding: 10px 15px; border-radius: 6px; outline: none; width: 175px; height: 42px; font-size: 0.9rem; box-sizing: border-box; flex-shrink: 0; }
+     
+    .date-picker-group-v { display: flex; align-items: center; gap: 8px; background: #14171d; border: 1px solid #282f3a; border-radius: 6px; padding: 4px 10px; height: 42px; box-sizing: border-box; flex-shrink: 0; }
+    .date-input-wrap { display: flex; align-items: center; gap: 6px; }
+    .date-label-inline { color: #777; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+    .date-input-v { background: transparent; border: none; color: #fff; font-size: 0.82rem; outline: none; font-family: inherit; color-scheme: dark; cursor: pointer; }
+    .date-sep-v { color: #555; font-size: 0.85rem; }
+    .date-clear-btn-v { background: rgba(255, 255, 255, 0.08); border: none; color: #bbb; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; transition: all 0.2s; }
+    .date-clear-btn-v:hover { background: rgba(255, 77, 77, 0.25); color: #ff4d4d; }
+
     .search-box-v { position: relative; flex: 2; min-width: 220px; }
     .search-box-v input { width: 100%; height: 42px; background: #14171d; border: 1px solid #282f3a; color: #fff; padding: 0 45px 0 15px; border-radius: 6px; outline: none; font-size: 0.9rem; box-sizing: border-box; }
     .search-box-v input::placeholder { color: #666; }
