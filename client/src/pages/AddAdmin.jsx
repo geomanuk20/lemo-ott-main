@@ -76,10 +76,10 @@ const AddAdmin = () => {
     message: `Server error occurred (Status: ${response.status})` 
    }));
 
-   if (response.ok) {
-    showNotification('Admin added successfully!', 'success');
-    setTimeout(() => navigate('/admin/users/sub-admin'), 1500);
-   } else {
+    if (response.ok) {
+     showNotification(formData.role === 'user' ? 'Normal User created successfully!' : 'Admin added successfully!', 'success');
+     setTimeout(() => navigate(formData.role === 'user' ? '/admin/users/list' : '/admin/users/sub-admin'), 1500);
+    } else {
     showNotification(responseData.message || 'Error adding admin', 'error');
    }
   } catch (err) {

@@ -98,8 +98,8 @@ const EditAdmin = () => {
    }));
 
    if (response.ok) {
-    showNotification('Admin updated successfully!', 'success');
-    setTimeout(() => navigate('/admin/users/sub-admin'), 1500);
+    showNotification(formData.role === 'user' ? 'Changed to Normal User successfully!' : 'Admin updated successfully!', 'success');
+    setTimeout(() => navigate(formData.role === 'user' ? '/admin/users/list' : '/admin/users/sub-admin'), 1500);
    } else {
     showNotification(responseData.message || 'Error updating admin', 'error');
    }
