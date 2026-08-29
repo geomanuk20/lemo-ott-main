@@ -19,6 +19,7 @@ const Transactions = () => {
  const [loading, setLoading] = useState(false);
  const [searchTerm, setSearchTerm] = useState('');
  const [gatewayFilter, setGatewayFilter] = useState('');
+ const [statusFilter, setStatusFilter] = useState('');
  const [currentPage, setCurrentPage] = useState(1);
  const [selectedIds, setSelectedIds] = useState([]);
  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -81,10 +82,20 @@ const Transactions = () => {
  };
 
  const filteredTransactions = transactions.filter(tx => {
-  const matchesSearch = tx.email.toLowerCase().includes(searchTerm.toLowerCase()) || 
-             tx.paymentId.toLowerCase().includes(searchTerm.toLowerCase());
+  const q = searchTerm.toLowerCase();
+  const matchesSearch = !q ||
+             tx.email?.toLowerCase().includes(q) || 
+             tx.paymentId?.toLowerCase().includes(q) ||
+             tx.name?.toLowerCase().includes(q);
   const matchesGateway = gatewayFilter === '' || tx.gateway === gatewayFilter;
-  return matchesSearch && matchesGateway;
+
+  const txStatus = (tx.status || 'Completed').toLowerCase();
+  const matchesStatus = statusFilter === '' || 
+    (statusFilter === 'success' && (txStatus === 'completed' || txStatus === 'success')) ||
+    (statusFilter === 'pending' && txStatus === 'pending') ||
+    (statusFilter === 'failed' && txStatus === 'failed');
+
+  return matchesSearch && matchesGateway && matchesStatus;
  });
 
  const handleExport = () => {
@@ -133,31 +144,42 @@ const Transactions = () => {
   <div className="transactions-page">
    <div className="filter-bar-v">
     <div className="filter-left-v">
-     <select 
-      value={gatewayFilter} 
-      onChange={(e) => setGatewayFilter(e.target.value)}
-      className="premium-select-v"
-     >
-      <option value="">Filter by Gateway</option>
-      <option value="PhonePe">PhonePe</option>
-      <option value="Stripe">Stripe</option>
-      <option value="Payu">Payu</option>
-      <option value="Cashfree">Cashfree</option>
-      <option value="Apple">Apple</option>
-      <option value="IAP">IAP</option>
-      <option value="Free Activation">Free Activation</option>
-     </select>
+      <select 
+       value={gatewayFilter} 
+       onChange={(e) => { setGatewayFilter(e.target.value); setCurrentPage(1); }}
+       className="premium-select-v"
+      >
+       <option value="">Filter by Gateway</option>
+       <option value="PhonePe">PhonePe</option>
+       <option value="Stripe">Stripe</option>
+       <option value="Payu">Payu</option>
+       <option value="Cashfree">Cashfree</option>
+       <option value="Apple">Apple</option>
+       <option value="IAP">IAP</option>
+       <option value="Free Activation">Free Activation</option>
+      </select>
 
-     <div className="search-box-v">
-      <input 
-       type="text" 
-       placeholder="Search By Payment ID OR Email..." 
-       value={searchTerm}
-       onChange={(e) => setSearchTerm(e.target.value)}
-      />
-      <Search size={18} className="search-icon-v" />
+      <select 
+       value={statusFilter} 
+       onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
+       className="premium-select-v"
+      >
+       <option value="">Filter by Status</option>
+       <option value="success">Success</option>
+       <option value="pending">Pending</option>
+       <option value="failed">Failed</option>
+      </select>
+
+      <div className="search-box-v">
+       <input 
+        type="text" 
+        placeholder="Search By Payment ID OR Email..." 
+        value={searchTerm}
+        onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+       />
+       <Search size={18} className="search-icon-v" />
+      </div>
      </div>
-    </div>
 
     <div className="filter-right-v" style={{ display: 'flex', gap: '15px' }}>
      {selectedIds.length > 0 && (
@@ -262,20 +284,48 @@ const Transactions = () => {
           </span>
          </td>
          <td style={{ whiteSpace: 'nowrap', fontSize: '0.8rem' }}>{tx.paymentDate}</td>
-         <td style={{ whiteSpace: 'nowrap' }}>
-          <span style={{
-            background: tx.status === 'Pending' ? 'rgba(255, 152, 0, 0.15)' : 'rgba(0, 204, 102, 0.15)',
-            color: tx.status === 'Pending' ? '#ff9800' : '#00cc66',
-            border: `1px solid ${tx.status === 'Pending' ? 'rgba(255, 152, 0, 0.35)' : 'rgba(0, 204, 102, 0.35)'}`,
-            padding: '2px 7px',
-            borderRadius: '4px',
-            fontWeight: 700,
-            fontSize: '0.72rem',
-            textTransform: 'uppercase'
-          }}>
-            {tx.status || 'Completed'}
-          </span>
-         </td>
+          <td style={{ whiteSpace: 'nowrap' }}>
+           {(() => {
+             const st = (tx.status || 'Completed').toLowerCase();
+             const isPending = st === 'pending';
+             const isFailed = st === 'failed';
+
+             const bg = isPending 
+               ? 'rgba(255, 152, 0, 0.15)' 
+               : isFailed 
+               ? 'rgba(255, 77, 77, 0.15)' 
+               : 'rgba(0, 204, 102, 0.15)';
+
+             const color = isPending 
+               ? '#ff9800' 
+               : isFailed 
+               ? '#ff4d4d' 
+               : '#00cc66';
+
+             const border = isPending 
+               ? 'rgba(255, 152, 0, 0.35)' 
+               : isFailed 
+               ? 'rgba(255, 77, 77, 0.35)' 
+               : 'rgba(0, 204, 102, 0.35)';
+
+             const label = isFailed ? 'FAILED' : isPending ? 'PENDING' : 'SUCCESS';
+
+             return (
+               <span style={{
+                 background: bg,
+                 color: color,
+                 border: `1px solid ${border}`,
+                 padding: '2px 7px',
+                 borderRadius: '4px',
+                 fontWeight: 700,
+                 fontSize: '0.72rem',
+                 textTransform: 'uppercase'
+               }}>
+                 {label}
+               </span>
+             );
+           })()}
+          </td>
          <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
           <button 
            onClick={() => confirmDeleteSingle(tx._id)}
