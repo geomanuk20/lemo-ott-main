@@ -36,7 +36,7 @@ const SubAdmin = () => {
   try {
    const response = await fetch(API_URL);
    const data = await response.json();
-   setAdmins(data.filter(u => (u.role === 'sub-admin' || u.role === 'admin') && !u.isDeleted));
+   setAdmins(data.filter(u => (u.role === 'sub-admin' || u.role === 'admin' || u.role === 'user') && !u.isDeleted));
   } catch (err) {
    console.error('Error fetching admins:', err);
   } finally {
@@ -174,7 +174,7 @@ const SubAdmin = () => {
            <span className={`status-badge-premium ${admin.status === 'Active' ? 'active' : 'inactive'}`}>
             {admin.status || 'Active'}
            </span>
-           <span className="role-tag-h">{admin.role === 'admin' ? 'Master' : 'Sub'}</span>
+           <span className="role-tag-h">{admin.role === 'admin' ? 'Master' : admin.role === 'sub-admin' ? 'Sub' : 'Normal User'}</span>
           </div>
          </td>
          <td className="action-cell">

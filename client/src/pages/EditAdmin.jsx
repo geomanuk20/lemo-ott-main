@@ -215,15 +215,20 @@ const EditAdmin = () => {
       >
        <option value="sub-admin">Sub Admin</option>
        <option value="admin">Master Admin</option>
+       <option value="user">Normal User</option>
       </select>
      </div>
 
      <div className="permission-info-p">
-      <p className="permission-title">Permission for {formData.role === 'admin' ? 'Master Admin' : 'Sub Admin'}</p>
+      <p className="permission-title">
+       Permission for {formData.role === 'admin' ? 'Master Admin' : formData.role === 'sub-admin' ? 'Sub Admin' : 'Normal User'}
+      </p>
       <p className="permission-list">
        {formData.role === 'admin' 
         ? '(All Permission)' 
-        : '(Language, Genres, Movies, New Release, TV Shows, Seasons, Episodes, Sports Category, Sports Video, Cast & Crew, Slider, Home Section)'}
+        : formData.role === 'sub-admin'
+        ? '(Language, Genres, Movies, New Release, TV Shows, Seasons, Episodes, Sports Category, Sports Video, Cast & Crew, Slider, Home Section)'
+        : '(Standard Frontend User - No Admin Panel Access)'}
       </p>
      </div>
 
