@@ -77,7 +77,6 @@ const FrontendSubmission = () => {
 
 
   // Form State
-  const [step, setStep] = useState(1); // 1 = Content Details, 2 = Payment Details
   const [formData, setFormData] = useState({
     name: loggedInUser.username || loggedInUser.name || '',
     email: loggedInUser.email || '',
@@ -186,26 +185,12 @@ const FrontendSubmission = () => {
     return Object.keys(errors).length === 0;
   };
 
-  const handleNext = () => {
-    if (validateStep1()) {
-      setStep(2);
-      window.scrollTo(0, 0);
-    } else {
-      showNotification('Please fill in all required fields marked with *', 'error');
-    }
-  };
-
-  const handleBack = () => {
-    setStep(1);
-    window.scrollTo(0, 0);
-  };
-
-
-
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!formData.paymentMethod) {
-      showNotification('Please select a payment method', 'error');
+    if (e && e.preventDefault) e.preventDefault();
+
+    if (!validateStep1()) {
+      showNotification('Please fill in all required fields marked with *', 'error');
+      window.scrollTo({ top: 350, behavior: 'smooth' });
       return;
     }
 
@@ -244,36 +229,11 @@ const FrontendSubmission = () => {
       ageRating: formData.ageRating,
       content18Plus: formData.content18Plus,
       status: finalStatus,
-      paymentDescription: formData.paymentDescription,
-      paymentMethod: formData.paymentMethod
+      paymentDescription: 'Direct Submission',
+      paymentMethod: 'Direct Submission',
+      paymentStatus: 'Completed',
+      reviewStatus: 'Under Review'
     };
-
-    if (formData.paymentMethod === 'PhonePe') {
-      try {
-        const response = await fetch('/api/payment/phonepe/initiate-submission', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            submissionData: payload
-          })
-        });
-
-        const data = await response.json();
-        if (response.ok && data.redirectUrl) {
-          window.location.href = data.redirectUrl;
-        } else {
-          showNotification(data.message || 'Failed to initiate PhonePe payment', 'error');
-          setProcessing(false);
-        }
-      } catch (err) {
-        console.error(err);
-        showNotification('Network error during PhonePe initiation', 'error');
-        setProcessing(false);
-      }
-      return;
-    }
 
     try {
       const token = localStorage.getItem('token');
@@ -290,22 +250,18 @@ const FrontendSubmission = () => {
       });
 
       if (response.ok) {
+        setPaymentSuccessTxn('SUB-' + Date.now().toString().slice(-6));
         showNotification('Submission successfully completed! Under Review.', 'success');
-        setTimeout(() => {
-          if (token) {
-            navigate('/user/profile');
-          } else {
-            navigate('/');
-          }
-        }, 3000);
+        fetchUserSubmissions();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         const errorData = await response.json();
         showNotification(errorData.message || 'Submission failed. Please try again.', 'error');
-        setProcessing(false);
       }
     } catch (err) {
       console.error(err);
       showNotification('Network error during submission', 'error');
+    } finally {
       setProcessing(false);
     }
   };
@@ -336,36 +292,19 @@ const FrontendSubmission = () => {
         <div className="fe-submission-header-v">
           <span className="fe-sub-tag-v">CREATORS PANEL</span>
           <h1>Short Film & Web Series <span>Submission</span></h1>
-          <p>Submit your creative projects directly to Lemo OTT. Complete the form details and pay review fees to initiate the review cycle.</p>
+          <p>Submit your creative projects directly to Lemo OTT. Complete the form details below to initiate the review cycle.</p>
         </div>
-
-        {/* Multi-step progress bar */}
-        {!paymentSuccessTxn && (
-          <div className="fe-stepper-v">
-            <div className={`step-item-v ${step >= 1 ? 'active' : ''} ${step > 1 ? 'completed' : ''}`}>
-              <div className="step-num-v">
-                {step > 1 ? <Check size={16} /> : '1'}
-              </div>
-              <span>Submission Details</span>
-            </div>
-            <div className="step-line-v"></div>
-            <div className={`step-item-v ${step === 2 ? 'active' : ''}`}>
-              <div className="step-num-v">2</div>
-              <span>Payment details</span>
-            </div>
-          </div>
-        )}
 
         {/* Main Glassmorphic Form Container / Success Container */}
         {paymentSuccessTxn ? (
           <div className="fe-submission-success-card animate-fade-in-v">
             <CheckCircle2 size={80} color="#b3d332" style={{ margin: '0 auto 25px', display: 'block' }} />
-            <h2>Submission & Payment Successful!</h2>
+            <h2>Submission Successful!</h2>
             <p className="success-desc-v">
-              Your creative project details have been successfully uploaded and the review fee of <strong>₹500</strong> has been processed via PhonePe.
+              Your creative project details have been successfully submitted and are now <strong>Under Review</strong> by the Lemo OTT team.
             </p>
             <div className="success-txn-box-v">
-              <span>TRANSACTION ID</span>
+              <span>REFERENCE ID</span>
               <strong>{paymentSuccessTxn}</strong>
             </div>
             <div className="success-actions-v">
@@ -375,7 +314,6 @@ const FrontendSubmission = () => {
                 onClick={() => {
                   // Reset form for a new submission
                   setPaymentSuccessTxn(null);
-                  setStep(1);
                   setFormData({
                     name: loggedInUser.username || loggedInUser.name || '',
                     email: loggedInUser.email || '',
@@ -427,11 +365,10 @@ const FrontendSubmission = () => {
           </div>
         ) : (
           <div className="fe-submission-form-card">
-            {step === 1 ? (
             <div className="form-section-v animate-fade-in-v">
               <div className="section-title-wrapper-v">
                 <FileText size={20} color="#b3d332" />
-                <h2>Section 1 of 2: Film/Series Details</h2>
+                <h2>Film / Web Series Details</h2>
               </div>
               
               <div className="form-grid-v">
@@ -818,53 +755,26 @@ const FrontendSubmission = () => {
 
               {/* Action Buttons */}
               <div className="form-actions-v" style={{ marginTop: '40px', display: 'flex', justifyContent: 'flex-end' }}>
-                <button type="button" className="btn-primary-v submit-btn-v" onClick={handleNext}>
-                  Next Section <ArrowRight size={18} />
+                <button 
+                  type="button" 
+                  className="btn-primary-v submit-btn-v" 
+                  onClick={handleSubmit}
+                  disabled={processing}
+                  style={{ minWidth: '220px' }}
+                >
+                  {processing ? 'Submitting Application...' : 'Submit Application'} <ArrowRight size={18} />
                 </button>
               </div>
             </div>
-          ) : (
-            <div className="form-section-v animate-fade-in-v">
-              <div className="section-title-wrapper-v">
-                <CreditCard size={20} color="#b3d332" />
-                <h2>Section 2 of 2: Review Fees & Payment Details</h2>
-              </div>
-
-              <div className="payment-notice-v">
-                <AlertCircle size={20} color="#b3d332" />
-                <p>
-                  Submission Review Fees: <strong>₹500 /-</strong>. Pay the reviewing fee online using PhonePe gateway to complete the submission process.
-                </p>
-              </div>
-
-              {/* Payment Methods */}
-              <div className="payment-grid-v">
-                <div className="payment-instructions-v">
-                  <h4>PhonePe Online Checkout</h4>
-                  <p>You will be securely redirected to the PhonePe checkout gateway to pay the submission review fee of <strong>₹500</strong> online using UPI, Card, or NetBanking.</p>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="form-actions-v" style={{ marginTop: '40px', display: 'flex', justifyContent: 'space-between' }}>
-                <button type="button" className="btn-secondary-v back-btn-v" onClick={handleBack}>
-                  <ArrowLeft size={18} /> Back
-                </button>
-                <button type="button" className="btn-primary-v submit-btn-v" onClick={handleSubmit}>
-                  Pay ₹500 & Submit <ArrowRight size={18} />
-                </button>
-              </div>
-            </div>
-          )}
           </div>
         )}
 
         {/* Your Previous Submissions Section */}
-        {userSubmissions.filter(sub => sub.paymentStatus === 'Completed').length > 0 && (
+        {userSubmissions.length > 0 && (
           <div className="fe-previous-submissions-card animate-fade-in-v" style={{ marginTop: '50px' }}>
             <div className="section-title-wrapper-v">
               <Film size={20} color="#b3d332" />
-              <h2>Your Submissions ({userSubmissions.filter(sub => sub.paymentStatus === 'Completed').length})</h2>
+              <h2>Your Submissions ({userSubmissions.length})</h2>
             </div>
             
             <div className="submissions-list-table-v">
@@ -879,7 +789,7 @@ const FrontendSubmission = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {userSubmissions.filter(sub => sub.paymentStatus === 'Completed').map((sub) => (
+                  {userSubmissions.map((sub) => (
                     <tr key={sub._id}>
                       <td className="content-name-td">{sub.contentName}</td>
                       <td>{sub.contentType}</td>

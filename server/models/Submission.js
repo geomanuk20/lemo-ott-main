@@ -21,9 +21,9 @@ const submissionSchema = new mongoose.Schema({
   content18Plus: { type: String, required: true },
   status: { type: String, required: true },
   paymentDescription: { type: String },
-  paymentMethod: { type: String, required: true },
+  paymentMethod: { type: String, default: 'Direct Submission' },
   paymentId: { type: String },
-  paymentStatus: { type: String, default: 'Pending' },
+  paymentStatus: { type: String, default: 'Completed' },
   reviewStatus: { type: String, default: 'Under Review', enum: ['Under Review', 'Approved', 'Rejected', 'On Hold'] }
 }, { timestamps: true });
 
