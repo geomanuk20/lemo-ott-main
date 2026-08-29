@@ -38,7 +38,7 @@ const AdminCareers = () => {
     qualification: 'Graduate',
     jobType: 'Full Time',
     description: '',
-    contactEmail: 'careers@lemoott.com',
+    contactEmail: 'hr@lemoott.com',
     status: 'Active'
   };
   const [formData, setFormData] = useState(initialFormState);
@@ -210,7 +210,7 @@ const AdminCareers = () => {
       qualification: career.qualification || 'Graduate',
       jobType: career.jobType || 'Full Time',
       description: career.description || '',
-      contactEmail: career.contactEmail || 'careers@lemoott.com',
+      contactEmail: career.contactEmail || 'hr@lemoott.com',
       status: career.status || 'Active'
     });
     setIsEditModalOpen(true);
@@ -432,7 +432,7 @@ const AdminCareers = () => {
               </div>
               <div className="sub-modal-section">
                 <h3><Mail size={15} /> HR Contact Email</h3>
-                <p className="career-modal-val">{viewItem.contactEmail || 'careers@lemoott.com'}</p>
+                <p className="career-modal-val">{viewItem.contactEmail || 'hr@lemoott.com'}</p>
               </div>
 
               {viewItem.description && (
@@ -540,7 +540,7 @@ const AdminCareers = () => {
                   <label>HR Contact Email</label>
                   <input
                     type="email"
-                    placeholder="careers@lemoott.com"
+                    placeholder="hr@lemoott.com"
                     value={formData.contactEmail}
                     onChange={e => setFormData({ ...formData, contactEmail: e.target.value })}
                   />

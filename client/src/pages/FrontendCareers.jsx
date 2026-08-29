@@ -31,7 +31,7 @@ const FrontendCareers = () => {
   const currentOpenings = careers.slice(currentPage * itemsPerPage, (currentPage + 1) * itemsPerPage);
 
   const handleApply = (career) => {
-    const email = career.contactEmail || 'careers@lemoott.com';
+    const email = career.contactEmail || 'hr@lemoott.com';
     const subject = encodeURIComponent(`Application for ${career.title} - LEMO OTT`);
     const body = encodeURIComponent(
       `Hello HR Team,\n\nI am writing to apply for the position of ${career.title} at LEMO OTT.\n\nPlease find my resume attached.\n\nBest regards,`
@@ -96,7 +96,7 @@ const FrontendCareers = () => {
                 </div>
                 <h3>No Open Positions At The Moment</h3>
                 <p>We are always eager to meet exceptional talent. Feel free to submit an open resume to our HR team.</p>
-                <a href="mailto:careers@lemoott.com?subject=General Application - LEMO OTT" className="fe-career-empty-btn">
+                <a href="mailto:hr@lemoott.com?subject=General Application - LEMO OTT" className="fe-career-empty-btn">
                   Send Your Resume <Mail size={16} />
                 </a>
               </div>
@@ -161,8 +161,8 @@ const FrontendCareers = () => {
                 <h3>For more details, you can contact our HR at</h3>
                 <p>Have inquiries about our interview process or benefits? Reach out directly.</p>
               </div>
-              <a href="mailto:careers@lemoott.com" className="fe-contact-email-link">
-                <Mail size={16} /> careers@lemoott.com
+              <a href="mailto:hr@lemoott.com" className="fe-contact-email-link">
+                <Mail size={16} /> hr@lemoott.com
               </a>
             </div>
           </div>

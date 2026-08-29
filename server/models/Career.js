@@ -37,7 +37,7 @@ const careerSchema = new mongoose.Schema({
   },
   contactEmail: {
     type: String,
-    default: 'careers@lemoott.com',
+    default: 'hr@lemoott.com',
     trim: true
   },
   status: {
