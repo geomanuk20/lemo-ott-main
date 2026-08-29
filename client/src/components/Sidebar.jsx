@@ -31,7 +31,8 @@ import {
   List,
   CheckCircle2,
   XCircle,
-  Radio
+  Radio,
+  Briefcase
 } from 'lucide-react';
 import { formatBrandingUrl } from '../utils/branding';
 
@@ -176,6 +177,7 @@ const Sidebar = () => {
       { name: 'Payment Gateway', icon: <Wallet size={20} />, path: '/admin/payment-gateway' },
       { name: 'Transactions', icon: <FileText size={20} />, path: '/admin/transactions' },
       { name: 'Submissions', icon: <Film size={20} />, path: '/admin/submissions' },
+      { name: 'Career', icon: <Briefcase size={20} />, path: '/admin/careers' },
 
       { 
         name: 'Pages', 

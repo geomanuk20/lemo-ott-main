@@ -231,6 +231,7 @@ const Asset = require('./models/Asset');
 const Experience = require('./models/Experience');
 const Rating = require('./models/Rating');
 const Submission = require('./models/Submission');
+const Career = require('./models/Career');
 const LiveStreamSettings = require('./models/LiveStreamSettings');
 const LiveChatMessage = require('./models/LiveChatMessage');
 const Short = require('./models/Short');
@@ -1617,6 +1618,81 @@ app.post('/api/submissions/import', async (req, res) => {
     if (!submissions || !Array.isArray(submissions)) return res.status(400).json({ message: 'submissions array required' });
     const inserted = await Submission.insertMany(submissions, { ordered: false });
     res.json({ success: true, message: `${inserted.length} submissions imported` });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ─── Career Openings API ───
+app.get('/api/careers', async (req, res) => {
+  try {
+    const filter = {};
+    if (req.query.status) {
+      filter.status = req.query.status;
+    }
+    const careers = await Career.find(filter).sort({ createdAt: -1 });
+    res.json(careers);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.get('/api/careers/:id', async (req, res) => {
+  try {
+    const career = await Career.findById(req.params.id);
+    if (!career) return res.status(404).json({ message: 'Job opening not found' });
+    res.json(career);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.post('/api/careers', async (req, res) => {
+  try {
+    const newCareer = new Career(req.body);
+    await newCareer.save();
+    res.status(201).json({ success: true, data: newCareer });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+app.put('/api/careers/:id', async (req, res) => {
+  try {
+    const updated = await Career.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!updated) return res.status(404).json({ message: 'Job opening not found' });
+    res.json({ success: true, data: updated });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+app.delete('/api/careers/:id', async (req, res) => {
+  try {
+    await Career.findByIdAndDelete(req.params.id);
+    res.json({ success: true, message: 'Job opening deleted' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.post('/api/careers/bulk-delete', async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!ids || !Array.isArray(ids)) return res.status(400).json({ message: 'ids array required' });
+    await Career.deleteMany({ _id: { $in: ids } });
+    res.json({ success: true, message: `${ids.length} job openings deleted` });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.patch('/api/careers/:id/status', async (req, res) => {
+  try {
+    const { status } = req.body;
+    const updated = await Career.findByIdAndUpdate(req.params.id, { status }, { new: true });
+    if (!updated) return res.status(404).json({ message: 'Job opening not found' });
+    res.json({ success: true, data: updated });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

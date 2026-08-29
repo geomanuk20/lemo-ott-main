@@ -112,6 +112,8 @@ import FrontendShortFilms from './pages/FrontendShortFilms';
 import FrontendWebSeries from './pages/FrontendWebSeries';
 import FrontendSubmission from './pages/FrontendSubmission';
 import AdminSubmissions from './pages/AdminSubmissions';
+import AdminCareers from './pages/AdminCareers';
+import FrontendCareers from './pages/FrontendCareers';
 import FrontendShorts from './pages/FrontendShorts';
 
 
@@ -472,8 +474,8 @@ function App() {
         <Route path="/help" element={<FrontendPage fixedSlug="help-center" />} />
         <Route path="/devices" element={<FrontendPage fixedSlug="supported-devices" />} />
         <Route path="/refund-policy" element={<FrontendPage fixedSlug="refund-policy" />} />
-        <Route path="/career" element={<FrontendPage fixedSlug="careers" />} />
-        <Route path="/careers" element={<FrontendPage fixedSlug="careers" />} />
+        <Route path="/career" element={<FrontendCareers />} />
+        <Route path="/careers" element={<FrontendCareers />} />
         <Route path="/:slug" element={<FrontendPage />} />
 
         {/* Admin Routes */}
@@ -569,6 +571,8 @@ function App() {
           <Route path="coupons/edit/:id" element={<EditCoupon />} />
           <Route path="transactions" element={<Transactions />} />
           <Route path="submissions" element={<AdminSubmissions />} />
+          <Route path="careers" element={<AdminCareers />} />
+          <Route path="career" element={<AdminCareers />} />
           <Route path="payment-gateway" element={<PaymentGateway />} />
           <Route path="pages/list" element={<PagesList />} />
           <Route path="pages/add" element={<AddPage />} />
