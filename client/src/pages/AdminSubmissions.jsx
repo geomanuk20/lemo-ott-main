@@ -10,13 +10,11 @@ import * as XLSX from 'xlsx';
 const API_URL = '/api/submissions';
 
 const STATUS_OPTIONS = ['Under Review', 'Approved', 'Rejected', 'On Hold'];
-const PAYMENT_FILTERS = ['', 'Pending', 'Completed', 'Failed'];
 
 const AdminSubmissions = () => {
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [paymentFilter, setPaymentFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState([]);
@@ -56,11 +54,9 @@ const AdminSubmissions = () => {
       s.name?.toLowerCase().includes(q) ||
       s.email?.toLowerCase().includes(q) ||
       s.contentName?.toLowerCase().includes(q) ||
-      s.paymentId?.toLowerCase().includes(q) ||
       s.phone?.toLowerCase().includes(q);
-    const matchPayment = !paymentFilter || s.paymentStatus === paymentFilter;
     const matchStatus = !statusFilter || s.reviewStatus === statusFilter;
-    return matchSearch && matchPayment && matchStatus;
+    return matchSearch && matchStatus;
   });
 
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
@@ -148,10 +144,6 @@ const AdminSubmissions = () => {
       'Poster Link': s.posterLink || 'N/A',
       'Trailer Link': s.trailerLink || 'N/A',
       'Video Link': s.videoLink || 'N/A',
-      'Payment Method': s.paymentMethod || 'N/A',
-      'Payment ID': s.paymentId || 'N/A',
-      'Payment Status': s.paymentStatus || 'N/A',
-      'Payment Description': s.paymentDescription || 'N/A',
       'Review Status': s.reviewStatus || 'Under Review',
     }));
     const ws = XLSX.utils.json_to_sheet(dataToExport);
@@ -220,10 +212,6 @@ const AdminSubmissions = () => {
           posterLink: r['Poster Link'] || r.posterLink || '',
           trailerLink: r['Trailer Link'] || r.trailerLink || '',
           videoLink: r['Video Link'] || r.videoLink || '',
-          paymentMethod: r['Payment Method'] || r.paymentMethod || 'PhonePe',
-          paymentId: r['Payment ID'] || r.paymentId || '',
-          paymentStatus: r['Payment Status'] || r.paymentStatus || 'Pending',
-          paymentDescription: r['Payment Description'] || r.paymentDescription || '',
           reviewStatus: r['Review Status'] || r.reviewStatus || 'Under Review',
         }));
       }
@@ -250,19 +238,6 @@ const AdminSubmissions = () => {
   };
 
   /* ─── Helpers ─── */
-  const paymentBadge = status => {
-    const map = {
-      Completed: { bg: 'rgba(0,200,83,0.12)', color: '#00c853', icon: <CheckCircle2 size={12} /> },
-      Failed:    { bg: 'rgba(255,77,77,0.12)', color: '#ff4d4d', icon: <XCircle size={12} /> },
-      Pending:   { bg: 'rgba(255,193,7,0.12)', color: '#ffc107', icon: <Clock size={12} /> },
-    };
-    const s = map[status] || map.Pending;
-    return (
-      <span style={{ background: s.bg, color: s.color, padding: '3px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-        {s.icon}{status || 'Pending'}
-      </span>
-    );
-  };
 
   const reviewBadge = status => {
     const map = {
@@ -303,9 +278,9 @@ const AdminSubmissions = () => {
         </div>
         <div className="sub-admin-stats">
           <div className="stat-pill">{submissions.length} <span>Total</span></div>
-          <div className="stat-pill green">{submissions.filter(s => s.paymentStatus === 'Completed').length} <span>Paid</span></div>
-          <div className="stat-pill yellow">{submissions.filter(s => s.paymentStatus === 'Pending').length} <span>Pending</span></div>
-          <div className="stat-pill blue">{submissions.filter(s => s.reviewStatus === 'Approved').length} <span>Approved</span></div>
+          <div className="stat-pill yellow">{submissions.filter(s => (s.reviewStatus || 'Under Review') === 'Under Review').length} <span>Under Review</span></div>
+          <div className="stat-pill green">{submissions.filter(s => s.reviewStatus === 'Approved').length} <span>Approved</span></div>
+          <div className="stat-pill red">{submissions.filter(s => s.reviewStatus === 'Rejected').length} <span>Rejected</span></div>
         </div>
       </div>
 
@@ -316,15 +291,11 @@ const AdminSubmissions = () => {
             <Search size={16} className="sub-search-icon" />
             <input
               type="text"
-              placeholder="Search by name, email, content, phone, payment ID..."
+              placeholder="Search by name, email, content, phone..."
               value={searchTerm}
               onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1); }}
             />
           </div>
-          <select value={paymentFilter} onChange={e => { setPaymentFilter(e.target.value); setCurrentPage(1); }} className="sub-select">
-            <option value="">All Payment Status</option>
-            {PAYMENT_FILTERS.filter(Boolean).map(f => <option key={f} value={f}>{f}</option>)}
-          </select>
           <div className="sub-select-refresh-row">
             <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setCurrentPage(1); }} className="sub-select">
               <option value="">All Review Status</option>
@@ -373,7 +344,6 @@ const AdminSubmissions = () => {
               <th>Content Name</th>
               <th>Type</th>
               <th>Language</th>
-              <th>Payment Status</th>
               <th>Review Status</th>
               <th>Submitted</th>
               <th>Actions</th>
@@ -381,9 +351,9 @@ const AdminSubmissions = () => {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan="10" className="sub-loader-cell"><Loader size="small" inline={true} /></td></tr>
+              <tr><td colSpan="9" className="sub-loader-cell"><Loader size="small" inline={true} /></td></tr>
             ) : currentItems.length === 0 ? (
-              <tr><td colSpan="10" className="sub-empty-cell">No submissions found.</td></tr>
+              <tr><td colSpan="9" className="sub-empty-cell">No submissions found.</td></tr>
             ) : currentItems.map((s, i) => (
               <tr key={s._id} className="sub-table-row">
                 <td>
@@ -400,7 +370,6 @@ const AdminSubmissions = () => {
                 <td className="sub-content-name">{s.contentName}</td>
                 <td><span className="sub-type-tag">{s.contentType}</span></td>
                 <td className="sub-lang">{s.language}</td>
-                <td>{paymentBadge(s.paymentStatus)}</td>
                 <td>
                   <select
                     value={s.reviewStatus || 'Under Review'}
@@ -458,7 +427,6 @@ const AdminSubmissions = () => {
 
             {/* Quick Status Bar */}
             <div className="sub-modal-status-bar">
-              <div>{paymentBadge(viewItem.paymentStatus)}</div>
               <div>{reviewBadge(viewItem.reviewStatus || 'Under Review')}</div>
               <div className="sub-modal-date"><Calendar size={13} /> {formatDate(viewItem.createdAt)}</div>
               <div>
@@ -532,15 +500,6 @@ const AdminSubmissions = () => {
                     <a href={val} target="_blank" rel="noopener noreferrer" className="sub-link-val">{val || 'N/A'}</a>
                   </div>
                 ))}
-              </div>
-
-              {/* Payment Info */}
-              <div className="sub-modal-section full">
-                <h3><CreditCard size={15} /> Payment Info</h3>
-                <div className="sub-detail-row"><span>Method</span><strong>{viewItem.paymentMethod}</strong></div>
-                <div className="sub-detail-row"><span>Payment ID</span><strong style={{ fontFamily: 'monospace', color: '#b3d332' }}>{viewItem.paymentId || 'N/A'}</strong></div>
-                <div className="sub-detail-row"><span>Status</span>{paymentBadge(viewItem.paymentStatus)}</div>
-                <div className="sub-detail-row"><span>Description</span><strong>{viewItem.paymentDescription || 'N/A'}</strong></div>
               </div>
             </div>
 
