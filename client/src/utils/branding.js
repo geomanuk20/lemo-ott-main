@@ -30,9 +30,7 @@ export const formatBrandingUrl = (url, fallback = DEFAULT_LOGO_URL) => {
 };
 
 export const syncFavicon = (url) => {
-  if (!url) return;
-  
-  const href = formatBrandingUrl(url, '/favicon.svg');
+  const href = url ? formatBrandingUrl(url, '/favicon.png') : '/favicon.png';
   
   // Update multiple icon rel types to ensure browser catches it
   const rels = ['icon', 'shortcut icon', 'apple-touch-icon'];
@@ -45,8 +43,10 @@ export const syncFavicon = (url) => {
       document.head.appendChild(link);
     }
     
-    // Reset type attribute if it's a Cloudinary/external image (usually png/jpg/ico)
-    if (href.startsWith('http')) {
+    // Set type attribute for PNG
+    if (href.endsWith('.png') || href.includes('format=png')) {
+      link.setAttribute('type', 'image/png');
+    } else if (href.startsWith('http')) {
       link.removeAttribute('type');
     }
     
