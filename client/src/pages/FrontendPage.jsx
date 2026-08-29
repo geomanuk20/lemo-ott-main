@@ -25,6 +25,9 @@ const FrontendPage = ({ fixedSlug = null }) => {
     if (!foundPage && (slug === 'terms-of-use' || slug === 'terms-of-service' || slug === 'terms')) {
       foundPage = pages.find(p => p.slug === 'terms-of-use' || p.slug === 'terms-of-service' || p.slug === 'terms');
     }
+    if (!foundPage && (slug === 'careers' || slug === 'career')) {
+      foundPage = pages.find(p => p.slug === 'careers' || p.slug === 'career');
+    }
      
     setPageData(foundPage || null);
    } catch (error) {

@@ -472,6 +472,8 @@ function App() {
         <Route path="/help" element={<FrontendPage fixedSlug="help-center" />} />
         <Route path="/devices" element={<FrontendPage fixedSlug="supported-devices" />} />
         <Route path="/refund-policy" element={<FrontendPage fixedSlug="refund-policy" />} />
+        <Route path="/career" element={<FrontendPage fixedSlug="careers" />} />
+        <Route path="/careers" element={<FrontendPage fixedSlug="careers" />} />
         <Route path="/:slug" element={<FrontendPage />} />
 
         {/* Admin Routes */}

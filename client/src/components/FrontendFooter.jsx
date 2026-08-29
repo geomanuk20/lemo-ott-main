@@ -11,7 +11,7 @@ const FrontendFooter = ({ settings = null, menuSettings = null }) => {
       try {
         const res = await fetch('/api/pages');
         const data = await res.json();
-        const hardcodedSlugs = ['about-us', 'contact-us', 'privacy-policy', 'terms-of-use', 'terms-of-service', 'faq', 'help-center', 'supported-devices', 'refund-policy'];
+        const hardcodedSlugs = ['about-us', 'contact-us', 'privacy-policy', 'terms-of-use', 'terms-of-service', 'faq', 'help-center', 'supported-devices', 'refund-policy', 'careers', 'career'];
         const dynamicPages = data.filter(p => p.status === 'Active' && !hardcodedSlugs.includes(p.slug));
         setPages(dynamicPages);
       } catch (err) {
@@ -27,11 +27,11 @@ const FrontendFooter = ({ settings = null, menuSettings = null }) => {
         <div className="footer-top-v">
           <div className="footer-brand-v">
             <div className="fe-logo-v">
-              {formatBrandingUrl(settings?.siteLogo) ? (
-                <img src={formatBrandingUrl(settings.siteLogo)} alt={settings.siteName || "LEMO OTT"} />
-              ) : (
-                <img src="" />
-              )}
+              <img 
+                src={formatBrandingUrl(settings?.siteLogo, '/assets/logo.png')} 
+                alt={settings?.siteName || "LEMO OTT"} 
+                onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/assets/logo.png'; }}
+              />
             </div>
             <p>{settings?.description || 'Elevate your cinematic experience with our high-fidelity streaming platform. Discover the best in Hollywood and world cinema.'}</p>
           </div>
@@ -56,6 +56,7 @@ const FrontendFooter = ({ settings = null, menuSettings = null }) => {
               <Link to="/privacy">Privacy Policy</Link>
               <Link to="/terms">Terms of Service</Link>
               <Link to="/refund-policy">Refund Policy</Link>
+              <Link to="/career">Careers</Link>
             </div>
             <div className="footer-col-v">
               <h4>SUPPORT & PAGES</h4>
