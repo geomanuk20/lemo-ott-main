@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { User, ChevronDown, X, LayoutDashboard, UserCircle, List, LogOut } from 'lucide-react';
 import { logoutUser } from '../utils/logout';
+import { formatBrandingUrl } from '../utils/branding';
 
 const FrontendSidebar = ({
   isMenuOpen,
@@ -58,11 +59,11 @@ const FrontendSidebar = ({
         <div className="fe-sidebar-header-v">
           <div className="fe-sidebar-brand-v">
             <div className="fe-logo-v">
-              {settings?.siteLogo ? (
-                <img src={settings.siteLogo.startsWith('http') ? settings.siteLogo : `/${settings.siteLogo}`} alt={settings.siteName || "LEMO OTT"} />
-              ) : (
-                <img src="/assets/LOGO PNG-01.png" alt="LEMO OTT" />
-              )}
+              <img 
+                src={formatBrandingUrl(settings?.siteLogo, '/assets/logo.png')} 
+                alt={settings?.siteName || "LEMO OTT"} 
+                onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/assets/logo.png'; }}
+              />
             </div>
           </div>
         </div>

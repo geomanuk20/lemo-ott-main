@@ -2,8 +2,10 @@
  * Utility to format image URLs for branding (logo, favicon)
  * Handles Cloudinary URLs, local paths, and fallback to defaults
  */
-export const formatBrandingUrl = (url, fallback = null) => {
-  if (!url || url === 'upload/site_logo.png' || url === 'upload/favicon.png' || url === 'uploads/site_logo.png' || url === 'uploads/favicon.png') {
+export const DEFAULT_LOGO_URL = '/assets/logo.png';
+
+export const formatBrandingUrl = (url, fallback = DEFAULT_LOGO_URL) => {
+  if (!url) {
     return fallback;
   }
   

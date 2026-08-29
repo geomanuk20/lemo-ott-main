@@ -363,13 +363,13 @@ const FrontendLogin = () => {
 
     <div className="fe-login-card-v">
      <div className="fe-login-header-v">
-      <div className="fe-login-logo-v">
-       {formatBrandingUrl(settings?.siteLogo) ? (
-        <img src={formatBrandingUrl(settings.siteLogo)} alt={settings.siteName || "LEMO OTT"} />
-       ) : (
-        <img src="/assets/LOGO PNG-01.png" alt="LEMO OTT" />
-       )}
-      </div>
+       <div className="fe-login-logo-v">
+        <img 
+          src={formatBrandingUrl(settings?.siteLogo, '/assets/logo.png')} 
+          alt={settings?.siteName || "LEMO OTT"} 
+          onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/assets/logo.png'; }}
+        />
+       </div>
       <h1>
        {view === 'login' && 'Welcome Back'}
        {view === 'register' && 'Join Us'}

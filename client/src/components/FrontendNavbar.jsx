@@ -148,11 +148,11 @@ const FrontendNavbar = ({
       >
         <div className="fe-nav-left">
           <Link to="/" className={`fe-logo-v ${isMenuOpen ? 'hidden' : ''}`}>
-            {formatBrandingUrl(settings?.siteLogo) ? (
-              <img src={formatBrandingUrl(settings.siteLogo)} alt={settings.siteName || "LEMO OTT"} />
-            ) : (
-              <img src="" />
-            )}
+            <img 
+              src={formatBrandingUrl(settings?.siteLogo, '/assets/logo.png')} 
+              alt={settings?.siteName || "LEMO OTT"} 
+              onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/assets/logo.png'; }}
+            />
           </Link>
         </div>
         {!hideNavElements && (

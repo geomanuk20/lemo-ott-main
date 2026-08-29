@@ -274,11 +274,12 @@ const Sidebar = () => {
       )}
       <div className="sidebar">
         <div className="logo-section">
-          {formatBrandingUrl(settings?.siteLogo) ? (
-            <img src={formatBrandingUrl(settings.siteLogo)} alt={settings.siteName || "LEMO OTT"} className="admin-logo-img" />
-          ) : (
-            <img src="/assets/LOGO PNG-01.png" alt="LEMO OTT" className="admin-logo-img" />
-          )}
+          <img 
+            src={formatBrandingUrl(settings?.siteLogo, '/assets/logo.png')} 
+            alt={settings?.siteName || "LEMO OTT"} 
+            className="admin-logo-img" 
+            onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/assets/logo.png'; }}
+          />
         </div>
       <nav className="nav-menu">
         {filteredMenuItems.map((item, index) => (
