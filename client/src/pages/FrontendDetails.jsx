@@ -1090,12 +1090,17 @@ Cancel
                       const realIndex = idx;
                       const epUrl = ep.videoFile || ep.videoUrl || ep.videoFile1080 || ep.videoFile720 || ep.videoFile480;
                       const isCurrent = (currentPocketEp && currentPocketEp._id === ep._id) || (activeVideoUrl && activeVideoUrl === epUrl);
+                      const isUpcoming = ep.upcoming === 'Yes';
 
                       return (
                         <div 
                           key={ep._id} 
-                          className={`fe-pocket-ep-row-v ${isCurrent ? 'active' : ''}`}
+                          className={`fe-pocket-ep-row-v ${isCurrent ? 'active' : ''} ${isUpcoming ? 'upcoming' : ''}`}
                           onClick={() => {
+                            if (isUpcoming) {
+                              alert('This episode is coming soon! Stay tuned.');
+                              return;
+                            }
                             if (epUrl) {
                               setCurrentPocketEp(ep);
                               handlePlayVideo(epUrl, ep);
@@ -1105,9 +1110,14 @@ Cancel
                           }}
                         >
                           <div className="fe-pocket-ep-info-left">
-                            <div className="fe-pocket-ep-title-row">
+                            <div className="fe-pocket-ep-title-row" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                               <span className="fe-pocket-ep-num">E{realIndex + 1}.</span>
                               <span className="fe-pocket-ep-name">{ep.title}</span>
+                              {isUpcoming && (
+                                <span style={{ background: '#ff9800', color: '#000', fontSize: '10px', fontWeight: '800', padding: '2px 7px', borderRadius: '4px', letterSpacing: '0.5px' }}>
+                                  COMING SOON
+                                </span>
+                              )}
                             </div>
                             <div className="fe-pocket-ep-submeta">
                               <span>{ep.duration || '10:13M'}</span>
@@ -1116,8 +1126,8 @@ Cancel
                             </div>
                           </div>
                           
-                          <button className={`fe-pocket-ep-play-circle ${isCurrent ? 'playing' : ''}`} aria-label="Play">
-                            <Play size={13} fill={isCurrent ? '#000' : 'transparent'} color={isCurrent ? '#000' : '#fff'} />
+                          <button className={`fe-pocket-ep-play-circle ${isCurrent ? 'playing' : ''}`} style={isUpcoming ? { opacity: 0.5 } : {}} aria-label="Play">
+                            <Play size={13} fill={isCurrent ? '#000' : 'transparent'} color={isCurrent ? '#000' : (isUpcoming ? '#888' : '#fff')} />
                           </button>
                         </div>
                       );

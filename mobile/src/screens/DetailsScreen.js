@@ -549,6 +549,14 @@ export default function DetailsScreen({ route, navigation }) {
   const handlePlayEpisode = (episode) => {
     console.log('[DetailsScreen] Playing Episode:', episode);
 
+    if (episode.upcoming?.toLowerCase() === 'yes') {
+      showAlert(
+        'Coming Soon',
+        'This episode is coming soon! Stay tuned.'
+      );
+      return;
+    }
+
     // Only signed-in users can play videos
     if (!user) {
       navigation.navigate('Login');
@@ -912,6 +920,11 @@ export default function DetailsScreen({ route, navigation }) {
                       <View style={styles.episodeDetails}>
                         <View style={styles.episodeTitleRow}>
                           <Text style={styles.episodeTitle} numberOfLines={1}>{episode.title}</Text>
+                          {episode.upcoming?.toLowerCase() === 'yes' && (
+                            <View style={styles.episodeUpcomingBadge}>
+                              <Text style={styles.episodeUpcomingBadgeText}>COMING SOON</Text>
+                            </View>
+                          )}
                           {(((detail?.seriesAccess || '').toLowerCase() === 'paid' && (episode.access || '').toLowerCase() === 'paid')) && (() => {
                              const isSubscribed = isPremiumUser();
                              return (
@@ -1585,16 +1598,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 5,
-    paddingVertical: 1.5,
-    borderRadius: 4,
+    paddingVertical: 1,
+    borderRadius: 3,
     borderWidth: 0.5,
     borderColor: '#ffd700',
-    gap: 2.5,
+    gap: 3,
   },
   episodePremiumText: {
     color: '#ffd700',
     fontSize: 7.5,
-    fontWeight: '800',
+    fontWeight: '900',
+  },
+  episodeUpcomingBadge: {
+    backgroundColor: '#ff9800',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  episodeUpcomingBadgeText: {
+    color: '#000000',
+    fontSize: 8.5,
+    fontWeight: '900',
+    letterSpacing: 0.5,
   },
   relatedSection: {
     marginTop: 25,

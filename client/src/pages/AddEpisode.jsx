@@ -28,6 +28,7 @@ const AddEpisode = () => {
   releaseDate: '',
   duration: '',
   status: 'Active',
+  upcoming: 'No',
   poster: '',
   videoType: 'Local',
   videoQuality: '8K Ultra HD',
@@ -170,6 +171,13 @@ const AddEpisode = () => {
         <select name="access" value={formData.access} onChange={handleChange}>
          <option value="Paid">Paid</option>
          <option value="Free">Free</option>
+        </select>
+       </div>
+       <div className="form-group">
+        <label>Upcoming Episode</label>
+        <select name="upcoming" value={formData.upcoming || 'No'} onChange={handleChange}>
+         <option value="No">No</option>
+         <option value="Yes">Yes</option>
         </select>
        </div>
       </div>

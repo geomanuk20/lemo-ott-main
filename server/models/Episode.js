@@ -11,6 +11,7 @@ const episodeSchema = new mongoose.Schema({
   releaseDate: Date,
   duration: String,
   status: { type: String, default: 'Active' },
+  upcoming: { type: String, default: 'No' },
   
   poster: String,
   videoType: { type: String, default: 'Local' },
