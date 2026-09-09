@@ -43,10 +43,6 @@ const FrontendCareers = () => {
     <FrontendLayout>
       <div className="fe-career-pg">
         <div className="fe-career-hero">
-          <div className="fe-career-hero-badge">
-            <Briefcase size={14} />
-            <span>JOIN OUR TEAM</span>
-          </div>
           <h1>Shape The Future Of Streaming</h1>
           <p>
             At LEMO OTT, we are building world-class digital media and OTT streaming experiences. 
