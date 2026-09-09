@@ -2055,15 +2055,44 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
     };
   }, [activePlayer]);
 
-  // Handle mobile screen orientation change to landscape when entering fullscreen
+  // Handle mobile screen orientation change based on video aspect ratio (auto-detect vertical vs horizontal)
   useEffect(() => {
-    const handleFullscreenEnter = () => {
+    const isVerticalVideo = (vEl) => {
+      // 1. Direct video dimensions if available
+      if (vEl && vEl.videoWidth > 0 && vEl.videoHeight > 0) {
+        return vEl.videoHeight > vEl.videoWidth;
+      }
+      // 2. Check contentType prop
+      if (contentType) {
+        const cType = contentType.toLowerCase().trim();
+        if (cType.includes('pocket') || cType.includes('reel') || cType.includes('short')) {
+          return true;
+        }
+      }
+      // 3. Fallback to container dimensions if available
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        if (rect.height > rect.width) {
+          return true;
+        }
+      }
+      return false;
+    };
+
+    const applyOrientationLock = (video) => {
       const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
       if (isMobile && screen.orientation && typeof screen.orientation.lock === 'function') {
-        screen.orientation.lock('landscape').catch((err) => {
-          console.warn("Screen orientation lock to landscape failed:", err);
+        const vertical = isVerticalVideo(video);
+        const targetOrientation = vertical ? 'portrait' : 'landscape';
+        screen.orientation.lock(targetOrientation).catch((err) => {
+          console.warn(`Screen orientation lock to ${targetOrientation} failed:`, err);
         });
       }
+    };
+
+    const handleFullscreenEnter = () => {
+      const currentVideo = containerRef.current?.querySelector('video');
+      applyOrientationLock(currentVideo);
     };
 
     const handleFullscreenExit = () => {
@@ -2073,6 +2102,18 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
         } catch (e) {
           console.warn("Screen orientation unlock failed:", e);
         }
+      }
+    };
+
+    const handleLoadedMetadata = (e) => {
+      const isFullscreen = !!(
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.mozFullScreenElement ||
+        document.msFullscreenElement
+      );
+      if (isFullscreen) {
+        applyOrientationLock(e.target);
       }
     };
 
@@ -2097,30 +2138,35 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
     document.addEventListener('mozfullscreenchange', handleFullscreenChange);
     document.addEventListener('MSFullscreenChange', handleFullscreenChange);
 
-    // Video level (specifically for iOS Safari native fullscreen)
+    // Video level (specifically for iOS Safari native fullscreen & metadata)
     let videoEl = null;
+    const attachVideoEvents = (el) => {
+      if (!el) return;
+      el.addEventListener('webkitbeginfullscreen', handleFullscreenEnter);
+      el.addEventListener('webkitendfullscreen', handleFullscreenExit);
+      el.addEventListener('loadedmetadata', handleLoadedMetadata);
+    };
+
+    const detachVideoEvents = (el) => {
+      if (!el) return;
+      el.removeEventListener('webkitbeginfullscreen', handleFullscreenEnter);
+      el.removeEventListener('webkitendfullscreen', handleFullscreenExit);
+      el.removeEventListener('loadedmetadata', handleLoadedMetadata);
+    };
+
     const observer = new MutationObserver(() => {
       const currentVideo = containerRef.current?.querySelector('video');
       if (currentVideo !== videoEl) {
-        if (videoEl) {
-          videoEl.removeEventListener('webkitbeginfullscreen', handleFullscreenEnter);
-          videoEl.removeEventListener('webkitendfullscreen', handleFullscreenExit);
-        }
+        detachVideoEvents(videoEl);
         videoEl = currentVideo;
-        if (videoEl) {
-          videoEl.addEventListener('webkitbeginfullscreen', handleFullscreenEnter);
-          videoEl.addEventListener('webkitendfullscreen', handleFullscreenExit);
-        }
+        attachVideoEvents(videoEl);
       }
     });
 
     if (containerRef.current) {
       observer.observe(containerRef.current, { childList: true, subtree: true });
       videoEl = containerRef.current.querySelector('video');
-      if (videoEl) {
-        videoEl.addEventListener('webkitbeginfullscreen', handleFullscreenEnter);
-        videoEl.addEventListener('webkitendfullscreen', handleFullscreenExit);
-      }
+      attachVideoEvents(videoEl);
     }
 
     return () => {
@@ -2129,12 +2175,9 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
       document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
       document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
       observer.disconnect();
-      if (videoEl) {
-        videoEl.removeEventListener('webkitbeginfullscreen', handleFullscreenEnter);
-        videoEl.removeEventListener('webkitendfullscreen', handleFullscreenExit);
-      }
+      detachVideoEvents(videoEl);
     };
-  }, [containerRef]);
+  }, [containerRef, contentType]);
 
   // Sync activeTrackIdx with HTML5 video textTracks mode by matching language/label
   useEffect(() => {
