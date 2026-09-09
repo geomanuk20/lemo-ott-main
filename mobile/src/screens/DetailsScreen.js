@@ -151,22 +151,26 @@ const IMDBRatingCircle = ({ rating }) => {
 };
 
 const getNormalizedType = (rawType) => {
-  if (!rawType) return 'movie';
+  if (!rawType) return 'show';
   const t = rawType.toLowerCase().trim();
   
   if (t === 'movie' || t === 'movies' || t === 'short-film' || t === 'short film') {
     return 'movie';
   }
-  if (t === 'show' || t === 'shows' || t === 'tv show' || t === 'tv-show' || t === 'tv shows' || t === 'web series' || t === 'web-series' || t === 'short web series' || t === 'short web-series') {
+  if (
+    t === 'show' || t === 'shows' || t === 'tv show' || t === 'tv-show' || t === 'tv shows' || 
+    t === 'web series' || t === 'web-series' || t === 'short web series' || t === 'short web-series' ||
+    t.includes('pocket') || t.includes('series') || t.includes('show')
+  ) {
     return 'show';
   }
-  if (t === 'sports' || t === 'sports-videos' || t === 'sports videos' || t === 'sport') {
+  if (t.includes('sport')) {
     return 'sports';
   }
-  if (t === 'live' || t === 'live tv' || t === 'live-tv' || t === 'live tvs' || t === 'channel' || t === 'tv-channels' || t === 'tv-channel') {
+  if (t.includes('live') || t.includes('channel')) {
     return 'live';
   }
-  if (t === 'new-release' || t === 'new release' || t === 'new-releases' || t === 'new releases') {
+  if (t.includes('new')) {
     return 'new-release';
   }
   return t;
@@ -201,7 +205,7 @@ export default function DetailsScreen({ route, navigation }) {
   const checkIsPaid = (item, contentType) => {
     if (!item) return false;
     const t = (contentType || '').toLowerCase().trim();
-    if (t === 'show' || t === 'shows' || t === 'series' || t === 'short-web-series' || t === 'web-series' || t === 'pocket-reel-series' || t === 'pocket-reels') {
+    if (t === 'show' || t === 'shows' || t === 'series' || t === 'short-web-series' || t === 'web-series' || t === 'pocket-reel-series' || t === 'pocket-reels' || t.includes('pocket')) {
       return (item.seriesAccess || '').toLowerCase() === 'paid';
     } else if (t === 'live' || t === 'channel' || t === 'channels' || t === 'tv-channel' || t === 'tv-channels') {
       return (item.tvAccess || '').toLowerCase() === 'paid' || (item.access || '').toLowerCase() === 'paid';
@@ -272,14 +276,23 @@ export default function DetailsScreen({ route, navigation }) {
         else if (type === 'sports') endpoint = `/sports-videos/${id}`;
         else if (type === 'live') endpoint = `/tv-channels/${id}`;
         else if (type === 'new-release') endpoint = `/new-releases/${id}`;
+        else endpoint = `/shows/${id}`;
 
         const res = await client.get(endpoint);
-        setDetail(res.data);
+        const detailData = res.data;
+        setDetail(detailData);
+
+        const isShowLike = type === 'show' || 
+          detailData?.contentType === 'TV Show' || 
+          detailData?.contentType === 'Short Web Series' || 
+          (detailData?.contentType || '').toLowerCase().includes('pocket') ||
+          (detailData?.contentType || '').toLowerCase().includes('series') ||
+          (detailData?.contentType || '').toLowerCase().includes('show');
 
         // Fetch related content
         let relatedEndpoint = '';
         if (type === 'movie') relatedEndpoint = '/movies';
-        else if (type === 'show') relatedEndpoint = '/shows';
+        else if (type === 'show' || isShowLike) relatedEndpoint = '/shows';
         else if (type === 'sports') relatedEndpoint = '/sports-videos';
         else if (type === 'live') relatedEndpoint = '/tv-channels';
         else if (type === 'new-release') relatedEndpoint = '/new-releases';
@@ -289,7 +302,7 @@ export default function DetailsScreen({ route, navigation }) {
             const relatedRes = await client.get(relatedEndpoint);
             if (relatedRes && relatedRes.data) {
               const relatedResult = Array.isArray(relatedRes.data) ? relatedRes.data : [];
-              const parentId = res.data?.showId ? (typeof res.data.showId === 'object' ? (res.data.showId._id || res.data.showId.id) : res.data.showId) : '';
+              const parentId = detailData?.showId ? (typeof detailData.showId === 'object' ? (detailData.showId._id || detailData.showId.id) : detailData.showId) : '';
               const finalRelated = relatedResult
                 .filter(item => item._id !== id && item._id !== parentId && item.status === 'Active')
                 .slice(0, 6);
@@ -300,23 +313,27 @@ export default function DetailsScreen({ route, navigation }) {
           }
         }
 
-        // If it's a TV show, load seasons and episodes
-        if (type === 'show') {
-          const [seasonsRes, episodesRes] = await Promise.all([
-            client.get(`/seasons?showId=${id}`),
-            client.get(`/episodes?showId=${id}`)
-          ]);
-          setSeasons(seasonsRes.data || []);
-          setEpisodes(episodesRes.data || []);
-          if (seasonsRes.data && seasonsRes.data.length > 0) {
-            setSelectedSeason(seasonsRes.data[0]._id);
+        // If it's a TV show or series, load seasons and episodes
+        if (type === 'show' || isShowLike) {
+          try {
+            const [seasonsRes, episodesRes] = await Promise.all([
+              client.get(`/seasons?showId=${id}`).catch(() => ({ data: [] })),
+              client.get(`/episodes?showId=${id}`).catch(() => ({ data: [] }))
+            ]);
+            setSeasons(seasonsRes.data || []);
+            setEpisodes(episodesRes.data || []);
+            if (seasonsRes.data && seasonsRes.data.length > 0) {
+              setSelectedSeason(seasonsRes.data[0]._id);
+            }
+          } catch (err) {
+            console.warn('Error loading seasons/episodes:', err);
           }
         }
 
         // Check watchlist status and user rating status
         if (user && user.id) {
           const [wlRes, rateRes] = await Promise.all([
-            client.get(`/watchlist/${user.id}`),
+            client.get(`/watchlist/${user.id}`).catch(() => null),
             client.get(`/ratings/status?userId=${user.id}&contentId=${id}`).catch(() => null)
           ]);
           if (wlRes && wlRes.data) {
@@ -469,6 +486,18 @@ export default function DetailsScreen({ route, navigation }) {
       return;
     }
 
+    // If it's a show/series with episodes, play first episode
+    const isShowType = type === 'show' || 
+                       detail?.contentType === 'TV Show' || 
+                       detail?.contentType === 'Short Web Series' || 
+                       (detail?.contentType || '').toLowerCase().includes('pocket') || 
+                       (detail?.contentType || '').toLowerCase().includes('series');
+
+    if (isShowType && currentEpisodes.length > 0) {
+      handlePlayEpisode(currentEpisodes[0]);
+      return;
+    }
+
     // Gating check for Paid content
     const isPaidContent = checkIsPaid(detail, type);
     if (isPaidContent && !isPremiumUser()) {
@@ -604,9 +633,13 @@ export default function DetailsScreen({ route, navigation }) {
     : '';
 
   // Filter episodes for the currently selected season
+  const isPocketOrShort = detail?.contentType?.toLowerCase().includes('short') || 
+                          detail?.contentType?.toLowerCase().includes('pocket') || 
+                          !seasons || seasons.length === 0;
+
   const currentEpisodes = episodes.filter(ep => {
-    if (detail?.contentType?.toLowerCase().includes('short')) return true;
-    if (!ep.seasonId) return false;
+    if (isPocketOrShort) return true;
+    if (!ep.seasonId) return true;
     const epSeasonIdStr = typeof ep.seasonId === 'object' ? (ep.seasonId?._id || ep.seasonId?.id || '').toString() : ep.seasonId.toString();
     const currentSeasonIdStr = selectedSeason ? selectedSeason.toString() : '';
     return epSeasonIdStr && currentSeasonIdStr && epSeasonIdStr === currentSeasonIdStr;
@@ -633,34 +666,32 @@ export default function DetailsScreen({ route, navigation }) {
               </View>
             </View>
           ) : (
-            type !== 'show' && (
-              <View style={styles.heroPlayOverlay}>
-                <View style={styles.playWithWaveContainer}>
-                  <Animated.View
-                    style={[
-                      styles.waveRipple,
-                      {
-                        transform: [
-                          {
-                            scale: pulseAnim.interpolate({
-                              inputRange: [0, 1],
-                              outputRange: [1, 2.2],
-                            }),
-                          },
-                        ],
-                        opacity: pulseAnim.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [0.6, 0],
-                        }),
-                      },
-                    ]}
-                  />
-                  <TouchableOpacity style={styles.playIconButtonSmall} onPress={handlePlayMainVideo} activeOpacity={0.8}>
-                    <Play color="#000" size={20} fill="#000" style={{ marginLeft: 2 }} />
-                  </TouchableOpacity>
-                </View>
+            <View style={styles.heroPlayOverlay}>
+              <View style={styles.playWithWaveContainer}>
+                <Animated.View
+                  style={[
+                    styles.waveRipple,
+                    {
+                      transform: [
+                        {
+                          scale: pulseAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [1, 2.2],
+                          }),
+                        },
+                      ],
+                      opacity: pulseAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.6, 0],
+                      }),
+                    },
+                  ]}
+                />
+                <TouchableOpacity style={styles.playIconButtonSmall} onPress={handlePlayMainVideo} activeOpacity={0.8}>
+                  <Play color="#000" size={20} fill="#000" style={{ marginLeft: 2 }} />
+                </TouchableOpacity>
               </View>
-            )
+            </View>
           )}
         </View>
 
@@ -720,17 +751,17 @@ export default function DetailsScreen({ route, navigation }) {
 
           {/* Action buttons container */}
           <View style={styles.actionsContainer}>
-            {type !== 'show' && (
-              detail.upcoming?.toLowerCase() === 'yes' ? (
-                <View style={[styles.mainPlayBtn, { backgroundColor: '#333', opacity: 0.6 }]}>
-                  <Text style={[styles.mainPlayBtnText, { color: '#888' }]}>Coming Soon</Text>
-                </View>
-              ) : (
-                <TouchableOpacity style={styles.mainPlayBtn} onPress={handlePlayMainVideo}>
-                  <Play color="#000000" size={18} fill="#000000" />
-                  <Text style={styles.mainPlayBtnText}>Play</Text>
-                </TouchableOpacity>
-              )
+            {detail.upcoming?.toLowerCase() === 'yes' ? (
+              <View style={[styles.mainPlayBtn, { backgroundColor: '#333', opacity: 0.6 }]}>
+                <Text style={[styles.mainPlayBtnText, { color: '#888' }]}>Coming Soon</Text>
+              </View>
+            ) : (
+              <TouchableOpacity style={styles.mainPlayBtn} onPress={handlePlayMainVideo}>
+                <Play color="#000000" size={18} fill="#000000" />
+                <Text style={styles.mainPlayBtnText}>
+                  {type === 'show' && currentEpisodes.length > 0 ? (isPocketOrShort ? 'Watch Ep 1' : 'Play S1 E1') : 'Play'}
+                </Text>
+              </TouchableOpacity>
             )}
 
             {detail.trailerUrl && detail.trailerUrl.trim() !== '' ? (
@@ -787,10 +818,12 @@ export default function DetailsScreen({ route, navigation }) {
             </View>
           ) : null}
 
-          {detail.description || detail.synopsis ? (
+          {(detail.description || detail.synopsis || detail.sortInfo || detail.metaDescription) ? (
             <View style={{ marginBottom: 20 }}>
               <Text style={styles.infoLabel}>Overview</Text>
-              <Text style={styles.descriptionText}>{stripHtml(detail.description || detail.synopsis)}</Text>
+              <Text style={styles.descriptionText}>
+                {stripHtml(detail.description || detail.synopsis || detail.sortInfo || detail.metaDescription)}
+              </Text>
             </View>
           ) : null}
 
@@ -850,18 +883,18 @@ export default function DetailsScreen({ route, navigation }) {
             );
           })()}
 
-          {/* Season and Episode browser (For Web Series) */}
+          {/* Season and Episode browser (For Shows / Web Series / Pocket Reel) */}
           {detail.upcoming?.toLowerCase() === 'yes' ? (
             <View style={styles.upcomingEpisodesWrapper}>
               <Text style={styles.upcomingEpisodesTitle}>Episodes Coming Soon</Text>
               <Text style={styles.upcomingEpisodesSubtitle}>Stay tuned! Episodes will be available soon.</Text>
             </View>
-          ) : type === 'show' && (seasons.length > 0 || detail?.contentType === 'Short Web Series' || detail?.contentType === 'Short Web-Series') && (
+          ) : (type === 'show' || episodes.length > 0 || (detail?.contentType || '').toLowerCase().includes('pocket') || (detail?.contentType || '').toLowerCase().includes('series')) && (
             <View style={styles.seasonsWrapper}>
-              <Text style={styles.infoLabel}>Episodes</Text>
+              <Text style={styles.infoLabel}>Episodes {currentEpisodes.length > 0 ? `(${currentEpisodes.length})` : ''}</Text>
               
               {/* Season Tabs Selector */}
-              {!detail?.contentType?.toLowerCase().includes('short') && seasons.length > 0 && (
+              {seasons.length > 0 && !isPocketOrShort && (
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.seasonTabs}>
                   {seasons.map((season) => (
                     <TouchableOpacity
@@ -879,10 +912,10 @@ export default function DetailsScreen({ route, navigation }) {
 
               {/* Episode list */}
               {currentEpisodes.length === 0 ? (
-                <Text style={styles.emptyEpisodes}>No episodes uploaded for this season.</Text>
+                <Text style={styles.emptyEpisodes}>No episodes uploaded for this series.</Text>
               ) : (
                 currentEpisodes.map((episode) => {
-                  const epThumb = formatImageUrl(episode.thumbnail || detail.poster || detail.landscapePoster);
+                  const epThumb = formatImageUrl(episode.poster || episode.thumbnail || detail.poster || detail.thumbnail || detail.landscapePoster);
                   return (
                     <TouchableOpacity
                       key={episode._id}

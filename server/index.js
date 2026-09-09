@@ -5269,8 +5269,9 @@ app.get('/api/shows/:id', async (req, res) => {
     if (!isAdmin) {
       const menuSettings = await MenuSettings.findOne().lean();
       if (menuSettings) {
-        const isPocketReel = show.contentType === 'Pocket Reel Series';
-        const isShortWeb = show.contentType === 'Short Web Series' || show.contentType === 'Short Web-Series' || show.contentType === 'web-series';
+        const ct = (show.contentType || '').toLowerCase().trim();
+        const isPocketReel = ct.includes('pocket');
+        const isShortWeb = ct.includes('web');
         const showsOff = menuSettings.shows?.toUpperCase() === 'OFF';
         const webSeriesOff = menuSettings.webSeries?.toUpperCase() === 'OFF';
         const pocketReelOff = menuSettings.pocketReelSeries?.toUpperCase() === 'OFF';
