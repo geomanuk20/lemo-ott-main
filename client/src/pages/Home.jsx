@@ -906,11 +906,12 @@ const Home = () => {
           if (sectionShorts.length > 0) {
             contentEl = (
               <section key={section._id} className="fe-watch-online-v" style={{ padding: '0 5%', margin: '40px 0' }}>
-                <div className="watch-online-header-v" style={{ marginBottom: '20px' }}>
+                <div className="watch-online-header-v">
                   <div style={{ textAlign: 'left' }}>
-                    <span className="watch-online-tag-v" style={{ marginBottom: 0 }}>SHORTS</span>
+                    <span className="watch-online-tag-v">TRENDING SHORTS</span>
+                    <h2 className="watch-online-title-v">{section.title || 'Shorts'}</h2>
                   </div>
-                  <Link to="/shorts" state={{ initialShorts: shorts }} className="row-more-v" style={{ marginBottom: '0' }} onClick={triggerAudioActivation}>
+                  <Link to="/shorts" state={{ initialShorts: shorts }} className="row-more-v" style={{ marginBottom: '10px' }} onClick={triggerAudioActivation}>
                     VIEW ALL <ChevronRight size={14} />
                   </Link>
                 </div>
@@ -977,11 +978,12 @@ const Home = () => {
           if (shortFilms.length > 0) {
             contentEl = (
               <section key={section._id} className="fe-watch-online-v" style={{ padding: '0 5%', margin: '40px 0' }}>
-                <div className="watch-online-header-v" style={{ marginBottom: '20px' }}>
+                <div className="watch-online-header-v">
                   <div style={{ textAlign: 'left' }}>
-                    <span className="watch-online-tag-v" style={{ marginBottom: 0 }}>SHORT FILMS</span>
+                    <span className="watch-online-tag-v">SHORT FILMS</span>
+                    <h2 className="watch-online-title-v">{section.title || 'Short Films'}</h2>
                   </div>
-                  <Link to="/view-all/short-film/Short Films" className="row-more-v" style={{ marginBottom: '0' }}>
+                  <Link to="/view-all/short-film/Short Films" className="row-more-v" style={{ marginBottom: '10px' }}>
                     VIEW ALL <ChevronRight size={14} />
                   </Link>
                 </div>
@@ -1133,11 +1135,12 @@ const Home = () => {
           if (pocketReelSeries.length > 0) {
             contentEl = (
               <div key={section._id} className="fe-row-v fe-pocket-reel-row-v">
-                <div className="watch-online-header-v" style={{ marginBottom: '20px' }}>
+                <div className="watch-online-header-v">
                   <div style={{ textAlign: 'left' }}>
-                    <span className="watch-online-tag-v" style={{ marginBottom: 0 }}>POCKET REEL SERIES</span>
+                    <span className="watch-online-tag-v">POCKET REEL SERIES</span>
+                    <h2 className="watch-online-title-v">{section.title || 'Pocket Reel Series'}</h2>
                   </div>
-                  <Link to="/pocket-reel-series" className="row-more-v" style={{ marginBottom: '0' }}>
+                  <Link to="/pocket-reel-series" className="row-more-v" style={{ marginBottom: '10px' }}>
                     VIEW ALL <ChevronRight size={14} />
                   </Link>
                 </div>
