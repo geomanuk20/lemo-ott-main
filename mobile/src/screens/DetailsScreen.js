@@ -229,6 +229,7 @@ export default function DetailsScreen({ route, navigation }) {
   const [selectedRating, setSelectedRating] = useState(0);
   const [ratingSubmitting, setRatingSubmitting] = useState(false);
   const [userRating, setUserRating] = useState(0);
+  const [isDescExpanded, setIsDescExpanded] = useState(false);
 
   const pulseAnim = useRef(new Animated.Value(0)).current;
 
@@ -719,51 +720,60 @@ export default function DetailsScreen({ route, navigation }) {
               );
             })()}
           </View>
-          
-          {/* Bottom Stats / Metadata section */}
-          <View style={styles.visualStatsRow}>
-            <View style={styles.statsList}>
-              <View style={styles.statItem}>
-                <Eye color="#8e8e93" size={16} />
-                <Text style={styles.statText}>{formatViews(detail.views, detail._id)}</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Calendar color="#8e8e93" size={16} />
-                <Text style={styles.statText}>
-                  {formatReleaseDate(detail.releaseDate || detail.createdAt) || detail.releaseYear || detail.year || 'N/A'}
-                </Text>
-              </View>
-              <View style={styles.statItem}>
-                <Clock color="#8e8e93" size={16} />
-                <Text style={styles.statText}>{detail.duration || '2h 30m'}</Text>
-              </View>
+
+          {/* Main Full-Width Action Play Button */}
+          {detail.upcoming?.toLowerCase() === 'yes' ? (
+            <View style={[styles.mainPlayBtn, { backgroundColor: '#333', opacity: 0.6 }]}>
+              <Text style={[styles.mainPlayBtnText, { color: '#888' }]}>Coming Soon</Text>
             </View>
-            
-            <View style={styles.ratingSectionContainer}>
-              <IMDBRatingCircle rating={detail.imdbRating} />
-              <Text style={styles.ratingsCountText}>
-                {detail.ratingsCount && detail.ratingsCount > 0 
-                  ? `${detail.ratingsCount} ${detail.ratingsCount === 1 ? 'rating' : 'ratings'}`
-                  : 'No ratings'}
+          ) : (
+            <TouchableOpacity style={styles.mainPlayBtn} onPress={handlePlayMainVideo} activeOpacity={0.85}>
+              <Play color="#000000" size={18} fill="#000000" />
+              <Text style={styles.mainPlayBtnText}>
+                {type === 'show' || detail?.contentType?.toLowerCase().includes('pocket') || detail?.contentType?.toLowerCase().includes('series')
+                  ? (currentEpisodes.length > 0 ? (isPocketOrShort ? 'Play Ep-1' : 'Play S1 E1') : 'Play Ep-1')
+                  : 'Play'}
               </Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Metadata Sub-Row: Views • Rating • Genre/Language */}
+          <View style={styles.metaSubRow}>
+            <Text style={styles.metaSubText}>{formatViews(detail.views, detail._id)}</Text>
+            <Text style={styles.metaDot}>•</Text>
+            <View style={styles.metaRatingBox}>
+              <Star color="#b3d332" size={14} fill="#b3d332" />
+              <Text style={styles.metaRatingVal}>{detail.rating || detail.imdbRating || '4.8'}</Text>
+              <Text style={styles.metaRatingCount}>({detail.ratingsCount || 2})</Text>
             </View>
+            <Text style={styles.metaDot}>•</Text>
+            <Text style={styles.metaSubGenre}>
+              {genresText.toUpperCase() || (typeof detail.language === 'object' ? detail.language.name : detail.language)?.toUpperCase() || 'DRAMA'}
+            </Text>
           </View>
 
-          {/* Action buttons container */}
-          <View style={styles.actionsContainer}>
-            {detail.upcoming?.toLowerCase() === 'yes' ? (
-              <View style={[styles.mainPlayBtn, { backgroundColor: '#333', opacity: 0.6 }]}>
-                <Text style={[styles.mainPlayBtnText, { color: '#888' }]}>Coming Soon</Text>
-              </View>
-            ) : (
-              <TouchableOpacity style={styles.mainPlayBtn} onPress={handlePlayMainVideo}>
-                <Play color="#000000" size={18} fill="#000000" />
-                <Text style={styles.mainPlayBtnText}>
-                  {type === 'show' && currentEpisodes.length > 0 ? (isPocketOrShort ? 'Watch Ep 1' : 'Play S1 E1') : 'Play'}
+          {/* Expandable Overview Description */}
+          {(() => {
+            const rawDesc = stripHtml(detail.description || detail.synopsis || detail.sortInfo || detail.metaDescription) || 'This is the captivating story of love, ambition, rivalry and drama. Stream all episodes in high quality.';
+            return (
+              <View style={styles.descriptionBlock}>
+                <Text 
+                  style={styles.descriptionText} 
+                  numberOfLines={isDescExpanded ? undefined : 2}
+                >
+                  {rawDesc}
                 </Text>
-              </TouchableOpacity>
-            )}
+                {rawDesc.length > 70 && (
+                  <TouchableOpacity onPress={() => setIsDescExpanded(!isDescExpanded)} activeOpacity={0.7}>
+                    <Text style={styles.moreText}>{isDescExpanded ? 'Less' : 'More'}</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            );
+          })()}
 
+          {/* Secondary Action buttons row */}
+          <View style={styles.actionsContainer}>
             {detail.trailerUrl && detail.trailerUrl.trim() !== '' ? (
               <TouchableOpacity style={styles.trailerBtn} onPress={handlePlayTrailer}>
                 <Play color="#ffffff" size={18} fill="#ffffff" />
@@ -802,30 +812,6 @@ export default function DetailsScreen({ route, navigation }) {
               </TouchableOpacity>
             </View>
           </View>
-
-          {/* Genre, Language & Synopsis */}
-          {genresText ? (
-            <View style={{ marginBottom: 12 }}>
-              <Text style={styles.infoLabel}>Genres</Text>
-              <Text style={styles.infoValue}>{genresText}</Text>
-            </View>
-          ) : null}
-
-          {detail.language ? (
-            <View style={{ marginBottom: 12 }}>
-              <Text style={styles.infoLabel}>Language</Text>
-              <Text style={styles.infoValue}>{typeof detail.language === 'object' ? detail.language.name : detail.language}</Text>
-            </View>
-          ) : null}
-
-          {(detail.description || detail.synopsis || detail.sortInfo || detail.metaDescription) ? (
-            <View style={{ marginBottom: 20 }}>
-              <Text style={styles.infoLabel}>Overview</Text>
-              <Text style={styles.descriptionText}>
-                {stripHtml(detail.description || detail.synopsis || detail.sortInfo || detail.metaDescription)}
-              </Text>
-            </View>
-          ) : null}
 
           {/* Directors Section */}
           {(detail.directors && detail.directors.length > 0) && (() => {
@@ -1221,17 +1207,75 @@ const styles = StyleSheet.create({
     width: '100%',
     flexDirection: 'row',
     backgroundColor: '#b3d332',
-    borderRadius: 8,
-    paddingVertical: 12,
+    borderRadius: 26,
+    paddingVertical: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
+    gap: 10,
+    marginTop: 12,
+    marginBottom: 14,
+    shadowColor: '#b3d332',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
   },
   mainPlayBtnText: {
     color: '#000000',
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '800',
+  },
+  metaSubRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    marginBottom: 12,
+    gap: 8,
+  },
+  metaSubText: {
+    color: '#a1a1aa',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  metaDot: {
+    color: '#71717a',
+    fontSize: 14,
+  },
+  metaRatingBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  metaRatingVal: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  metaRatingCount: {
+    color: '#a1a1aa',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  metaSubGenre: {
+    color: '#a1a1aa',
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  descriptionBlock: {
+    marginBottom: 16,
+  },
+  descriptionText: {
+    color: '#d4d4d8',
+    fontSize: 14,
+    lineHeight: 22,
+    fontWeight: '400',
+  },
+  moreText: {
+    color: '#b3d332',
+    fontSize: 14,
+    fontWeight: '800',
+    marginTop: 4,
   },
   trailerBtn: {
     width: '100%',
