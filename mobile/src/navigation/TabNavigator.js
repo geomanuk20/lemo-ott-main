@@ -72,12 +72,12 @@ export default function TabNavigator() {
           }}
         />
       )}
-      {(!menuSettings || menuSettings.shows?.toUpperCase() !== 'OFF' || menuSettings.webSeries?.toUpperCase() !== 'OFF') && (
+      {(!menuSettings || menuSettings.shows?.toUpperCase() !== 'OFF' || menuSettings.webSeries?.toUpperCase() !== 'OFF' || menuSettings.pocketReelSeries?.toUpperCase() !== 'OFF') && (
         <Tab.Screen
           name="ShowsTab"
           component={ShowsScreen}
           options={{
-            tabBarLabel: 'Web Series',
+            tabBarLabel: (!menuSettings || menuSettings.shows?.toUpperCase() !== 'OFF') ? 'Shows' : (menuSettings.pocketReelSeries?.toUpperCase() !== 'OFF' ? 'Pocket Reel' : 'Web Series'),
             tabBarIcon: ({ color, size }) => <Tv color={color} size={size} />,
           }}
         />

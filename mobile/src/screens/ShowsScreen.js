@@ -118,12 +118,15 @@ export default function ShowsScreen({ navigation }) {
   });
 
   const getHeaderTitle = () => {
-    if (!menuSettings) return 'Web Series';
+    if (!menuSettings) return 'Pocket Reel';
     const showsOn = menuSettings.shows?.toUpperCase() !== 'OFF';
     const webSeriesOn = menuSettings.webSeries?.toUpperCase() !== 'OFF';
+    const pocketReelOn = menuSettings.pocketReelSeries?.toUpperCase() !== 'OFF';
     if (showsOn && webSeriesOn) return 'TV Shows & Web Series';
+    if (showsOn) return 'TV Shows';
     if (webSeriesOn) return 'Web Series';
-    return 'TV Shows';
+    if (pocketReelOn) return 'Pocket Reel Series';
+    return 'Shows';
   };
 
   const renderShowItem = ({ item }) => {

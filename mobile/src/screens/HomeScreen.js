@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, Play, Tv, Film, Trophy, CreditCard, Clapperboard, Crown, Globe, MonitorPlay, Shield } from 'lucide-react-native';
+import { Search, Play, Tv, Film, Trophy, CreditCard, Clapperboard, Crown, Globe, MonitorPlay, Shield, Smartphone } from 'lucide-react-native';
 import client from '../api/client';
 import { formatImageUrl } from '../config/api';
 import { AuthContext } from '../context/AuthContext';
@@ -33,6 +33,7 @@ const isItemActive = (item, menuSettings) => {
   if (contentType === 'Short Film' && menuSettings.shortFilms?.toUpperCase() === 'OFF') return false;
   if (contentType === 'TV Show' && menuSettings.shows?.toUpperCase() === 'OFF') return false;
   if (contentType === 'Short Web Series' && menuSettings.webSeries?.toUpperCase() === 'OFF') return false;
+  if ((contentType === 'Pocket Reel Series' || contentType === 'Pocket Reel' || contentType === 'pocket-reel-series' || contentType === 'pocket-reels') && menuSettings.pocketReelSeries?.toUpperCase() === 'OFF') return false;
   if (contentType === 'Sports' && menuSettings.sports?.toUpperCase() === 'OFF') return false;
   if (contentType === 'Live TV' && menuSettings.liveTv?.toUpperCase() === 'OFF') return false;
   return true;
@@ -45,6 +46,7 @@ const isSliderActive = (slide, menuSettings) => {
   if (postType === 'Short Film' && menuSettings.shortFilms?.toUpperCase() === 'OFF') return false;
   if (postType === 'TV Shows' && menuSettings.shows?.toUpperCase() === 'OFF') return false;
   if (postType === 'Short Web Series' && menuSettings.webSeries?.toUpperCase() === 'OFF') return false;
+  if ((postType === 'Pocket Reel Series' || postType === 'Pocket Reel' || postType === 'pocket-reel-series') && menuSettings.pocketReelSeries?.toUpperCase() === 'OFF') return false;
   if (postType === 'Sports' && menuSettings.sports?.toUpperCase() === 'OFF') return false;
   if (postType === 'Live TV' && menuSettings.liveTv?.toUpperCase() === 'OFF') return false;
 
@@ -53,6 +55,7 @@ const isSliderActive = (slide, menuSettings) => {
   if (contentType === 'Short Film' && menuSettings.shortFilms?.toUpperCase() === 'OFF') return false;
   if (contentType === 'TV Show' && menuSettings.shows?.toUpperCase() === 'OFF') return false;
   if (contentType === 'Short Web Series' && menuSettings.webSeries?.toUpperCase() === 'OFF') return false;
+  if ((contentType === 'Pocket Reel Series' || contentType === 'Pocket Reel' || contentType === 'pocket-reel-series') && menuSettings.pocketReelSeries?.toUpperCase() === 'OFF') return false;
   if (contentType === 'Sports' && menuSettings.sports?.toUpperCase() === 'OFF') return false;
   if (contentType === 'Live TV' && menuSettings.liveTv?.toUpperCase() === 'OFF') return false;
   return true;
@@ -504,6 +507,7 @@ export default function HomeScreen({ navigation }) {
     (!menuSettings || menuSettings.movies?.toUpperCase() !== 'OFF' || menuSettings.shortFilms?.toUpperCase() !== 'OFF'),
     (!menuSettings || menuSettings.shows?.toUpperCase() !== 'OFF' || menuSettings.webSeries?.toUpperCase() !== 'OFF'),
     (!menuSettings || menuSettings.shorts?.toUpperCase() !== 'OFF'),
+    (!menuSettings || menuSettings.pocketReelSeries?.toUpperCase() !== 'OFF'),
     (!menuSettings || menuSettings.liveTv?.toUpperCase() !== 'OFF'),
     (!menuSettings || menuSettings.sports?.toUpperCase() !== 'OFF'),
     true // Plans
@@ -611,6 +615,15 @@ export default function HomeScreen({ navigation }) {
             </TouchableOpacity>
           )}
 
+          {(!menuSettings || menuSettings.pocketReelSeries?.toUpperCase() !== 'OFF') && (
+            <TouchableOpacity style={styles.quickLinkItem} onPress={() => navigation.navigate('ShowsTab')}>
+              <View style={[styles.quickLinkIconContainer, { backgroundColor: 'rgba(179, 211, 50, 0.15)' }]}>
+                <Smartphone color="#b3d332" size={20} />
+              </View>
+              <Text style={styles.quickLinkLabel}>Pocket Reel</Text>
+            </TouchableOpacity>
+          )}
+
           {(!menuSettings || menuSettings.liveTv?.toUpperCase() !== 'OFF') && (
             <TouchableOpacity style={styles.quickLinkItem} onPress={() => navigation.navigate('LiveTV')}>
               <View style={[styles.quickLinkIconContainer, { backgroundColor: 'rgba(255, 59, 48, 0.15)' }]}>
@@ -703,25 +716,20 @@ export default function HomeScreen({ navigation }) {
                 const shortFilms = data.movies.filter(m => m.contentType === 'Short Film' || m.contentType === 'short-film');
                 const filtered = shortFilms.filter(item => isItemActive(item, menuSettings));
                 if (filtered.length > 0) {
-                  const showExp = !experienceRendered;
-                  experienceRendered = true;
                   return (
-                    <React.Fragment key={key}>
-                      <View style={styles.sectionContainer}>
-                        <View style={styles.sectionHeader}>
-                          <Text style={styles.sectionTitle}>{title}</Text>
-                        </View>
-                        <FlatList
-                          data={filtered.slice(0, section.limit || 20)}
-                          renderItem={({ item }) => renderMediaCard({ item, type: 'short-film' })}
-                          keyExtractor={(item) => item._id}
-                          horizontal
-                          showsHorizontalScrollIndicator={false}
-                          contentContainerStyle={styles.listContent}
-                        />
+                    <View key={key} style={styles.sectionContainer}>
+                      <View style={styles.sectionHeader}>
+                        <Text style={styles.sectionTitle}>{title}</Text>
                       </View>
-                      {showExp && renderExperienceSection()}
-                    </React.Fragment>
+                      <FlatList
+                        data={filtered.slice(0, section.limit || 20)}
+                        renderItem={({ item }) => renderMediaCard({ item, type: 'short-film' })}
+                        keyExtractor={(item) => item._id}
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.listContent}
+                      />
+                    </View>
                   );
                 }
               }
@@ -729,25 +737,20 @@ export default function HomeScreen({ navigation }) {
                 const tvShows = data.shows.filter(s => s.contentType !== 'Short Web Series' && s.contentType !== 'short-web-series' && s.contentType !== 'Pocket Reel Series' && s.contentType !== 'pocket-reel-series' && s.contentType !== 'Pocket Reels' && s.contentType !== 'pocket-reels');
                 const filtered = tvShows.filter(item => isItemActive(item, menuSettings));
                 if (filtered.length > 0) {
-                  const showExp = !experienceRendered;
-                  experienceRendered = true;
                   return (
-                    <React.Fragment key={key}>
-                      <View style={styles.sectionContainer}>
-                        <View style={styles.sectionHeader}>
-                          <Text style={styles.sectionTitle}>{title}</Text>
-                        </View>
-                        <FlatList
-                          data={filtered.slice(0, section.limit || 20)}
-                          renderItem={({ item }) => renderMediaCard({ item, type: 'show' })}
-                          keyExtractor={(item) => item._id}
-                          horizontal
-                          showsHorizontalScrollIndicator={false}
-                          contentContainerStyle={styles.listContent}
-                        />
+                    <View key={key} style={styles.sectionContainer}>
+                      <View style={styles.sectionHeader}>
+                        <Text style={styles.sectionTitle}>{title}</Text>
                       </View>
-                      {showExp && renderExperienceSection()}
-                    </React.Fragment>
+                      <FlatList
+                        data={filtered.slice(0, section.limit || 20)}
+                        renderItem={({ item }) => renderMediaCard({ item, type: 'show' })}
+                        keyExtractor={(item) => item._id}
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.listContent}
+                      />
+                    </View>
                   );
                 }
               }
@@ -755,25 +758,20 @@ export default function HomeScreen({ navigation }) {
                 const webSeries = data.shows.filter(s => s.contentType === 'Short Web Series' || s.contentType === 'short-web-series');
                 const filtered = webSeries.filter(item => isItemActive(item, menuSettings));
                 if (filtered.length > 0) {
-                  const showExp = !experienceRendered;
-                  experienceRendered = true;
                   return (
-                    <React.Fragment key={key}>
-                      <View style={styles.sectionContainer}>
-                        <View style={styles.sectionHeader}>
-                          <Text style={styles.sectionTitle}>{title}</Text>
-                        </View>
-                        <FlatList
-                          data={filtered.slice(0, section.limit || 20)}
-                          renderItem={({ item }) => renderMediaCard({ item, type: 'show' })}
-                          keyExtractor={(item) => item._id}
-                          horizontal
-                          showsHorizontalScrollIndicator={false}
-                          contentContainerStyle={styles.listContent}
-                        />
+                    <View key={key} style={styles.sectionContainer}>
+                      <View style={styles.sectionHeader}>
+                        <Text style={styles.sectionTitle}>{title}</Text>
                       </View>
-                      {showExp && renderExperienceSection()}
-                    </React.Fragment>
+                      <FlatList
+                        data={filtered.slice(0, section.limit || 20)}
+                        renderItem={({ item }) => renderMediaCard({ item, type: 'show' })}
+                        keyExtractor={(item) => item._id}
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.listContent}
+                      />
+                    </View>
                   );
                 }
               }
@@ -781,25 +779,20 @@ export default function HomeScreen({ navigation }) {
                 const pocketSeries = data.shows.filter(s => s.contentType === 'Pocket Reel Series' || s.contentType === 'pocket-reel-series' || s.contentType === 'Pocket Reels' || s.contentType === 'pocket-reels');
                 const filtered = pocketSeries.filter(item => isItemActive(item, menuSettings));
                 if (filtered.length > 0) {
-                  const showExp = !experienceRendered;
-                  experienceRendered = true;
                   return (
-                    <React.Fragment key={key}>
-                      <View style={styles.sectionContainer}>
-                        <View style={styles.sectionHeader}>
-                          <Text style={styles.sectionTitle}>{title}</Text>
-                        </View>
-                        <FlatList
-                          data={filtered.slice(0, section.limit || 20)}
-                          renderItem={({ item }) => renderMediaCard({ item, type: 'show' })}
-                          keyExtractor={(item) => item._id}
-                          horizontal
-                          showsHorizontalScrollIndicator={false}
-                          contentContainerStyle={styles.listContent}
-                        />
+                    <View key={key} style={styles.sectionContainer}>
+                      <View style={styles.sectionHeader}>
+                        <Text style={styles.sectionTitle}>{title}</Text>
                       </View>
-                      {showExp && renderExperienceSection()}
-                    </React.Fragment>
+                      <FlatList
+                        data={filtered.slice(0, section.limit || 20)}
+                        renderItem={({ item }) => renderMediaCard({ item, type: 'show' })}
+                        keyExtractor={(item) => item._id}
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.listContent}
+                      />
+                    </View>
                   );
                 }
               }
@@ -865,14 +858,12 @@ export default function HomeScreen({ navigation }) {
               return null;
             });
 
-            if (!experienceRendered) {
-              renderedSections.push(
-                <React.Fragment key="experience_fallback_dynamic">
-                  {renderExperienceSection()}
-                </React.Fragment>
-              );
-            }
-            return renderedSections;
+            return (
+              <>
+                {renderedSections}
+                {renderExperienceSection()}
+              </>
+            );
           }
 
           // Fallback: default sections when no homeSections configured in admin
@@ -896,7 +887,7 @@ export default function HomeScreen({ navigation }) {
               {data.movies.filter(m => m.contentType !== 'Short Film' && m.contentType !== 'short-film').filter(item => isItemActive(item, menuSettings)).length > 0 && (!menuSettings || menuSettings.movies?.toUpperCase() !== 'OFF') && (
                 <View style={styles.sectionContainer}>
                   <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>Featured Movies</Text>
+                    <Text style={styles.sectionTitle}>Movies</Text>
                   </View>
                   <FlatList
                     data={data.movies.filter(m => m.contentType !== 'Short Film' && m.contentType !== 'short-film').filter(item => isItemActive(item, menuSettings))}
@@ -923,7 +914,6 @@ export default function HomeScreen({ navigation }) {
                   />
                 </View>
               )}
-              {renderExperienceSection()}
               {data.shows.filter(s => s.contentType !== 'Short Web Series' && s.contentType !== 'short-web-series' && s.contentType !== 'Pocket Reel Series' && s.contentType !== 'pocket-reel-series' && s.contentType !== 'Pocket Reels' && s.contentType !== 'pocket-reels').filter(item => isItemActive(item, menuSettings)).length > 0 && (!menuSettings || menuSettings.shows?.toUpperCase() !== 'OFF') && (
                 <View style={styles.sectionContainer}>
                   <View style={styles.sectionHeader}>
