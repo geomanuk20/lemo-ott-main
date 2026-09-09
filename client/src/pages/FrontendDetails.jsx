@@ -2379,7 +2379,9 @@ Cancel
       border-radius: 16px;
       overflow: hidden;
       position: relative;
-      min-height: 520px;
+      aspect-ratio: 9 / 16;
+      max-width: 440px;
+      margin: 0 auto;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -2389,26 +2391,33 @@ Cancel
     .fe-pocket-inline-player-v {
       width: 100%;
       height: 100%;
-      min-height: 520px;
+      aspect-ratio: 9 / 16;
       display: flex;
       background: #000;
+    }
+    .fe-pocket-inline-player-v video,
+    .fe-pocket-inline-player-v .video-skin,
+    .fe-pocket-inline-player-v .video-player-container,
+    .fe-pocket-inline-player-v .vjs-tech {
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: cover !important;
     }
     .fe-pocket-poster-showcase-v {
       width: 100%;
       height: 100%;
+      aspect-ratio: 9 / 16;
       position: relative;
       overflow: hidden;
       display: flex;
       align-items: center;
       justify-content: center;
       background: radial-gradient(circle at center, #1b1c24 0%, #08080c 100%);
-      min-height: 520px;
     }
     .fe-pocket-showcase-img {
       width: 100%;
       height: 100%;
-      max-height: 560px;
-      object-fit: contain;
+      object-fit: cover;
       transition: transform 0.6s ease;
     }
     .fe-pocket-poster-showcase-v:hover .fe-pocket-showcase-img {
@@ -2880,14 +2889,26 @@ Cancel
       }
       .fe-pocket-main-layout-v {
         flex-direction: column;
-        gap: 20px;
+        gap: 24px;
+        align-items: center;
+      }
+      .fe-pocket-left-column-v {
+        width: 100%;
       }
       .fe-pocket-visual-main-v {
-        min-height: 280px;
-        max-height: 420px;
+        width: 100%;
+        max-width: 440px;
+        aspect-ratio: 9 / 16;
+        min-height: unset;
+        max-height: calc(100vh - 120px);
+        margin: 0 auto;
+        border-radius: 16px;
       }
       .fe-pocket-inline-player-v, .fe-pocket-poster-showcase-v {
-        min-height: 280px;
+        width: 100%;
+        height: 100%;
+        aspect-ratio: 9 / 16;
+        min-height: unset;
       }
       .fe-pocket-sidebar-drawer-v {
         width: 100%;
@@ -2907,6 +2928,33 @@ Cancel
         width: 100%;
         justify-content: center;
         padding: 13px 20px;
+      }
+    }
+
+    @media (max-width: 576px) {
+      .fe-pocket-detail-page-v {
+        padding: 60px 8px 24px;
+      }
+      .fe-pocket-visual-main-v {
+        width: 100%;
+        max-width: 100%;
+        aspect-ratio: 9 / 16;
+        height: auto;
+        max-height: calc(100dvh - 70px);
+        border-radius: 14px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9);
+      }
+      .fe-pocket-inline-player-v, .fe-pocket-poster-showcase-v {
+        width: 100%;
+        height: 100%;
+        aspect-ratio: 9 / 16;
+        min-height: unset;
+      }
+      .fe-pocket-main-title {
+        font-size: 1.35rem;
+      }
+      .fe-pocket-bottom-info-v {
+        padding: 8px 6px 20px;
       }
     }
 
