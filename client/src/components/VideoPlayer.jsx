@@ -2431,7 +2431,10 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
         -1px 1px 2px #000,
         0px 2px 4px rgba(0,0,0,0.8) !important;
     }
-    /* Anti-Download Video Protection Rules */
+    /* Video Object Fit & Anti-Download Protection Rules */
+    video, .vjs-tech, .video-player-container video {
+      object-fit: ${aspectRatioMode} !important;
+    }
     video, .video-skin, .video-player-container {
       -webkit-touch-callout: none !important;
       -webkit-user-select: none !important;

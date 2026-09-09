@@ -2379,9 +2379,8 @@ Cancel
       border-radius: 16px;
       overflow: hidden;
       position: relative;
-      aspect-ratio: 9 / 16;
-      max-width: 440px;
-      margin: 0 auto;
+      min-height: 520px;
+      height: 520px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -2391,33 +2390,26 @@ Cancel
     .fe-pocket-inline-player-v {
       width: 100%;
       height: 100%;
-      aspect-ratio: 9 / 16;
+      min-height: 520px;
       display: flex;
       background: #000;
-    }
-    .fe-pocket-inline-player-v video,
-    .fe-pocket-inline-player-v .video-skin,
-    .fe-pocket-inline-player-v .video-player-container,
-    .fe-pocket-inline-player-v .vjs-tech {
-      width: 100% !important;
-      height: 100% !important;
-      object-fit: cover !important;
     }
     .fe-pocket-poster-showcase-v {
       width: 100%;
       height: 100%;
-      aspect-ratio: 9 / 16;
       position: relative;
       overflow: hidden;
       display: flex;
       align-items: center;
       justify-content: center;
       background: radial-gradient(circle at center, #1b1c24 0%, #08080c 100%);
+      min-height: 520px;
     }
     .fe-pocket-showcase-img {
       width: 100%;
       height: 100%;
-      object-fit: cover;
+      max-height: 520px;
+      object-fit: contain;
       transition: transform 0.6s ease;
     }
     .fe-pocket-poster-showcase-v:hover .fe-pocket-showcase-img {
