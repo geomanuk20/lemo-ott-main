@@ -1089,7 +1089,7 @@ Cancel
                     onChange={(e) => setPocketRange(e.target.value)}
                     className="fe-pocket-range-select"
                   >
-                    <option value="all">ALL {episodes.length} EPISODES ▾</option>
+                    <option value="all">ALL {episodes.length} EPISODES</option>
                     {(() => {
                       const chunkSize = 25;
                       const chunks = [];
