@@ -32,6 +32,7 @@ const LABELS = {
   'short-films': 'Short Films',
   shows: 'TV Shows',
   'short-web-series': 'Short Web Series',
+  'pocket-reel-series': 'Pocket Reel Series',
   'new-releases': 'New Releases',
   'sports-videos': 'Sports Videos',
   'tv-channels': 'TV Channels',
@@ -48,7 +49,7 @@ const LABELS = {
   'home-sections': 'Home Sections',
   'subscription-plans': 'Subscription Plans',
   pages: 'Pages',
-  'sub-admins': 'Sub Admins',
+  'sub-admins': 'Admins',
   shorts: 'Shorts'
 };
 
@@ -57,6 +58,7 @@ const API_ENDPOINTS = {
   'short-films': { import: '/api/movies/import', export: '/api/export/short-films', defaultContentType: 'Short Film', arrayKey: 'movies' },
   shows: { import: '/api/shows/import', export: '/api/export/shows', defaultContentType: 'TV Show', arrayKey: 'shows' },
   'short-web-series': { import: '/api/shows/import', export: '/api/export/short-web-series', defaultContentType: 'Short Web Series', arrayKey: 'shows' },
+  'pocket-reel-series': { import: '/api/shows/import', export: '/api/export/pocket-reel-series', defaultContentType: 'Pocket Reel Series', arrayKey: 'shows' },
   'new-releases': { import: '/api/new-releases/import', export: '/api/export/new-releases', arrayKey: 'releases' },
   'sports-videos': { import: '/api/sports-videos/import', export: '/api/export/sports-videos', arrayKey: 'videos' },
   'tv-channels': { import: '/api/tv-channels/import', export: '/api/export/tv-channels', arrayKey: 'channels' },

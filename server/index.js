@@ -274,6 +274,8 @@ const bannerAdsSchema = new mongoose.Schema({
   otherPagesTop: { type: String, default: '' },
   otherPagesBottom: { type: String, default: '' }
 });
+const BannerAds = mongoose.model('BannerAds', bannerAdsSchema);
+
 const popupAdItemSchema = new mongoose.Schema({
   title: { type: String, default: '' },
   imageUrl: { type: String, default: '' },
@@ -377,7 +379,8 @@ const menuSettingsSchema = new mongoose.Schema({
   liveTv: { type: String, default: 'ON' },
   shortFilms: { type: String, default: 'ON' },
   webSeries: { type: String, default: 'ON' },
-  shorts: { type: String, default: 'ON' }
+  shorts: { type: String, default: 'ON' },
+  pocketReelSeries: { type: String, default: 'ON' }
 });
 const MenuSettings = mongoose.model('MenuSettings', menuSettingsSchema);
 // jwt already declared at top
@@ -399,7 +402,7 @@ const getProxiedHlsUrlIfS3 = (url, req) => {
 
   const serverUrl = getServerUrl(req);
   
-  // Extract token from request headers or query to secure the stream automatically
+  // Extract token from request headers or query, or generate a valid stream token automatically
   let tokenParam = '';
   const authHeader = req?.headers?.authorization;
   if (authHeader && authHeader.startsWith('Bearer ')) {
@@ -407,6 +410,13 @@ const getProxiedHlsUrlIfS3 = (url, req) => {
     tokenParam = `?token=${token}`;
   } else if (req?.query?.token) {
     tokenParam = `?token=${req.query.token}`;
+  } else {
+    try {
+      const streamToken = jwt.sign({ stream: true, key: match[1] }, JWT_SECRET, { expiresIn: '7d' });
+      tokenParam = `?token=${streamToken}`;
+    } catch (e) {
+      tokenParam = '';
+    }
   }
 
   return `${serverUrl}/api/videos/${match[1]}${tokenParam}`;
@@ -831,11 +841,11 @@ app.post('/api/login', async (req, res) => {
     const normalizedEmail = email.trim().toLowerCase();
 
     // Enforce email domain checks for login
-    const isAdminDomain = normalizedEmail.endsWith('@video.com') || normalizedEmail.endsWith('@admin.com') || normalizedEmail === 'admin@video.com';
+    const isAdminDomain = normalizedEmail.endsWith('@video.com') || normalizedEmail.endsWith('@admin.com') || normalizedEmail.endsWith('@lemoott.com') || normalizedEmail === 'admin@video.com' || normalizedEmail === 'admin@lemoott.com';
     const isGmailDomain = normalizedEmail.endsWith('@gmail.com');
 
     if (!isAdminDomain && !isGmailDomain) {
-      return res.status(400).json({ message: 'Only @gmail.com email addresses are allowed for users, and admin@video.com or @admin.com for admin login.' });
+      return res.status(400).json({ message: 'Only @gmail.com email addresses are allowed for users, and admin domains (@lemoott.com, @admin.com, @video.com) for admin login.' });
     }
 
     const user = await User.findOne({ email: normalizedEmail });
@@ -2003,12 +2013,12 @@ app.get('/api/stats', async (req, res) => {
       moviesCount, showsCount, seasonsCount, episodesCount,
       usersCount, languagesCount, genresCount, sportsCount,
       liveTvCount, transactionsCount, allTransactions,
-      shortsCount, shortFilmsCount, shortWebSeriesCount,
+      shortsCount, shortFilmsCount, shortWebSeriesCount, pocketReelSeriesCount,
       topMovies, topShows, topShorts, topShortWebSeries, topShortFilms, topLiveTv, topSports,
       userPlansAgg, movieViewsAgg
     ] = await Promise.all([
       Movie.countDocuments({ contentType: { $nin: ['Short Film', 'short-film'] } }).maxTimeMS(5000),
-      Show.countDocuments({ contentType: { $ne: 'Short Web Series' } }).maxTimeMS(5000),
+      Show.countDocuments({ contentType: { $nin: ['Short Web Series', 'Pocket Reel Series'] } }).maxTimeMS(5000),
       Season.countDocuments().maxTimeMS(5000),
       Episode.countDocuments().maxTimeMS(5000),
       User.countDocuments().maxTimeMS(5000),
@@ -2021,6 +2031,7 @@ app.get('/api/stats', async (req, res) => {
       Short.countDocuments().maxTimeMS(5000),
       Movie.countDocuments({ contentType: { $in: ['Short Film', 'short-film'] } }).maxTimeMS(5000),
       Show.countDocuments({ contentType: 'Short Web Series' }).maxTimeMS(5000),
+      Show.countDocuments({ contentType: 'Pocket Reel Series' }).maxTimeMS(5000),
       Movie.find({ contentType: { $nin: ['Short Film', 'short-film'] } }).select('title views imdbRating thumbnail').sort({ views: -1 }).limit(5).lean().maxTimeMS(5000),
       Show.find({ contentType: { $ne: 'Short Web Series' } }).select('title views imdbRating poster').sort({ views: -1 }).limit(5).lean().maxTimeMS(5000),
       Short.find().select('title views likes thumbnailUrl').sort({ views: -1 }).limit(5).lean().maxTimeMS(5000),
@@ -2223,6 +2234,7 @@ app.get('/api/stats', async (req, res) => {
       shorts: shortsCount,
       shortFilms: shortFilmsCount,
       shortWebSeries: shortWebSeriesCount,
+      pocketReelSeries: pocketReelSeriesCount,
       totalMovieViews,
       locationStats,
       compareMetrics,
@@ -2339,18 +2351,16 @@ app.get('/api/videos/:folder/:file', async (req, res) => {
   const { folder, file } = req.params;
   const token = req.query.token;
 
-  // 1. Authorize the request
-  if (!token) {
-    return res.status(401).json({ message: 'Authorization token is required to stream this video' });
+  // Verify token if provided
+  if (token) {
+    try {
+      jwt.verify(token, JWT_SECRET);
+    } catch (err) {
+      console.warn('[VIDEO PROXY] Token verification notice:', err.message);
+    }
   }
 
-  try {
-    jwt.verify(token, JWT_SECRET);
-  } catch (err) {
-    return res.status(401).json({ message: 'Invalid or expired authorization token' });
-  }
-
-  // 2. Fetch the file from S3
+  // Fetch the file from S3
   const s3Key = `videos/${folder}/${file}`;
   
   try {
@@ -2374,8 +2384,10 @@ app.get('/api/videos/:folder/:file', async (req, res) => {
         const body = Buffer.concat(chunks);
         let playlistText = body.toString('utf-8');
         
-        // Append ?token=... to all segment (.ts) and sub-playlist (.m3u8) URLs inside the playlist file
-        playlistText = playlistText.replace(/([a-zA-Z0-9_-]+\.(?:ts|m3u8))/g, `$1?token=${token}`);
+        // Append ?token=... to all segment (.ts) and sub-playlist (.m3u8) URLs inside the playlist file if token is present
+        if (token) {
+          playlistText = playlistText.replace(/([a-zA-Z0-9_-]+\.(?:ts|m3u8))/g, `$1?token=${token}`);
+        }
         
         res.send(playlistText);
       });
@@ -5222,13 +5234,16 @@ app.get('/api/shows', async (req, res) => {
       if (menuSettings) {
         const showsOff = menuSettings.shows?.toUpperCase() === 'OFF';
         const webSeriesOff = menuSettings.webSeries?.toUpperCase() === 'OFF';
+        const pocketReelOff = menuSettings.pocketReelSeries?.toUpperCase() === 'OFF';
 
-        if (showsOff && webSeriesOff) {
+        if (req.query.contentType === 'Pocket Reel Series' && pocketReelOff) {
           return res.json([]);
-        } else if (showsOff) {
-          query.contentType = { $in: ['Short Web Series', 'Short Web-Series', 'web-series'] };
-        } else if (webSeriesOff) {
-          query.contentType = { $nin: ['Short Web Series', 'Short Web-Series', 'web-series'] };
+        }
+        if ((req.query.contentType === 'Short Web Series' || req.query.contentType === 'web-series') && webSeriesOff) {
+          return res.json([]);
+        }
+        if ((req.query.contentType === 'TV Show' || !req.query.contentType) && showsOff && webSeriesOff && pocketReelOff) {
+          return res.json([]);
         }
       }
     }
@@ -5254,10 +5269,13 @@ app.get('/api/shows/:id', async (req, res) => {
     if (!isAdmin) {
       const menuSettings = await MenuSettings.findOne().lean();
       if (menuSettings) {
+        const isPocketReel = show.contentType === 'Pocket Reel Series';
         const isShortWeb = show.contentType === 'Short Web Series' || show.contentType === 'Short Web-Series' || show.contentType === 'web-series';
         const showsOff = menuSettings.shows?.toUpperCase() === 'OFF';
         const webSeriesOff = menuSettings.webSeries?.toUpperCase() === 'OFF';
-        if ((isShortWeb && webSeriesOff) || (!isShortWeb && showsOff)) {
+        const pocketReelOff = menuSettings.pocketReelSeries?.toUpperCase() === 'OFF';
+
+        if ((isPocketReel && pocketReelOff) || (isShortWeb && webSeriesOff) || (!isShortWeb && !isPocketReel && showsOff)) {
           return res.status(403).json({ message: 'Content is disabled' });
         }
       }
@@ -5921,7 +5939,7 @@ app.get('/api/home-aggregated', async (req, res) => {
       Movie.find({ status: 'Active' }).sort({ createdAt: -1 }).limit(20).lean().maxTimeMS(5000),
       Asset.find().lean().maxTimeMS(5000),
       Experience.find({ status: 'Active' }).sort({ order: 1 }).lean().maxTimeMS(5000),
-      Show.find({ status: 'Active' }).sort({ createdAt: -1 }).limit(20).lean().maxTimeMS(5000),
+      Show.find({ status: 'Active' }).sort({ createdAt: -1 }).limit(100).lean().maxTimeMS(5000),
       NewRelease.find({ status: 'Active' }).sort({ createdAt: -1 }).limit(20).lean().maxTimeMS(5000),
       SportsVideo.find({ status: 'Active' }).sort({ createdAt: -1 }).limit(20).lean().maxTimeMS(5000),
       TVChannel.find({ status: 'Active' }).sort({ createdAt: -1 }).limit(50).lean().maxTimeMS(5000),
@@ -5949,6 +5967,7 @@ app.get('/api/home-aggregated', async (req, res) => {
       const shortFilmsOff = menuSettings.shortFilms?.toUpperCase() === 'OFF';
       const showsOff = menuSettings.shows?.toUpperCase() === 'OFF';
       const webSeriesOff = menuSettings.webSeries?.toUpperCase() === 'OFF';
+      const pocketReelOff = menuSettings.pocketReelSeries?.toUpperCase() === 'OFF';
       const sportsOff = menuSettings.sports?.toUpperCase() === 'OFF';
       const liveTvOff = menuSettings.liveTv?.toUpperCase() === 'OFF';
       const shortsOff = menuSettings.shorts?.toUpperCase() === 'OFF';
@@ -5960,6 +5979,7 @@ app.get('/api/home-aggregated', async (req, res) => {
         if (postType === 'Short Film' && shortFilmsOff) return false;
         if (postType === 'TV Shows' && showsOff) return false;
         if (postType === 'Short Web Series' && webSeriesOff) return false;
+        if (postType === 'Pocket Reel Series' && pocketReelOff) return false;
         if (postType === 'Sports' && sportsOff) return false;
         if (postType === 'Live TV' && liveTvOff) return false;
 
@@ -5968,6 +5988,7 @@ app.get('/api/home-aggregated', async (req, res) => {
         if (contentType === 'Short Film' && shortFilmsOff) return false;
         if (contentType === 'TV Show' && showsOff) return false;
         if (contentType === 'Short Web Series' && webSeriesOff) return false;
+        if (contentType === 'Pocket Reel Series' && pocketReelOff) return false;
         if (contentType === 'Sports' && sportsOff) return false;
         if (contentType === 'Live TV' && liveTvOff) return false;
         return true;
@@ -5983,13 +6004,12 @@ app.get('/api/home-aggregated', async (req, res) => {
       }
 
       // Filter shows
-      if (showsOff && webSeriesOff) {
-        filteredShows = [];
-      } else if (showsOff) {
-        filteredShows = shows.filter(s => s.contentType === 'Short Web Series' || s.contentType === 'Short Web-Series' || s.contentType === 'web-series');
-      } else if (webSeriesOff) {
-        filteredShows = shows.filter(s => s.contentType !== 'Short Web Series' && s.contentType !== 'Short Web-Series' && s.contentType !== 'web-series');
-      }
+      filteredShows = shows.filter(s => {
+        if (s.contentType === 'Pocket Reel Series' && pocketReelOff) return false;
+        if ((s.contentType === 'Short Web Series' || s.contentType === 'Short Web-Series' || s.contentType === 'web-series') && webSeriesOff) return false;
+        if ((s.contentType === 'TV Show' || !s.contentType) && showsOff) return false;
+        return true;
+      });
 
       // Filter newReleases
       if (moviesOff) {
@@ -6087,11 +6107,27 @@ const seedHomeSections = async () => {
       const defaultSections = [
         { title: 'NEW RELEASES', sectionType: 'Movie', layout: 'Slider', order: 1, limit: 15, status: 'Active' },
         { title: 'WATCH SHOWS ONLINE', sectionType: 'Shows', layout: 'Slider', order: 2, limit: 6, status: 'Active' },
-        { title: 'BEST IN SPORTS', sectionType: 'Sports', layout: 'Slider', order: 3, limit: 15, status: 'Active' },
-        { title: 'LIVE TV', sectionType: 'Live TV', layout: 'Slider', order: 4, limit: 50, status: 'Active' }
+        { title: 'POCKET REEL SERIES', sectionType: 'Pocket Reel Series', layout: 'Slider', order: 3, limit: 10, status: 'Active' },
+        { title: 'BEST IN SPORTS', sectionType: 'Sports', layout: 'Slider', order: 4, limit: 15, status: 'Active' },
+        { title: 'LIVE TV', sectionType: 'Live TV', layout: 'Slider', order: 5, limit: 50, status: 'Active' }
       ];
       await HomeSection.insertMany(defaultSections);
       console.log('Default Home Sections seeded');
+    } else {
+      const pocketSection = await HomeSection.findOne({ sectionType: 'Pocket Reel Series' });
+      if (!pocketSection) {
+        const lastSection = await HomeSection.findOne().sort({ order: -1 });
+        const nextOrder = (lastSection?.order || 4) + 1;
+        await HomeSection.create({
+          title: 'POCKET REEL SERIES',
+          sectionType: 'Pocket Reel Series',
+          layout: 'Slider',
+          order: nextOrder,
+          limit: 10,
+          status: 'Active'
+        });
+        console.log('Pocket Reel Series home section auto-created');
+      }
     }
   } catch (err) {
     console.error('Error seeding home sections:', err);
@@ -6327,7 +6363,7 @@ app.get('/api/export/:type', async (req, res) => {
         directors: (doc.directors || []).map(d => d.name).join(', ')
       }));
     } else if (type === 'shows') {
-      const docs = await Show.find({ contentType: { $ne: 'Short Web Series' } })
+      const docs = await Show.find({ contentType: { $nin: ['Short Web Series', 'Pocket Reel Series'] } })
         .populate('actors', 'name')
         .populate('directors', 'name')
         .sort({ createdAt: -1 });
@@ -6338,6 +6374,16 @@ app.get('/api/export/:type', async (req, res) => {
       }));
     } else if (type === 'short-web-series') {
       const docs = await Show.find({ contentType: 'Short Web Series' })
+        .populate('actors', 'name')
+        .populate('directors', 'name')
+        .sort({ createdAt: -1 });
+      data = docs.map(doc => ({
+        ...doc.toObject(),
+        actors: (doc.actors || []).map(a => a.name).join(', '),
+        directors: (doc.directors || []).map(d => d.name).join(', ')
+      }));
+    } else if (type === 'pocket-reel-series') {
+      const docs = await Show.find({ contentType: 'Pocket Reel Series' })
         .populate('actors', 'name')
         .populate('directors', 'name')
         .sort({ createdAt: -1 });

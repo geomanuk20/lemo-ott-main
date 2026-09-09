@@ -245,6 +245,7 @@ const HomeSections = () => {
           <option value="New Release">New Release</option>
           <option value="Short Film">Short Film</option>
           <option value="Short Web Series">Short Web Series</option>
+          <option value="Pocket Reel Series">Pocket Reel Series</option>
           <option value="Shows">Shows</option>
           <option value="Sports">Sports</option>
           <option value="Live TV">Live TV</option>

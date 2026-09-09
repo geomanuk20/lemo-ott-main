@@ -12,6 +12,9 @@ const Header = () => {
 
   // Get current page name from path
   const getPageTitle = () => {
+    if (location.pathname.includes('/users/admin/add') || location.pathname.includes('/users/sub-admin/add')) return 'ADD ADMIN';
+    if (location.pathname.includes('/users/admin/edit/') || location.pathname.includes('/users/sub-admin/edit/')) return 'EDIT ADMIN';
+    if (location.pathname.includes('/users/admin') || location.pathname.includes('/users/sub-admin')) return 'ADMIN';
     if (location.pathname.includes('/users/edit/')) return 'EDIT USER';
     if (location.pathname.includes('/users/history/')) return 'USER HISTORY';
     if (location.pathname.includes('/short-films/add')) return 'ADD SHORT FILM';
@@ -24,6 +27,12 @@ const Header = () => {
     if (location.pathname.includes('/shorts/edit/')) return 'EDIT SHORT';
     if (location.pathname.includes('/short-web-series/add')) return 'ADD SHORT WEB SERIES';
     if (location.pathname.includes('/short-web-series/edit/')) return 'EDIT SHORT WEB SERIES';
+    if (location.pathname.includes('/pocket-reel-series/add')) return 'ADD POCKET REEL SERIES';
+    if (location.pathname.includes('/pocket-reel-series/edit/')) return 'EDIT POCKET REEL SERIES';
+    if (location.pathname.includes('/pocket-reel-series/episodes/add')) return 'ADD POCKET REEL EPISODE';
+    if (location.pathname.includes('/pocket-reel-series/episodes/edit/')) return 'EDIT POCKET REEL EPISODE';
+    if (location.pathname.includes('/pocket-reel-series/episodes')) return 'POCKET REEL EPISODES';
+    if (location.pathname.includes('/pocket-reel-series')) return 'POCKET REEL SERIES';
     if (location.pathname.includes('/subscription-plan/edit/')) return 'EDIT SUBSCRIPTION PLAN';
     if (location.pathname.includes('/subscription-plan/add')) return 'ADD SUBSCRIPTION PLAN';
     if (location.pathname.includes('/coupons/edit/')) return 'EDIT COUPON';

@@ -32,7 +32,8 @@ import {
   CheckCircle2,
   XCircle,
   Radio,
-  Briefcase
+  Briefcase,
+  Clapperboard
 } from 'lucide-react';
 import { formatBrandingUrl } from '../utils/branding';
 
@@ -99,6 +100,16 @@ const Sidebar = () => {
       subItems: [
         { name: 'Series', icon: <Image size={16} />, path: '/admin/short-web-series' },
         { name: 'Episodes', icon: <List size={16} />, path: '/admin/short-web-series/episodes' },
+      ]
+    },
+    { 
+      name: 'Pocket Reel Series', 
+      icon: <Clapperboard size={20} />, 
+      path: '/admin/pocket-reel-series', 
+      hasSub: true,
+      subItems: [
+        { name: 'Series', icon: <Image size={16} />, path: '/admin/pocket-reel-series' },
+        { name: 'Episodes', icon: <List size={16} />, path: '/admin/pocket-reel-series/episodes' },
       ]
     },
     { name: 'New Release', icon: <PlayCircle size={20} />, path: '/admin/new-release' },
@@ -168,7 +179,7 @@ const Sidebar = () => {
         hasSub: true,
         subItems: [
           { name: 'Users', icon: <Users size={16} />, path: '/admin/users/list' },
-          { name: 'Sub Admin', icon: <UserCircle size={16} />, path: '/admin/users/sub-admin' },
+          { name: 'Admin', icon: <UserCircle size={16} />, path: '/admin/users/admin' },
           { name: 'Deleted Users', icon: <FileText size={16} />, path: '/admin/users/deleted' },
         ]
       },
@@ -236,6 +247,7 @@ const Sidebar = () => {
     if (item.name === 'Short Film' && menuSettings.shortFilms?.toUpperCase() === 'OFF') return false;
     if (item.name === 'Shorts' && menuSettings.shorts?.toUpperCase() === 'OFF') return false;
     if (item.name === 'Short Web Series' && menuSettings.webSeries?.toUpperCase() === 'OFF') return false;
+    if (item.name === 'Pocket Reel Series' && menuSettings.pocketReelSeries?.toUpperCase() === 'OFF') return false;
     if (item.name === 'TV Shows' && menuSettings.shows?.toUpperCase() === 'OFF') return false;
     if (item.name === 'Sports' && menuSettings.sports?.toUpperCase() === 'OFF') return false;
     if (item.name === 'Live TV' && menuSettings.liveTv?.toUpperCase() === 'OFF') return false;

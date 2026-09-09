@@ -294,12 +294,14 @@ const EditSportsVideo = () => {
        <div className="form-row-custom stacked">
         <div className="label-text">Video Quality</div>
         <select name="videoQuality" value={formData.videoQuality} onChange={handleChange}>
+         <option value="None">None</option>
          <option value="8K Ultra HD">8K Ultra HD</option>
          <option value="4K Ultra HD">4K Ultra HD</option>
          <option value="Ultra HD">Ultra HD</option>
          <option value="HDR">HDR</option>
          <option value="Full HD">Full HD</option>
          <option value="HD">HD</option>
+         <option value="SD">SD</option>
         </select>
        </div>
 

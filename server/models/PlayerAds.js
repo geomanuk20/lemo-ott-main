@@ -4,8 +4,11 @@ const BuiltInAdItemSchema = new mongoose.Schema({
   title: { type: String, default: '' },
   source: { type: String, default: '' },
   timestart: { type: String, default: '00:00:10' },
+  repeatMode: { type: String, default: 'timestamps' }, // 'timestamps' | 'interval'
+  repeatInterval: { type: Number, default: 0 }, // in minutes, e.g. 5 = repeat every 5 min
   targetLink: { type: String, default: '#' },
-  skipAfter: { type: Number, default: 5 }
+  skipAfter: { type: Number, default: 5 },
+  categories: { type: [String], default: ['all'] } // ['all'] or e.g. ['Web Series', 'Pocket Reel Series']
 }, { _id: true });
 
 const PlayerAdsSchema = new mongoose.Schema({

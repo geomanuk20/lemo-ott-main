@@ -66,7 +66,9 @@ const AddEpisode = () => {
   fetchShowsAndSeasons();
  }, []);
 
+ const isPocketReelPath = window.location.pathname.includes('/pocket-reel-series');
  const isShortPath = window.location.pathname.includes('/short-web-series');
+ const isNoSeasonPath = isPocketReelPath || isShortPath;
 
  const handleChange = (e) => {
   const { name, value } = e.target;
@@ -102,7 +104,7 @@ const AddEpisode = () => {
   setLoading(true);
   try {
    const payload = { ...formData };
-   if (!payload.seasonId || isShortPath) {
+   if (!payload.seasonId || isNoSeasonPath) {
     payload.seasonId = null;
    }
    const response = await fetch('/api/episodes', {
@@ -112,7 +114,7 @@ const AddEpisode = () => {
    });
    if (response.ok) {
     alert('Episode added successfully!');
-    navigate(isShortPath ? '/admin/short-web-series/episodes' : '/admin/tv-shows/episodes');
+    navigate(isPocketReelPath ? '/admin/pocket-reel-series/episodes' : isShortPath ? '/admin/short-web-series/episodes' : '/admin/tv-shows/episodes');
    } else {
     const errData = await response.json();
     alert('Failed to save episode: ' + (errData.message || response.statusText));
@@ -128,12 +130,11 @@ const AddEpisode = () => {
  return (
   <div className="add-episode-page">
    <div className="top-nav">
-    <button className="back-btn" onClick={() => navigate(isShortPath ? '/admin/short-web-series/episodes' : '/admin/tv-shows/episodes')}>
+    <button className="back-btn" onClick={() => navigate(isPocketReelPath ? '/admin/pocket-reel-series/episodes' : isShortPath ? '/admin/short-web-series/episodes' : '/admin/tv-shows/episodes')}>
      <ArrowLeft size={20} color="#b3d332" strokeWidth={3} />
      <span>Back</span>
     </button>
    </div>
-
 
    <form onSubmit={handleSave}>
     <div className="form-grid">
@@ -150,6 +151,7 @@ const AddEpisode = () => {
        <label>Description</label>
        <Editor
         apiKey="o55omxnn9u998swbnw7mrv8vrpdfeh6b0c8dq4ibo1rh35cl"
+        value={formData.description}
         init={{
          height: 300,
          menubar: true,
@@ -164,7 +166,7 @@ const AddEpisode = () => {
 
       <div className="form-row-2">
        <div className="form-group">
-        <label>Access</label>
+        <label>Episode Access</label>
         <select name="access" value={formData.access} onChange={handleChange}>
          <option value="Paid">Paid</option>
          <option value="Free">Free</option>
@@ -177,13 +179,13 @@ const AddEpisode = () => {
         <select name="showId" value={formData.showId} onChange={handleChange} required>
          <option value="">Select Show</option>
          {shows
-           .filter(show => isShortPath ? show.contentType === 'Short Web Series' : (show.contentType === 'TV Show' || !show.contentType))
+           .filter(show => isPocketReelPath ? show.contentType === 'Pocket Reel Series' : isShortPath ? show.contentType === 'Short Web Series' : (show.contentType === 'TV Show' || !show.contentType))
            .map(s => <option key={s._id} value={s._id}>{s.title}</option>)
          }
         </select>
        </div>
 
-       {!isShortPath && (
+       {!isNoSeasonPath && (
         <div className="form-group">
          <label>Seasons</label>
          <select name="seasonId" value={formData.seasonId} onChange={handleChange}>
@@ -275,7 +277,8 @@ const AddEpisode = () => {
          <span className="sub-label">(For File and URL)</span>
         </div>
         <div className="video-source-input">
-         <select name="videoQuality" value={formData.videoQuality || '8K Ultra HD'} onChange={handleChange} style={{ background: '#333', border: '1px solid #444', padding: '12px', color: '#fff', borderRadius: '4px', outline: 'none', width: '100%' }}>
+         <select name="videoQuality" value={formData.videoQuality || 'None'} onChange={handleChange} style={{ background: '#333', border: '1px solid #444', padding: '12px', color: '#fff', borderRadius: '4px', outline: 'none', width: '100%' }}>
+          <option value="None">None</option>
           <option value="8K Ultra HD">8K Ultra HD</option>
           <option value="4K Ultra HD">4K Ultra HD</option>
           <option value="Full HD">Full HD</option>
@@ -544,9 +547,9 @@ const AddEpisode = () => {
         <span>{loading ? 'Saving...' : 'Save'}</span>
        </button>
       </div>
+      </div>
      </div>
-    </div>
-   </form>
+    </form>
 
    <style dangerouslySetInnerHTML={{ __html: `
     .add-episode-page { padding: 20px; animation: fadeIn 0.3s ease-out; background-color: #0c0c0c; min-height: 100vh; }

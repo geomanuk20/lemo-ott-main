@@ -170,6 +170,9 @@ const FrontendSidebar = ({
             {(!menuSettings || menuSettings.webSeries?.toUpperCase() !== 'OFF') && (
               <Link to="/web-series" className={location.pathname === '/web-series' ? 'active' : ''} onClick={() => setIsMenuOpen(false)}>WEB SERIES</Link>
             )}
+            {(!menuSettings || menuSettings.pocketReelSeries?.toUpperCase() !== 'OFF') && (
+              <Link to="/pocket-reel-series" className={location.pathname === '/pocket-reel-series' || location.pathname === '/pocket-reels' ? 'active' : ''} onClick={() => setIsMenuOpen(false)}>POCKET REEL</Link>
+            )}
             {(!menuSettings || menuSettings.shorts?.toUpperCase() !== 'OFF') && (
               <Link to="/shorts" className={location.pathname === '/shorts' ? 'active' : ''} onClick={() => setIsMenuOpen(false)}>SHORTS</Link>
             )}

@@ -65,7 +65,7 @@ const EditSlider = () => {
 
    let endpoint = '';
    if (formData.postType === 'Movies' || formData.postType === 'Short Film') endpoint = '/api/movies';
-   else if (formData.postType === 'TV Shows' || formData.postType === 'Short Web Series') endpoint = '/api/shows';
+   else if (formData.postType === 'TV Shows' || formData.postType === 'Short Web Series' || formData.postType === 'Pocket Reel Series') endpoint = '/api/shows';
    else if (formData.postType === 'Sports') endpoint = '/api/sports-videos';
    else if (formData.postType === 'Live TV') endpoint = '/api/channels';
 
@@ -79,8 +79,10 @@ const EditSlider = () => {
       setContentList(data.filter(item => item.contentType !== 'Short Film'));
      } else if (formData.postType === 'Short Web Series') {
       setContentList(data.filter(item => item.contentType === 'Short Web Series'));
+     } else if (formData.postType === 'Pocket Reel Series') {
+      setContentList(data.filter(item => item.contentType === 'Pocket Reel Series'));
      } else if (formData.postType === 'TV Shows') {
-      setContentList(data.filter(item => item.contentType !== 'Short Web Series'));
+      setContentList(data.filter(item => item.contentType !== 'Short Web Series' && item.contentType !== 'Pocket Reel Series'));
      } else {
       setContentList(data);
      }
@@ -121,6 +123,7 @@ const EditSlider = () => {
        'Short Film': 'movie',
        'TV Shows': 'show',
        'Short Web Series': 'show',
+       'Pocket Reel Series': 'show',
        'Sports': 'sports',
        'Live TV': 'live'
       };
@@ -400,6 +403,7 @@ const EditSlider = () => {
        <option value="Short Film">Short Film</option>
        <option value="TV Shows">TV Shows</option>
        <option value="Short Web Series">Short Web Series</option>
+       <option value="Pocket Reel Series">Pocket Reel Series</option>
        <option value="Sports">Sports</option>
        <option value="Live TV">Live TV</option>
       </select>
@@ -411,7 +415,7 @@ const EditSlider = () => {
       <label>{formData.postType}</label>
       <div className="input-col">
        <select name="contentId" value={formData.contentId} onChange={handleChange}>
-        <option value="">Select {formData.postType === 'Movies' ? 'Movie' : formData.postType === 'TV Shows' ? 'TV Show' : formData.postType === 'Short Film' ? 'Short Film' : formData.postType === 'Short Web Series' ? 'Short Web Series' : formData.postType === 'Sports' ? 'Sport' : formData.postType === 'Live TV' ? 'Live TV' : formData.postType}</option>
+        <option value="">Select {formData.postType === 'Movies' ? 'Movie' : formData.postType === 'TV Shows' ? 'TV Show' : formData.postType === 'Short Film' ? 'Short Film' : formData.postType === 'Short Web Series' ? 'Short Web Series' : formData.postType === 'Pocket Reel Series' ? 'Pocket Reel Series' : formData.postType === 'Sports' ? 'Sport' : formData.postType === 'Live TV' ? 'Live TV' : formData.postType}</option>
         {contentList.map((item) => (
          <option key={item._id} value={item._id}>{item.name || item.title}</option>
         ))}
@@ -475,12 +479,14 @@ const EditSlider = () => {
      <label>Video Quality</label>
      <div className="input-col">
       <select name="videoQuality" value={formData.videoQuality} onChange={handleChange}>
+       <option value="None">None</option>
        <option value="8K Ultra HD">8K Ultra HD</option>
        <option value="4K Ultra HD">4K Ultra HD</option>
        <option value="Ultra HD">Ultra HD</option>
        <option value="HDR">HDR</option>
        <option value="Full HD">Full HD</option>
        <option value="HD">HD</option>
+       <option value="SD">SD</option>
       </select>
      </div>
     </div>

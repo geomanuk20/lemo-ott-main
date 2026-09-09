@@ -82,9 +82,10 @@ const FrontendSports = () => {
      ) : (
       <div className="movies-grid">
        {sports.map((sport) => {
-        const quality = sport.videoType || '4K ULTRA';
-        const prefix = quality.split(' ')[0] || '4K';
-        const suffix = quality.split(' ').slice(1).join(' ') || 'ULTRA';
+        const quality = sport.videoQuality;
+        const parts = (quality || '').split(' ');
+        const prefix = parts[0] || '';
+        const suffix = parts.slice(1).join(' ') || '';
 
         const sportTitle = sport.title || 'Untitled Event';
         const categoryName = sport.category?.name || sport.categoryName || 'Live Event';
@@ -102,10 +103,12 @@ const FrontendSports = () => {
             </div>
            )}
            <div className="card-overlay-hover">
-            <div className="fe-premium-badge-v">
-             <span className="badge-prefix-v">{prefix}</span>
-             <span className="badge-suffix-v">{suffix}</span>
-            </div>
+            {quality && quality !== 'None' && (
+             <div className="fe-premium-badge-v">
+              <span className="badge-prefix-v">{prefix}</span>
+              <span className="badge-suffix-v">{suffix}</span>
+             </div>
+            )}
             <div className="play-icon-v"><Play fill="white" size={24} /></div>
            </div>
           </div>

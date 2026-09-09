@@ -8,20 +8,21 @@ async function createAdmin() {
     console.log('Connected!');
 
     const User = require('./server/models/User');
-    let user = await User.findOne({ email: 'lemo@admin.com' });
+    let user = await User.findOne({ email: 'admin@lemoott.com' });
 
     if (user) {
-      console.log('User lemo@admin.com already exists. Updating password and role...');
+      console.log('User admin@lemoott.com already exists. Updating password, name and role...');
+      user.name = 'Master Admin';
       user.password = 'admin';
       user.role = 'admin';
       user.status = 'Active';
       await user.save();
       console.log('Successfully updated master admin account!');
     } else {
-      console.log('Creating new master admin account lemo@admin.com...');
+      console.log('Creating new master admin account admin@lemoott.com...');
       user = new User({
-        name: 'Lemo OTT Master Admin',
-        email: 'lemo@admin.com',
+        name: 'Master Admin',
+        email: 'admin@lemoott.com',
         password: 'admin',
         role: 'admin',
         status: 'Active'
@@ -30,8 +31,9 @@ async function createAdmin() {
       console.log('Successfully created master admin account!');
     }
 
-    const verifyUser = await User.findOne({ email: 'lemo@admin.com' });
+    const verifyUser = await User.findOne({ email: 'admin@lemoott.com' });
     console.log('Verified Account state:', {
+      name: verifyUser.name,
       email: verifyUser.email,
       role: verifyUser.role,
       status: verifyUser.status

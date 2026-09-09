@@ -64,7 +64,7 @@ const SubAdmin = () => {
    if (response.ok) {
     setAdmins(prev => prev.filter(a => a._id !== deletingId));
     setIsDeleteModalOpen(false);
-    showNotification('Sub admin deleted successfully');
+    showNotification('Admin deleted successfully');
    }
   } catch (err) {
    console.error('Error deleting admin:', err);
@@ -102,38 +102,38 @@ const SubAdmin = () => {
 
    {/* Top Filter Bar */}
    <div className="users-filter-bar">
-    <div className="left-filters">
-     <div className="search-wrapper-premium">
-      <input 
-       type="text" 
-       placeholder="Search sub admins..." 
-       value={searchTerm}
-       onChange={(e) => setSearchTerm(e.target.value)}
-      />
-      <Search size={18} className="search-icon-premium" />
+     <div className="left-filters">
+      <div className="search-wrapper-premium">
+       <input 
+        type="text" 
+        placeholder="Search admins..." 
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+       />
+       <Search size={18} className="search-icon-premium" />
+      </div>
+
+      <button className="add-user-btn-premium" onClick={() => navigate('/admin/users/admin/add')}>
+       <Plus size={16} strokeWidth={3} />
+       <span>Add Admin</span>
+      </button>
+
+      <button className="import-export-btn" onClick={() => setIsImportExportOpen(true)}>
+       <Upload size={16} />
+       <span>Import / Export</span>
+      </button>
      </div>
-
-     <button className="add-user-btn-premium" onClick={() => navigate('/admin/users/sub-admin/add')}>
-      <Plus size={16} strokeWidth={3} />
-      <span>Add Sub Admin</span>
-     </button>
-
-     <button className="import-export-btn" onClick={() => setIsImportExportOpen(true)}>
-      <Upload size={16} />
-      <span>Import / Export</span>
-     </button>
     </div>
-   </div>
 
-   {/* Users Table */}
-   <div className="users-table-wrapper">
-    {loading ? (
-     <div className="loader-container"><Loader size="small" inline={true} /></div>
-    ) : admins.length === 0 ? (
-     <div className="empty-state-v">
-       <UserCheck size={60} color="#333" />
-       <p>No sub admins found</p>
-     </div>
+    {/* Users Table */}
+    <div className="users-table-wrapper">
+     {loading ? (
+      <div className="loader-container"><Loader size="small" inline={true} /></div>
+     ) : admins.length === 0 ? (
+      <div className="empty-state-v">
+        <UserCheck size={60} color="#333" />
+        <p>No admins found</p>
+      </div>
     ) : (
      <table className="users-data-table">
       <thead>
@@ -179,7 +179,7 @@ const SubAdmin = () => {
          </td>
          <td className="action-cell">
           <div className="action-buttons-group">
-           <button className="action-btn-p edit" title="Edit" onClick={() => navigate(`/admin/users/sub-admin/edit/${admin._id}`)}><Edit2 size={14} /></button>
+           <button className="action-btn-p edit" title="Edit" onClick={() => navigate(`/admin/users/admin/edit/${admin._id}`)}><Edit2 size={14} /></button>
            <button className="action-btn-p delete" title="Delete" onClick={() => confirmDelete(admin._id)}><Trash2 size={14} /></button>
           </div>
          </td>
@@ -198,7 +198,7 @@ const SubAdmin = () => {
        <Trash2 size={40} color="#ff4d4d" />
       </div>
       <h2>Move to Recycle Bin?</h2>
-      <p>Are you sure you want to delete this sub admin? You can restore them later from the Deleted Users section.</p>
+      <p>Are you sure you want to delete this admin? You can restore them later from the Deleted Users section.</p>
       <div className="modal-actions-p">
        <button className="cancel-btn-p" onClick={() => setIsDeleteModalOpen(false)}>Cancel</button>
        <button className="confirm-btn-p delete" onClick={executeDelete}>Move to Recycle Bin</button>

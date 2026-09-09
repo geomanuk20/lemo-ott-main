@@ -161,10 +161,13 @@ const Episodes = () => {
   }
  };
 
+  const isPocketReelPath = window.location.pathname.includes('/pocket-reel-series');
   const isShortPath = window.location.pathname.includes('/short-web-series');
 
   const filteredShows = shows.filter(show => {
-    if (isShortPath) {
+    if (isPocketReelPath) {
+      return show.contentType === 'Pocket Reel Series';
+    } else if (isShortPath) {
       return show.contentType === 'Short Web Series';
     } else {
       return show.contentType === 'TV Show' || !show.contentType;
@@ -197,7 +200,7 @@ const Episodes = () => {
        <ArrowUpDown size={18} />
        <span>Import / Export</span>
       </button>
-      <button className="add-btn" onClick={() => navigate(isShortPath ? '/admin/short-web-series/episodes/add' : '/admin/tv-shows/episodes/add')}>
+      <button className="add-btn" onClick={() => navigate(isPocketReelPath ? '/admin/pocket-reel-series/episodes/add' : isShortPath ? '/admin/short-web-series/episodes/add' : '/admin/tv-shows/episodes/add')}>
        <Plus size={20} strokeWidth={3} />
        <span>Add Episode</span>
       </button>
@@ -218,24 +221,27 @@ const Episodes = () => {
       </select>
      </div>
      <div className="right-controls">
-      <label className="select-all">
-       <input 
-        type="checkbox" 
-        checked={Array.isArray(episodes) && episodes.length > 0 && selectedEpisodes.length === episodes.length}
-        onChange={handleSelectAll}
-       />
-       <span>Select All</span>
-      </label>
-      <div className="action-dropdown-container">
-       <button className="action-btn" onClick={() => setIsActionMenuOpen(!isActionMenuOpen)}>
+      <div className="action-dropdown-wrapper">
+       <button 
+        className={`action-btn ${selectedEpisodes.length === 0 ? 'disabled' : ''}`}
+        onClick={() => selectedEpisodes.length > 0 && setIsActionMenuOpen(!isActionMenuOpen)}
+        disabled={selectedEpisodes.length === 0}
+       >
         <span>Action</span>
-        <ChevronDown size={16} />
+        <ChevronDown size={14} />
        </button>
-       {isActionMenuOpen && (
-        <div className="action-dropdown-menu">
-         <button onClick={() => handleBulkStatusChange('Active')}>Active</button>
-         <button onClick={() => handleBulkStatusChange('Inactive')}>Inactive</button>
-         <button className="delete-option" onClick={handleBulkDelete}>Delete</button>
+
+       {isActionMenuOpen && selectedEpisodes.length > 0 && (
+        <div className="action-menu">
+         <div className="action-item" onClick={() => handleBulkStatusChange('Active')}>
+          Set as Active
+         </div>
+         <div className="action-item" onClick={() => handleBulkStatusChange('Inactive')}>
+          Set as Inactive
+         </div>
+         <div className="action-item delete" onClick={handleBulkDelete}>
+          Delete
+         </div>
         </div>
        )}
       </div>
@@ -251,9 +257,11 @@ const Episodes = () => {
         const showId = ep.showId && (typeof ep.showId === 'string' ? ep.showId : ep.showId._id);
         const contentType = ep.showId?.contentType || shows.find(s => s._id === showId)?.contentType;
         if (contentType) {
+         const isPocketShow = contentType === 'Pocket Reel Series';
          const isShortShow = contentType === 'Short Web Series';
+         if (isPocketReelPath && !isPocketShow) return false;
          if (isShortPath && !isShortShow) return false;
-         if (!isShortPath && isShortShow) return false;
+         if (!isPocketReelPath && !isShortPath && (isPocketShow || isShortShow)) return false;
         }
         return !selectedShow || showId === selectedShow;
        })
@@ -277,7 +285,7 @@ const Episodes = () => {
           </p>
          <div className="card-controls">
           <div className="action-icons">
-           <button className="circle-icon edit" onClick={() => navigate(isShortPath ? `/admin/short-web-series/episodes/edit/${episode._id}` : `/admin/tv-shows/episodes/edit/${episode._id}`)}><Edit size={16} /></button>
+           <button className="circle-icon edit" onClick={() => navigate(isPocketReelPath ? `/admin/pocket-reel-series/episodes/edit/${episode._id}` : isShortPath ? `/admin/short-web-series/episodes/edit/${episode._id}` : `/admin/tv-shows/episodes/edit/${episode._id}`)}><Edit size={16} /></button>
            <button className="circle-icon duplicate" onClick={() => duplicateEpisode(episode)} title="Duplicate"><Copy size={16} /></button>
            <button className="circle-icon delete" onClick={() => confirmDelete(episode._id)}><X size={18} strokeWidth={3} /></button>
           </div>

@@ -38,6 +38,44 @@ const formatViews = (count, docId = '') => {
   }
   return num + ' Views';
 };
+
+const formatPlayCount = (count, docId = '') => {
+  let num = parseInt(count, 10);
+  if (isNaN(num) || num === 0) {
+    if (docId && docId.length >= 8) {
+      const hexPart = docId.substring(0, 8);
+      const seed = parseInt(hexPart, 16);
+      num = ((seed % 900) + 100) * 1000 + 400;
+    } else {
+      num = 649400;
+    }
+  }
+  if (num >= 1000000) {
+    return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M Views';
+  }
+  if (num >= 1000) {
+    return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K Views';
+  }
+  return num + ' Views';
+};
+
+const timeAgo = (dateStr) => {
+  if (!dateStr) return '2M AGO';
+  try {
+    const now = new Date();
+    const past = new Date(dateStr);
+    const diffMs = Math.max(0, now - past);
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    if (diffDays < 1) return 'TODAY';
+    if (diffDays < 30) return `${diffDays}D AGO`;
+    const diffMonths = Math.floor(diffDays / 30);
+    if (diffMonths < 12) return `${diffMonths}M AGO`;
+    const diffYears = Math.floor(diffMonths / 12);
+    return `${diffYears}Y AGO`;
+  } catch (e) {
+    return '2M AGO';
+  }
+};
 const isItemActive = (item, type, menuSettings) => {
   if (!item) return false;
   // Always require Active status — inactive content must never show on frontend
@@ -56,6 +94,8 @@ const isItemActive = (item, type, menuSettings) => {
       contentType = 'TV Show';
     } else if (normType === 'short-web-series') {
       contentType = 'Short Web Series';
+    } else if (normType === 'pocket-reel-series' || normType === 'pocket-reels') {
+      contentType = 'Pocket Reel Series';
     } else if (normType === 'sports' || normType === 'sport') {
       contentType = 'Sports';
     } else if (normType === 'live' || normType === 'channel' || normType === 'channels' || normType === 'tv-channel' || normType === 'tv-channels') {
@@ -84,6 +124,7 @@ const isItemActive = (item, type, menuSettings) => {
   if (contentType === 'Short Film' && menuSettings.shortFilms?.toUpperCase() === 'OFF') return false;
   if (contentType === 'TV Show' && menuSettings.shows?.toUpperCase() === 'OFF') return false;
   if (contentType === 'Short Web Series' && menuSettings.webSeries?.toUpperCase() === 'OFF') return false;
+  if (contentType === 'Pocket Reel Series' && menuSettings.pocketReelSeries?.toUpperCase() === 'OFF') return false;
   if (contentType === 'Sports' && menuSettings.sports?.toUpperCase() === 'OFF') return false;
   if (contentType === 'Live TV' && menuSettings.liveTv?.toUpperCase() === 'OFF') return false;
 
@@ -94,7 +135,7 @@ const isItemActive = (item, type, menuSettings) => {
 const checkIsPaid = (item, contentType) => {
   if (!item) return false;
   const t = (contentType || '').toLowerCase().trim();
-  if (t === 'show' || t === 'shows' || t === 'series' || t === 'short-web-series' || t === 'web-series') {
+  if (t === 'show' || t === 'shows' || t === 'series' || t === 'short-web-series' || t === 'web-series' || t === 'pocket-reel-series' || t === 'pocket-reels') {
     return (item.seriesAccess || '').toLowerCase() === 'paid';
   } else if (t === 'live' || t === 'channel' || t === 'channels' || t === 'tv-channel' || t === 'tv-channels') {
     return (item.tvAccess || '').toLowerCase() === 'paid' || (item.access || '').toLowerCase() === 'paid';
@@ -125,6 +166,10 @@ const FrontendDetails = () => {
  const [selectedRating, setSelectedRating] = useState(0);
  const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
  const [isRatingSubmitting, setIsRatingSubmitting] = useState(false);
+ const [pocketTab, setPocketTab] = useState('episodes'); // 'episodes' | 'reviews'
+ const [pocketRange, setPocketRange] = useState('all');
+ const [isDescExpanded, setIsDescExpanded] = useState(false);
+ const [currentPocketEp, setCurrentPocketEp] = useState(null);
  const user = JSON.parse(localStorage.getItem('user') || '{}');
  const [chatMessages, setChatMessages] = useState([]);
  const [chatInput, setChatInput] = useState('');
@@ -308,7 +353,7 @@ const FrontendDetails = () => {
       } else {
         if (normalizedType === 'movie' || normalizedType === 'movies' || normalizedType === 'short-film' || normalizedType === 'new-release') {
          endpoint = `/api/movies/${id}`;
-        } else if (normalizedType === 'show' || normalizedType === 'shows' || normalizedType === 'series' || normalizedType === 'short-web-series') {
+        } else if (normalizedType === 'show' || normalizedType === 'shows' || normalizedType === 'series' || normalizedType === 'short-web-series' || normalizedType === 'pocket-reel-series' || normalizedType === 'pocket-reels') {
          endpoint = `/api/shows/${id}`;
         } else if (normalizedType === 'sports' || normalizedType === 'sport') {
          endpoint = `/api/sports-videos/${id}`;
@@ -378,7 +423,7 @@ const FrontendDetails = () => {
 
       setData(result);
  
-     if (normalizedType === 'show' || normalizedType === 'shows' || normalizedType === 'series' || normalizedType === 'short-web-series') {
+     if (normalizedType === 'show' || normalizedType === 'shows' || normalizedType === 'series' || normalizedType === 'short-web-series' || normalizedType === 'pocket-reel-series' || normalizedType === 'pocket-reels' || result?.contentType === 'Pocket Reel Series') {
       const seasonsRes = await fetch(`/api/seasons?showId=${id}`);
       if (seasonsRes.ok) {
        const seasonsData = await seasonsRes.json();
@@ -391,6 +436,9 @@ const FrontendDetails = () => {
       if (episodesRes.ok) {
        const episodesData = await episodesRes.json();
        setEpisodes(episodesData);
+       if (episodesData.length > 0) {
+        setCurrentPocketEp(episodesData[0]);
+       }
       }
      } else if (normalizedType === 'episode' || normalizedType === 'episodes') {
       let showIdStr = '';
@@ -412,6 +460,9 @@ const FrontendDetails = () => {
        if (episodesRes.ok) {
         const episodesData = await episodesRes.json();
         setEpisodes(episodesData);
+        if (episodesData.length > 0) {
+         setCurrentPocketEp(episodesData[0]);
+        }
        }
       }
       if (seasonIdStr) {
@@ -432,6 +483,9 @@ const FrontendDetails = () => {
        if (episodesRes.ok) {
         const episodesData = await episodesRes.json();
         setEpisodes(episodesData);
+        if (episodesData.length > 0) {
+         setCurrentPocketEp(episodesData[0]);
+        }
        }
       }
       setSelectedSeasonId(id);
@@ -445,7 +499,7 @@ const FrontendDetails = () => {
     let relatedEndpoint = '';
     if (normalizedType === 'movie' || normalizedType === 'movies' || normalizedType === 'short-film' || normalizedType === 'new-release') {
      relatedEndpoint = '/api/movies';
-    } else if (normalizedType === 'show' || normalizedType === 'shows' || normalizedType === 'series' || normalizedType === 'short-web-series') {
+    } else if (normalizedType === 'show' || normalizedType === 'shows' || normalizedType === 'series' || normalizedType === 'short-web-series' || normalizedType === 'pocket-reel-series' || normalizedType === 'pocket-reels' || result?.contentType === 'Pocket Reel Series') {
      relatedEndpoint = '/api/shows';
     } else if (normalizedType === 'sports' || normalizedType === 'sport') {
      relatedEndpoint = '/api/sports-videos';
@@ -538,7 +592,7 @@ const FrontendDetails = () => {
 
   const cleanType = type ? type.toLowerCase().trim() : '';
   let normalizedWatchlistType = 'movie';
-  if (cleanType === 'show' || cleanType === 'shows' || cleanType === 'series' || cleanType === 'short-web-series') {
+  if (cleanType === 'show' || cleanType === 'shows' || cleanType === 'series' || cleanType === 'short-web-series' || cleanType === 'pocket-reel-series' || cleanType === 'pocket-reels' || data?.contentType === 'Pocket Reel Series') {
    normalizedWatchlistType = 'show';
   } else if (cleanType === 'sports' || cleanType === 'sport') {
    normalizedWatchlistType = 'sports';
@@ -581,7 +635,7 @@ const FrontendDetails = () => {
    setIsRatingSubmitting(true);
    const cleanType = type ? type.toLowerCase().trim() : '';
    let normalizedRatingType = 'movie';
-   if (cleanType === 'show' || cleanType === 'shows' || cleanType === 'series' || cleanType === 'short-web-series') {
+   if (cleanType === 'show' || cleanType === 'shows' || cleanType === 'series' || cleanType === 'short-web-series' || cleanType === 'pocket-reel-series' || cleanType === 'pocket-reels' || data?.contentType === 'Pocket Reel Series') {
     normalizedRatingType = 'show';
    } else if (cleanType === 'sports' || cleanType === 'sport') {
     normalizedRatingType = 'sports';
@@ -701,7 +755,33 @@ const FrontendDetails = () => {
   return item.title || item.name || item.channelName || '';
  };
 
-  // Loading guard removed
+ const getCurrentSubtitles = () => {
+   if (!data) return { active: 'Inactive', list: [] };
+   if (cleanType === 'shows' || cleanType === 'web-series' || cleanType === 'short-web-series' || cleanType === 'pocket-reel-series' || cleanType === 'pocket-reels' || data.contentType === 'Pocket Reel Series') {
+     const currentEp = episodes.find(ep => {
+       const epUrl = ep.videoFile || ep.videoUrl || ep.videoFile1080 || ep.videoFile720 || ep.videoFile480;
+       return epUrl === activeVideoUrl;
+     });
+     if (currentEp) {
+       return {
+         active: currentEp.subtitlesActive || 'Inactive',
+         list: currentEp.subtitles || []
+       };
+     }
+   }
+   return {
+     active: data.subtitlesActive || 'Inactive',
+     list: data.subtitles || []
+   };
+ };
+
+ const isPocketReel = Boolean(
+   cleanType === 'pocket-reel-series' ||
+   cleanType === 'pocket-reels' ||
+   data?.contentType === 'Pocket Reel Series' ||
+   data?.contentType === 'Pocket Reel' ||
+   (data?.showId && typeof data.showId === 'object' && (data.showId.contentType === 'Pocket Reel Series' || data.showId.contentType === 'Pocket Reel'))
+ );
 
  if (loading) {
   return (
@@ -798,375 +878,652 @@ const FrontendDetails = () => {
          {isRatingSubmitting ? 'Submitting...' : 'Submit Rating'}
         </button>
         <button className="fe-rating-cancel-btn-v" onClick={() => setIsRatingModalOpen(false)}>
-         Cancel
+Cancel
        </button>
        </div>
       </div>
      </div>
     )}
-    
-    {/* Main Content Hero */}
-    <div className="fe-details-hero-v">
-     <div className="fe-details-container-v">
-      
-      {/* Left: Poster/Video Preview */}
-      <div className="fe-details-visual-v">
-       <div className="fe-poster-wrapper-v">
-        {(() => {
-          const imgUrl = 
-            formatImageUrl(data, 'thumbnail') || 
-            formatImageUrl(data, 'landscapePoster') || 
-            (data.showId && typeof data.showId === 'object' && (
-              formatImageUrl(data.showId, 'thumbnail') || 
-              formatImageUrl(data.showId, 'landscapePoster') || 
-              formatImageUrl(data.showId, 'poster')
-            )) ||
-            formatImageUrl(data, 'poster');
-          return <img src={imgUrl} alt={getTitle(data)} />;
-         })()}
-        <div className="fe-poster-overlay-v">
-         {data.upcoming === 'Yes' ? (
-           <div className="fe-upcoming-badge-overlay-v">
-             COMING SOON
-           </div>
-         ) : id === 'lemo-live' && !liveStreamReady ? (
-           // Live is set but OBS hasn't connected yet — show pulsing waiting state
-           <div style={{
-             position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
-             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-             background: 'rgba(0,0,0,0.75)', gap: '14px', borderRadius: '8px'
-           }}>
-             <div style={{
-               width: '56px', height: '56px', borderRadius: '50%',
-               border: '3px solid #b3d332', borderTopColor: 'transparent',
-               animation: 'spin 1s linear infinite'
-             }} />
-             <div style={{ color: '#b3d332', fontWeight: 800, fontSize: '0.8rem', letterSpacing: '2px' }}>CONNECTING...</div>
-             <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.72rem', textAlign: 'center', padding: '0 10px' }}>Waiting for OBS to connect</div>
-           </div>
-         ) : (
-           <div className="fe-big-play-btn-v" onClick={() => {
-            const filteredEpisodes = episodes.filter(ep => {
-             if (data.contentType === 'Short Web Series') return true;
-             if (!ep.seasonId) return false;
-             const epSeasonIdStr = typeof ep.seasonId === 'object' ? (ep.seasonId._id || ep.seasonId.id || '').toString() : ep.seasonId.toString();
-             const currentSeasonIdStr = selectedSeasonId ? selectedSeasonId.toString() : '';
-             return epSeasonIdStr && currentSeasonIdStr && epSeasonIdStr === currentSeasonIdStr;
-            });
-            const firstEp = data.contentType === 'Short Web Series' ? episodes[0] : filteredEpisodes[0];
-            const url = data.videoFile || data.videoUrl || data.streamUrl || data.videoFile1080 || data.videoFile720 || data.videoFile480 || 
-                        data.server1Url || data.server2Url || data.server3Url || data.embedCode ||
-                        (firstEp && (firstEp.videoFile || firstEp.videoUrl || firstEp.videoFile1080 || firstEp.videoFile720 || firstEp.videoFile480));
-            if (url) {
-             handlePlayVideo(url, firstEp);
-            } else {
-             alert('Video not available for this content.');
-            }
-           }}>
-            <div className="pulse-ring-v"></div>
-            <Play size={40} fill="white" />
-           </div>
-         )}
+
+    {/* Main Content: Either Pocket Reel Showcase OR Standard Hero */}
+    {isPocketReel ? (
+      <div className="fe-pocket-detail-page-v">
+        {/* Main 2-Column Responsive Layout */}
+        <div className="fe-pocket-main-layout-v">
+          
+          {/* Left Column: Visual Showcase / Player & Title / Description Info */}
+          <div className="fe-pocket-left-column-v">
+            <div className="fe-pocket-visual-main-v">
+              {activeVideoUrl ? (
+                <div className="fe-pocket-inline-player-v">
+                  <VideoPlayer 
+                    src={activeVideoUrl} 
+                    videoTitle={currentPocketEp ? `E${episodes.findIndex(e => e._id === currentPocketEp._id) + 1}. ${currentPocketEp.title}` : getTitle(data)}
+                    playerSettings={playerSettings}
+                    videoId={data?._id}
+                    userId={user?.id}
+                    contentType="pocket-reel-series"
+                    onRatingSubmitted={(rating, avgRating, count) => {
+                      setUserRating(rating);
+                      setData(prev => ({
+                        ...prev,
+                        imdbRating: avgRating,
+                        ratingsCount: count
+                      }));
+                    }}
+                    subtitles={getCurrentSubtitles().list}
+                    subtitlesActive={getCurrentSubtitles().active}
+                    onEnded={() => {
+                      const curIdx = episodes.findIndex(e => e._id === (currentPocketEp?._id || ''));
+                      if (curIdx !== -1 && curIdx < episodes.length - 1) {
+                        const nextEp = episodes[curIdx + 1];
+                        const nextUrl = nextEp.videoFile || nextEp.videoUrl || nextEp.videoFile1080 || nextEp.videoFile720 || nextEp.videoFile480;
+                        if (nextUrl) {
+                          setCurrentPocketEp(nextEp);
+                          handlePlayVideo(nextUrl, nextEp);
+                        }
+                      }
+                    }}
+                  />
+                </div>
+              ) : (
+                <div className="fe-pocket-poster-showcase-v">
+                  {(() => {
+                    const posterImg = formatImageUrl(data, 'poster') || formatImageUrl(data, 'thumbnail') || formatImageUrl(data, 'landscapePoster');
+                    return posterImg ? (
+                      <img src={posterImg} alt={getTitle(data)} className="fe-pocket-showcase-img" />
+                    ) : (
+                      <div style={{ width: '100%', height: '100%', background: '#0a0a0f', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666' }}>
+                        No Preview Available
+                      </div>
+                    );
+                  })()}
+                  <div className="fe-pocket-showcase-overlay">
+                    <button 
+                      className="fe-pocket-center-play-btn"
+                      onClick={() => {
+                        const ep = currentPocketEp || episodes[0];
+                        if (ep) {
+                          const url = ep.videoFile || ep.videoUrl || ep.videoFile1080 || ep.videoFile720 || ep.videoFile480 || data.videoFile || data.videoUrl;
+                          if (url) {
+                            setCurrentPocketEp(ep);
+                            handlePlayVideo(url, ep);
+                          } else {
+                            alert('Video stream not available for this episode.');
+                          }
+                        } else if (data.videoFile || data.videoUrl) {
+                          handlePlayVideo(data.videoFile || data.videoUrl);
+                        } else {
+                          alert('No episodes available to play.');
+                        }
+                      }}
+                    >
+                      <div className="fe-pulse-ring-glow"></div>
+                      <Play size={38} fill="#000" color="#000" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Details Section (Status, Title, Action, Description, Cast) */}
+            <div className="fe-pocket-bottom-info-v">
+              {/* Status Badge */}
+              <div className="fe-pocket-status-pill-v">
+                <span className="soundwave-icon">
+                  <span></span><span></span><span></span>
+                </span>
+                <Check size={14} className="check-icon" />
+                <span>{data.upcoming === 'Yes' ? 'COMING SOON' : (data.status === 'Active' ? 'COMPLETED SERIES' : 'ONGOING SERIES')}</span>
+              </div>
+
+              {/* Main Title & Gradient Action Button */}
+              <div className="fe-pocket-header-action-row">
+                <h1 className="fe-pocket-main-title">{data.title}</h1>
+                <button 
+                  className="fe-pocket-play-ep-btn"
+                  onClick={() => {
+                    const ep = currentPocketEp || episodes[0];
+                    if (ep) {
+                      const url = ep.videoFile || ep.videoUrl || ep.videoFile1080 || ep.videoFile720 || ep.videoFile480 || data.videoFile || data.videoUrl;
+                      if (url) {
+                        setCurrentPocketEp(ep);
+                        handlePlayVideo(url, ep);
+                        window.scrollTo({ top: 100, behavior: 'smooth' });
+                      } else {
+                        alert('Video not available.');
+                      }
+                    } else if (data.videoFile || data.videoUrl) {
+                      handlePlayVideo(data.videoFile || data.videoUrl);
+                    }
+                  }}
+                >
+                  <Play size={18} fill="#000" color="#000" />
+                  <span>Play Ep-{currentPocketEp ? (episodes.findIndex(e => e._id === currentPocketEp._id) + 1) : 1}</span>
+                </button>
+              </div>
+
+              {/* Metrics Row */}
+              <div className="fe-pocket-stats-row">
+                <span className="fe-pocket-stat-item">{formatPlayCount(data.views, data._id)}</span>
+                <span className="fe-pocket-stat-dot">•</span>
+                <span className="fe-pocket-stat-item star-item">
+                  <Star size={14} fill="#b3d332" color="#b3d332" />
+                  <strong>{parseFloat(data.imdbRating || data.rating || '4.8').toFixed(1)}</strong>
+                  <span className="fe-review-count">({data.ratingsCount || 107})</span>
+                </span>
+                <span className="fe-pocket-stat-dot">•</span>
+                <span className="fe-pocket-stat-item genre-item">{((data.genres && data.genres[0]) || data.genre || 'DRAMA').toUpperCase()}</span>
+              </div>
+
+              {/* Synopsis Description with Expand toggle */}
+              <div className="fe-pocket-desc-wrap">
+                <p className={`fe-pocket-desc-text ${isDescExpanded ? 'expanded' : 'clamped'}`}>
+                  {data.description ? data.description.replace(/<[^>]+>/g, '') : 'This is the captivating story of love, ambition, rivalry and drama. Stream all episodes in high quality.'}
+                </p>
+                <button className="fe-pocket-more-toggle" onClick={() => setIsDescExpanded(!isDescExpanded)}>
+                  {isDescExpanded ? 'Less' : 'More'}
+                </button>
+              </div>
+
+              {/* Credits / Metadata */}
+              <div className="fe-pocket-meta-credits-v">
+                <div className="fe-pocket-credit-row">
+                  <span className="credit-label">DIRECTOR</span>
+                  <span className="credit-value">
+                    {(() => {
+                      const rawDirectors = data.directors && data.directors.length > 0 
+                        ? data.directors 
+                        : (data.showId && typeof data.showId === 'object' ? data.showId.directors : null);
+                      const names = rawDirectors && rawDirectors.length > 0
+                        ? [...new Set(rawDirectors.map(d => typeof d === 'object' ? d.name : d).filter(Boolean))]
+                        : [];
+                      return names.length > 0 ? names.join(', ') : 'N/A';
+                    })()}
+                  </span>
+                </div>
+                <div className="fe-pocket-credit-row">
+                  <span className="credit-label">ACTORS</span>
+                  <span className="credit-value">
+                    {(() => {
+                      const rawActors = data.actors && data.actors.length > 0 
+                        ? data.actors 
+                        : (data.showId && typeof data.showId === 'object' ? data.showId.actors : null);
+                      const names = rawActors && rawActors.length > 0
+                        ? [...new Set(rawActors.map(a => typeof a === 'object' ? a.name : a).filter(Boolean))]
+                        : [];
+                      return names.length > 0 ? names.join(', ') : 'N/A';
+                    })()}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Episodes & Reviews Drawer */}
+          <div className="fe-pocket-sidebar-drawer-v">
+            {/* Tab Headers */}
+            <div className="fe-pocket-tab-header-v">
+              <button 
+                className={`fe-pocket-tab-btn-v ${pocketTab === 'episodes' ? 'active' : ''}`}
+                onClick={() => setPocketTab('episodes')}
+              >
+                <span>Episodes</span>
+                <span className="fe-pocket-tab-count">{episodes.length}</span>
+              </button>
+              <button 
+                className={`fe-pocket-tab-btn-v ${pocketTab === 'reviews' ? 'active' : ''}`}
+                onClick={() => setPocketTab('reviews')}
+              >
+                <span>Reviews</span>
+                <span className="fe-pocket-tab-count">{data.ratingsCount || 107}</span>
+              </button>
+            </div>
+
+            {pocketTab === 'episodes' ? (
+              <div className="fe-pocket-episodes-content-v">
+                {/* Filter / Range Row */}
+                <div className="fe-pocket-range-bar-v">
+                  <select 
+                    value={pocketRange} 
+                    onChange={(e) => setPocketRange(e.target.value)}
+                    className="fe-pocket-range-select"
+                  >
+                    <option value="all">ALL {episodes.length} EPISODES ▾</option>
+                    {(() => {
+                      const chunkSize = 25;
+                      const chunks = [];
+                      for (let i = 0; i < episodes.length; i += chunkSize) {
+                        const start = i + 1;
+                        const end = Math.min(i + chunkSize, episodes.length);
+                        chunks.push(<option key={i} value={`${start}-${end}`}>EPISODES {start} - {end}</option>);
+                      }
+                      return chunks;
+                    })()}
+                  </select>
+                </div>
+
+                {/* Scrollable Episode List */}
+                <div className="fe-pocket-ep-scroll-list-v">
+                  {(() => {
+                    let displayedEps = episodes;
+                    if (pocketRange !== 'all') {
+                      const [startStr, endStr] = pocketRange.split('-');
+                      const startIdx = parseInt(startStr, 10) - 1;
+                      const endIdx = parseInt(endStr, 10);
+                      displayedEps = episodes.slice(startIdx, endIdx);
+                    }
+
+                    if (displayedEps.length === 0) {
+                      return <div className="fe-pocket-no-eps">No episodes published yet.</div>;
+                    }
+
+                    return displayedEps.map((ep, idx) => {
+                      const realIndex = pocketRange === 'all' ? idx : (parseInt(pocketRange.split('-')[0], 10) - 1 + idx);
+                      const epUrl = ep.videoFile || ep.videoUrl || ep.videoFile1080 || ep.videoFile720 || ep.videoFile480;
+                      const isCurrent = (currentPocketEp && currentPocketEp._id === ep._id) || (activeVideoUrl && activeVideoUrl === epUrl);
+
+                      return (
+                        <div 
+                          key={ep._id} 
+                          className={`fe-pocket-ep-row-v ${isCurrent ? 'active' : ''}`}
+                          onClick={() => {
+                            if (epUrl) {
+                              setCurrentPocketEp(ep);
+                              handlePlayVideo(epUrl, ep);
+                            } else {
+                              alert('Video not available for this episode.');
+                            }
+                          }}
+                        >
+                          <div className="fe-pocket-ep-info-left">
+                            <div className="fe-pocket-ep-title-row">
+                              <span className="fe-pocket-ep-num">E{realIndex + 1}.</span>
+                              <span className="fe-pocket-ep-name">{ep.title}</span>
+                            </div>
+                            <div className="fe-pocket-ep-submeta">
+                              <span>{ep.duration || '10:13M'}</span>
+                              <span className="fe-bullet-dot">•</span>
+                              <span>{timeAgo(ep.createdAt || ep.releaseDate)}</span>
+                            </div>
+                          </div>
+                          
+                          <button className={`fe-pocket-ep-play-circle ${isCurrent ? 'playing' : ''}`} aria-label="Play">
+                            <Play size={13} fill={isCurrent ? '#000' : 'transparent'} color={isCurrent ? '#000' : '#fff'} />
+                          </button>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              </div>
+            ) : (
+              /* Reviews Tab */
+              <div className="fe-pocket-reviews-tab-v">
+                <div className="fe-pocket-rating-summary">
+                  <div className="fe-pocket-rating-score">
+                    <span className="score-num">{parseFloat(data.imdbRating || data.rating || '4.8').toFixed(1)}</span>
+                    <span className="score-max">/ 5</span>
+                  </div>
+                  <div className="fe-pocket-rating-stars-row">
+                    {[1, 2, 3, 4, 5].map(s => (
+                      <Star key={s} size={18} fill="#b3d332" color="#b3d332" />
+                    ))}
+                  </div>
+                  <div className="fe-pocket-rating-total">{data.ratingsCount || 107} Total Reviews</div>
+                </div>
+
+                <div className="fe-pocket-user-rate-box">
+                  <div className="rate-box-title">Rate This Series</div>
+                  <div className="rate-stars-interactive">
+                    {[1, 2, 3, 4, 5].map(star => (
+                      <button 
+                        key={star} 
+                        className="pocket-star-btn"
+                        onClick={() => {
+                          setSelectedRating(star);
+                          handleRatingSubmit();
+                        }}
+                      >
+                        <Star size={24} fill={star <= (userRating || selectedRating) ? '#b3d332' : 'transparent'} color="#b3d332" />
+                      </button>
+                    ))}
+                  </div>
+                  {userRating > 0 && <div className="rated-label">You rated this {userRating}★</div>}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-       </div>
-       
-       {/* Bottom Stats */}
-       <div className="fe-visual-stats-v">
-        <div className="stat-item-v"><Eye size={16} /> <span>{formatViews(data.views, data._id)}</span></div>
-        <div className="stat-item-v"><Calendar size={16} /> <span>{new Date(data.releaseDate || data.createdAt).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}</span></div>
-        <div className="stat-item-v"><Clock size={16} /> <span>{data.duration || '2h 30m'}</span></div>
-        <div className="fe-rating-wrapper-v" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
-          {(() => {
-           const ratingVal = parseFloat(data.imdbRating || '7.5');
-           const percentage = (ratingVal / 10) * 100;
-           return (
-            <div 
-             className="fe-rating-circle-v" 
-             style={{ background: `conic-gradient(#b3d332 ${percentage}%, rgba(255,255,255,0.1) ${percentage}%)`, margin: 0 }}
-            >
-             <div className="rating-inner-v">
-              <span className="imdb-val-v">{ratingVal.toFixed(1)}</span>
+      </div>
+    ) : (
+      <>
+        {/* Main Content Hero */}
+        <div className="fe-details-hero-v">
+         <div className="fe-details-container-v">
+          
+          {/* Left: Poster/Video Preview */}
+          <div className="fe-details-visual-v">
+           <div className="fe-poster-wrapper-v">
+            {(() => {
+              const imgUrl = 
+                formatImageUrl(data, 'thumbnail') || 
+                formatImageUrl(data, 'landscapePoster') || 
+                (data.showId && typeof data.showId === 'object' && (
+                  formatImageUrl(data.showId, 'thumbnail') || 
+                  formatImageUrl(data.showId, 'landscapePoster') || 
+                  formatImageUrl(data.showId, 'poster')
+                )) ||
+                formatImageUrl(data, 'poster');
+              return <img src={imgUrl} alt={getTitle(data)} />;
+             })()}
+            <div className="fe-poster-overlay-v">
+             {data.upcoming === 'Yes' ? (
+               <div className="fe-upcoming-badge-overlay-v">
+                 COMING SOON
+               </div>
+             ) : id === 'lemo-live' && !liveStreamReady ? (
+               // Live is set but OBS hasn't connected yet — show pulsing waiting state
+               <div style={{
+                 position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                 background: 'rgba(0,0,0,0.75)', gap: '14px', borderRadius: '8px'
+               }}>
+                 <div style={{
+                   width: '56px', height: '56px', borderRadius: '50%',
+                   border: '3px solid #b3d332', borderTopColor: 'transparent',
+                   animation: 'spin 1s linear infinite'
+                 }} />
+                 <div style={{ color: '#b3d332', fontWeight: 800, fontSize: '0.8rem', letterSpacing: '2px' }}>CONNECTING...</div>
+                 <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.72rem', textAlign: 'center', padding: '0 10px' }}>Waiting for OBS to connect</div>
+               </div>
+             ) : (
+               <div className="fe-big-play-btn-v" onClick={() => {
+                const filteredEpisodes = episodes.filter(ep => {
+                 if (data.contentType === 'Short Web Series' || data.contentType === 'Pocket Reel Series') return true;
+                 if (!ep.seasonId) return false;
+                 const epSeasonIdStr = typeof ep.seasonId === 'object' ? (ep.seasonId._id || ep.seasonId.id || '').toString() : ep.seasonId.toString();
+                 const currentSeasonIdStr = selectedSeasonId ? selectedSeasonId.toString() : '';
+                 return epSeasonIdStr && currentSeasonIdStr && epSeasonIdStr === currentSeasonIdStr;
+                });
+                const firstEp = (data.contentType === 'Short Web Series' || data.contentType === 'Pocket Reel Series') ? episodes[0] : filteredEpisodes[0];
+                const url = data.videoFile || data.videoUrl || data.streamUrl || data.videoFile1080 || data.videoFile720 || data.videoFile480 || 
+                            data.server1Url || data.server2Url || data.server3Url || data.embedCode ||
+                            (firstEp && (firstEp.videoFile || firstEp.videoUrl || firstEp.videoFile1080 || firstEp.videoFile720 || firstEp.videoFile480));
+                if (url) {
+                 handlePlayVideo(url, firstEp);
+                } else {
+                 alert('Video not available for this content.');
+                }
+               }}>
+                <div className="pulse-ring-v"></div>
+                <Play size={40} fill="white" />
+               </div>
+             )}
+            </div>
+           </div>
+           
+           {/* Bottom Stats */}
+           <div className="fe-visual-stats-v">
+            <div className="stat-item-v"><Eye size={16} /> <span>{formatViews(data.views, data._id)}</span></div>
+            <div className="stat-item-v"><Calendar size={16} /> <span>{new Date(data.releaseDate || data.createdAt).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}</span></div>
+            <div className="stat-item-v"><Clock size={16} /> <span>{data.duration || '2h 30m'}</span></div>
+            <div className="fe-rating-wrapper-v" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+              {(() => {
+               const ratingVal = parseFloat(data.imdbRating || '7.5');
+               const percentage = (ratingVal / 10) * 100;
+               return (
+                <div 
+                 className="fe-rating-circle-v" 
+                 style={{ background: `conic-gradient(#b3d332 ${percentage}%, rgba(255,255,255,0.1) ${percentage}%)`, margin: 0 }}
+                >
+                 <div className="rating-inner-v">
+                  <span className="imdb-val-v">{ratingVal.toFixed(1)}</span>
+                 </div>
+                </div>
+               );
+              })()}
+              <span className="fe-ratings-count-v" style={{ fontSize: '0.68rem', fontWeight: 700, color: '#888', textTransform: 'lowercase' }}>
+               {data.ratingsCount && data.ratingsCount > 0 
+                 ? `${data.ratingsCount} ${data.ratingsCount === 1 ? 'rating' : 'ratings'}`
+                 : 'no ratings'}
+              </span>
              </div>
+           </div>
+
+           {/* Action Buttons */}
+           <div className="fe-visual-actions-v">
+            <button className={`action-btn-v watchlist-v ${isWatchlisted ? 'active' : ''}`} onClick={handleWatchlist}>
+             {isWatchlisted ? <Check size={18} /> : <Plus size={18} />}
+             <span>{isWatchlisted ? 'In Watchlist' : 'Add to Watchlist'}</span>
+            </button>
+            <button className={`action-btn-v rate-btn-v ${userRating > 0 ? 'active' : ''}`} onClick={handleOpenRatingModal}>
+             <Star size={18} fill={userRating > 0 ? '#b3d332' : 'transparent'} color={userRating > 0 ? '#b3d332' : 'currentColor'} />
+             <span>{userRating > 0 ? `Rated ${userRating}★` : 'Rate'}</span>
+            </button>
+            <button className="action-btn-v share-v" onClick={() => setIsShareModalOpen(true)}>
+             <Share2 size={18} />
+             <span>Share</span>
+            </button>
+           </div>
+          </div>
+
+          {/* Right: Info */}
+          <div className="fe-details-info-v">
+           {(() => {
+            const parentShowTitle = data.showId && typeof data.showId === 'object' ? data.showId.title : '';
+            if (parentShowTitle) {
+             const normalizedType = type ? type.toLowerCase().trim() : '';
+             const isSeason = normalizedType === 'season' || normalizedType === 'seasons';
+             return (
+              <span className="fe-episode-parent-show-v">
+               {isSeason ? 'SEASON OF' : 'EPISODE OF'} <strong>{parentShowTitle}</strong>
+              </span>
+             );
+            }
+            return null;
+           })()}
+           <h1 className="fe-info-title-v">{getTitle(data)}</h1>
+           <div className="fe-info-meta-top-v">
+            <span className="meta-genre-v">{
+             ((data.genres && data.genres.length > 0 ? data.genres : (data.showId && typeof data.showId === 'object' && data.showId.genres)) || []).join(' | ') || 'Drama'
+            }</span>
+            <span className="meta-sep-v">|</span>
+            <span className="meta-lang-v">{data.language || (data.showId && typeof data.showId === 'object' && data.showId.language) || 'English'}</span>
+           </div>
+
+            {data.trailerUrl && data.trailerUrl.trim() !== "" && (
+             <button className="fe-trailer-btn-v" onClick={handlePlayTrailer}>
+              <Play size={18} fill="currentColor" /> WATCH TRAILER
+             </button>
+            )}
+
+            {/* Quality Badges */}
+            <div className="fe-info-badges-v">
+             {data.upcoming === 'Yes' ? (
+              <div className="fe-upcoming-badge-v">
+               <span className="badge-prefix-v">UPCOMING</span>
+               <span className="badge-suffix-v">SOON</span>
+              </div>
+             ) : data.videoQuality !== 'None' ? (
+              <div className="fe-quality-badge-v">
+                {(() => {
+                  const q = data.videoQuality || 'HD';
+                  const qLower = q.toLowerCase();
+                  if (qLower.includes('8k')) return '8K';
+                  if (qLower.includes('4k')) return '4K';
+                  if (qLower.includes('ultra')) return 'ULTRA';
+                  if (qLower.includes('full')) return 'FHD';
+                  if (qLower.includes('hdr')) return 'HDR';
+                  return q.split(' ')[0].toUpperCase();
+                })()}
+              </div>
+             ) : null}
+             <div className="fe-age-badge-v">{data.contentRating || '16+'}</div>
+            </div>
+
+            {/* Show Meta Info */}
+            <div className="fe-info-grid-meta-v">
+             <div className="meta-row-v">
+              <span className="meta-label-v">Status:</span>
+              <span className="meta-value-v">{data.status || 'Active'}</span>
+             </div>
+             <div className="meta-row-v">
+              <span className="meta-label-v">Release:</span>
+              <span className="meta-value-v">{data.releaseYear || new Date(data.releaseDate || data.createdAt).getFullYear()}</span>
+             </div>
+             <div className="meta-row-v">
+              <span className="meta-label-v">Access:</span>
+              <span className="meta-value-v highlight-access-v">{data.seriesAccess || data.access || data.tvAccess || 'Free'}</span>
+             </div>
+             {data.duration && (
+              <div className="meta-row-v">
+               <span className="meta-label-v">Duration:</span>
+               <span className="meta-value-v">{data.duration}</span>
+              </div>
+             )}
+            </div>
+
+           {(type === 'movie' || type === 'show' || type === 'shows' || type === 'series' || type === 'short-web-series' || type === 'new-releases' || type === 'episode' || type === 'episodes' || type === 'season' || type === 'seasons') && (
+             <div className="fe-info-cast-v">
+              {(() => {
+                const rawActors = data.actors && data.actors.length > 0 
+                  ? data.actors 
+                  : (data.showId && typeof data.showId === 'object' ? data.showId.actors : null);
+                const actorsList = rawActors && rawActors.length > 0 
+                  ? [...new Set(rawActors.map(a => typeof a === 'object' ? a.name : a))]
+                  : [];
+
+                const rawDirectors = data.directors && data.directors.length > 0 
+                  ? data.directors 
+                  : (data.showId && typeof data.showId === 'object' ? data.showId.directors : null);
+                const directorsList = rawDirectors && rawDirectors.length > 0 
+                  ? [...new Set(rawDirectors.map(d => typeof d === 'object' ? d.name : d))]
+                  : [];
+
+                return (
+                  <>
+                    <div className="fe-cast-group">
+                      <div className="fe-cast-label">Directors</div>
+                      <div className="fe-cast-list">
+                        {directorsList.length > 0 ? (
+                          directorsList.map((director, idx) => (
+                            <span key={idx} className="fe-cast-chip fe-director-chip">{director}</span>
+                          ))
+                        ) : (
+                          <span className="fe-cast-empty">N/A</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="fe-cast-group">
+                      <div className="fe-cast-label">Actors</div>
+                      <div className="fe-cast-list">
+                        {actorsList.length > 0 ? (
+                          actorsList.map((actor, idx) => (
+                            <span key={idx} className="fe-cast-chip">{actor}</span>
+                          ))
+                        ) : (
+                          <span className="fe-cast-empty">N/A</span>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
+             </div>
+            )}
+
+           <div className="fe-info-desc-v">
+            <div dangerouslySetInnerHTML={{ __html: data.description || (data.showId && typeof data.showId === 'object' && data.showId.description) || 'No description available for this title.' }} />
+           </div>
+          </div>
+
+         </div>
+        </div>
+
+        {/* TV Show Seasons & Episodes Section */}
+        {data.upcoming === 'Yes' ? (
+         <div className="fe-upcoming-episodes-message-v" style={{ textAlign: 'center', padding: '60px 20px', background: '#0a0a0a', borderTop: '1px solid rgba(255,255,255,0.05)', marginTop: '40px' }}>
+           <h3 style={{ color: '#fff', fontSize: '1.5rem', fontWeight: 800, marginBottom: '10px' }}>Episodes Coming Soon</h3>
+           <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '1rem' }}>Stay tuned! Episodes for this series will be available soon.</p>
+         </div>
+        ) : (seasons.length > 0 || data.contentType === 'Short Web Series' || data.contentType === 'Pocket Reel Series') && (
+         <section className="fe-episodes-section-v">
+          
+          {/* Seasons Gallery Section */}
+          {data.contentType !== 'Short Web Series' && data.contentType !== 'Pocket Reel Series' && seasons.length > 0 && (
+           <div className="fe-seasons-block-v">
+            <h2 className="fe-seasons-title-v">Seasons</h2>
+            <div className="fe-seasons-grid-v">
+             {seasons.map((season) => (
+              <div 
+               key={season._id} 
+               className={`fe-season-card-v ${selectedSeasonId === season._id ? 'active' : ''}`}
+               onClick={() => {
+                navigate(`/details/seasons/${season._id}`);
+               }}
+              >
+               <div className="fe-season-poster-wrapper-v">
+                <img src={formatImageUrl(season, 'poster') || formatImageUrl(season, 'thumbnail')} alt={season.title} />
+               </div>
+               <h3 className="fe-season-card-title-v">{season.title}</h3>
+              </div>
+             ))}
+            </div>
+           </div>
+          )}
+
+          {/* Episodes Block Section */}
+          {(() => {
+           const isShortWeb = data.contentType === 'Short Web Series' || data.contentType === 'Pocket Reel Series';
+           let filteredEpisodes = episodes;
+           let seasonNameText = '';
+           
+           if (!isShortWeb) {
+            const selectedSeasonObj = seasons.find(s => s._id === selectedSeasonId);
+            seasonNameText = selectedSeasonObj ? `${data.title} - ${selectedSeasonObj.title}` : '';
+            filteredEpisodes = episodes.filter(ep => ep.seasonId === selectedSeasonId || (ep.seasonId && (ep.seasonId._id === selectedSeasonId || ep.seasonId === selectedSeasonId)));
+           } else {
+            seasonNameText = `${data.title} - Episodes`;
+           }
+           
+           return (
+            <div className="fe-episodes-block-v">
+             {seasonNameText && <h2 className="fe-episodes-block-title-v">{seasonNameText}</h2>}
+             {filteredEpisodes.length === 0 ? (
+              <div className="no-episodes-v">No episodes available.</div>
+             ) : (
+              <div className="fe-episodes-grid-v">
+               {filteredEpisodes.map((ep, idx) => (
+                <div 
+                 key={ep._id} 
+                 className="fe-episode-card-v"
+                 onClick={() => {
+                  navigate(`/details/episodes/${ep._id}`);
+                 }}
+                >
+                 <div className="fe-episode-thumb-wrapper-v">
+                  <img src={formatImageUrl(ep, 'poster') || formatImageUrl(ep, 'thumbnail')} alt={ep.title} />
+                  <div className="fe-episode-hover-play-v">
+                   <Play size={20} fill="white" color="white" />
+                  </div>
+                  {((data?.seriesAccess || '').toLowerCase() === 'paid' && (ep.access || '').toLowerCase() === 'paid') && (
+                   <div className="fe-episode-crown-tag-v">
+                    <Crown size={12} fill="white" color="white" />
+                   </div>
+                  )}
+                 </div>
+                 <h3 className="fe-episode-card-title-v">{ep.title}</h3>
+                </div>
+               ))}
+              </div>
+             )}
             </div>
            );
           })()}
-          <span className="fe-ratings-count-v" style={{ fontSize: '0.68rem', fontWeight: 700, color: '#888', textTransform: 'lowercase' }}>
-           {data.ratingsCount && data.ratingsCount > 0 
-             ? `${data.ratingsCount} ${data.ratingsCount === 1 ? 'rating' : 'ratings'}`
-             : 'no ratings'}
-          </span>
-         </div>
-       </div>
-
-       {/* Action Buttons */}
-       <div className="fe-visual-actions-v">
-        <button className={`action-btn-v watchlist-v ${isWatchlisted ? 'active' : ''}`} onClick={handleWatchlist}>
-         {isWatchlisted ? <Check size={18} /> : <Plus size={18} />}
-         <span>{isWatchlisted ? 'In Watchlist' : 'Add to Watchlist'}</span>
-        </button>
-        <button className={`action-btn-v rate-btn-v ${userRating > 0 ? 'active' : ''}`} onClick={handleOpenRatingModal}>
-         <Star size={18} fill={userRating > 0 ? '#b3d332' : 'transparent'} color={userRating > 0 ? '#b3d332' : 'currentColor'} />
-         <span>{userRating > 0 ? `Rated ${userRating}★` : 'Rate'}</span>
-        </button>
-        <button className="action-btn-v share-v" onClick={() => setIsShareModalOpen(true)}>
-         <Share2 size={18} />
-         <span>Share</span>
-        </button>
-       </div>
-      </div>
-
-      {/* Right: Info */}
-      <div className="fe-details-info-v">
-       {(() => {
-        const parentShowTitle = data.showId && typeof data.showId === 'object' ? data.showId.title : '';
-        if (parentShowTitle) {
-         const normalizedType = type ? type.toLowerCase().trim() : '';
-         const isSeason = normalizedType === 'season' || normalizedType === 'seasons';
-         return (
-          <span className="fe-episode-parent-show-v">
-           {isSeason ? 'SEASON OF' : 'EPISODE OF'} <strong>{parentShowTitle}</strong>
-          </span>
-         );
-        }
-        return null;
-       })()}
-       <h1 className="fe-info-title-v">{getTitle(data)}</h1>
-       <div className="fe-info-meta-top-v">
-        <span className="meta-genre-v">{
-         ((data.genres && data.genres.length > 0 ? data.genres : (data.showId && typeof data.showId === 'object' && data.showId.genres)) || []).join(' | ') || 'Drama'
-        }</span>
-        <span className="meta-sep-v">|</span>
-        <span className="meta-lang-v">{data.language || (data.showId && typeof data.showId === 'object' && data.showId.language) || 'English'}</span>
-       </div>
-
-        {data.trailerUrl && data.trailerUrl.trim() !== "" && (
-         <button className="fe-trailer-btn-v" onClick={handlePlayTrailer}>
-          <Play size={18} fill="currentColor" /> WATCH TRAILER
-         </button>
+         </section>
         )}
-
-        {(cleanType === 'live' || cleanType === 'channel' || cleanType === 'channels' || cleanType === 'tv-channel' || cleanType === 'tv-channels') && (
-         <div className="fe-live-servers-v" style={{ marginTop: '25px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <h3 style={{ color: '#fff', fontSize: '1.1rem', fontWeight: 700, margin: 0, textAlign: 'left' }}>Available Streaming Servers:</h3>
-          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-           {data.server1Url && (
-            <button 
-             className="action-btn-v" 
-             style={{ 
-               background: activeVideoUrl === data.server1Url ? '#b3d332' : 'rgba(255,255,255,0.08)',
-               color: activeVideoUrl === data.server1Url ? '#000' : '#fff',
-               border: activeVideoUrl === data.server1Url ? 'none' : '1px solid rgba(255,255,255,0.1)',
-               padding: '10px 18px',
-               borderRadius: '25px',
-               fontSize: '0.85rem',
-               fontWeight: 800,
-               cursor: 'pointer',
-               transition: '0.3s'
-             }}
-             onClick={() => handlePlayVideo(data.server1Url)}
-            >
-             Server 1 (Primary)
-            </button>
-           )}
-           {data.server2Url && (
-            <button 
-             className="action-btn-v" 
-             style={{ 
-               background: activeVideoUrl === data.server2Url ? '#b3d332' : 'rgba(255,255,255,0.08)',
-               color: activeVideoUrl === data.server2Url ? '#000' : '#fff',
-               border: activeVideoUrl === data.server2Url ? 'none' : '1px solid rgba(255,255,255,0.1)',
-               padding: '10px 18px',
-               borderRadius: '25px',
-               fontSize: '0.85rem',
-               fontWeight: 800,
-               cursor: 'pointer',
-               transition: '0.3s'
-             }}
-             onClick={() => handlePlayVideo(data.server2Url)}
-            >
-             Server 2 (Backup)
-            </button>
-           )}
-           {data.server3Url && (
-            <button 
-             className="action-btn-v" 
-             style={{ 
-               background: activeVideoUrl === data.server3Url ? '#b3d332' : 'rgba(255,255,255,0.08)',
-               color: activeVideoUrl === data.server3Url ? '#000' : '#fff',
-               border: activeVideoUrl === data.server3Url ? 'none' : '1px solid rgba(255,255,255,0.1)',
-               padding: '10px 18px',
-               borderRadius: '25px',
-               fontSize: '0.85rem',
-               fontWeight: 800,
-               cursor: 'pointer',
-               transition: '0.3s'
-             }}
-             onClick={() => handlePlayVideo(data.server3Url)}
-            >
-             Server 3 (Backup)
-            </button>
-           )}
-           {data.embedCode && (
-            <button 
-             className="action-btn-v" 
-             style={{ 
-               background: activeVideoUrl === data.embedCode ? '#b3d332' : 'rgba(255,255,255,0.08)',
-               color: activeVideoUrl === data.embedCode ? '#000' : '#fff',
-               border: activeVideoUrl === data.embedCode ? 'none' : '1px solid rgba(255,255,255,0.1)',
-               padding: '10px 18px',
-               borderRadius: '25px',
-               fontSize: '0.85rem',
-               fontWeight: 800,
-               cursor: 'pointer',
-               transition: '0.3s'
-             }}
-             onClick={() => handlePlayVideo(data.embedCode)}
-            >
-             External Player
-            </button>
-           )}
-          </div>
-         </div>
-        )}
-
-       {(type === 'movie' || type === 'show' || type === 'shows' || type === 'series' || type === 'short-web-series' || type === 'new-releases' || type === 'episode' || type === 'episodes' || type === 'season' || type === 'seasons') && (
-         <div className="fe-info-cast-v">
-          {(() => {
-            const rawActors = data.actors && data.actors.length > 0 
-              ? data.actors 
-              : (data.showId && typeof data.showId === 'object' ? data.showId.actors : null);
-            const actorsList = rawActors && rawActors.length > 0 
-              ? [...new Set(rawActors.map(a => typeof a === 'object' ? a.name : a))]
-              : [];
-
-            const rawDirectors = data.directors && data.directors.length > 0 
-              ? data.directors 
-              : (data.showId && typeof data.showId === 'object' ? data.showId.directors : null);
-            const directorsList = rawDirectors && rawDirectors.length > 0 
-              ? [...new Set(rawDirectors.map(d => typeof d === 'object' ? d.name : d))]
-              : [];
-
-            return (
-              <>
-                <div className="fe-cast-group">
-                  <div className="fe-cast-label">Directors</div>
-                  <div className="fe-cast-list">
-                    {directorsList.length > 0 ? (
-                      directorsList.map((director, idx) => (
-                        <span key={idx} className="fe-cast-chip fe-director-chip">{director}</span>
-                      ))
-                    ) : (
-                      <span className="fe-cast-empty">N/A</span>
-                    )}
-                  </div>
-                </div>
-                <div className="fe-cast-group">
-                  <div className="fe-cast-label">Actors</div>
-                  <div className="fe-cast-list">
-                    {actorsList.length > 0 ? (
-                      actorsList.map((actor, idx) => (
-                        <span key={idx} className="fe-cast-chip">{actor}</span>
-                      ))
-                    ) : (
-                      <span className="fe-cast-empty">N/A</span>
-                    )}
-                  </div>
-                </div>
-              </>
-            );
-          })()}
-         </div>
-        )}
-
-       <div className="fe-info-desc-v">
-        <div dangerouslySetInnerHTML={{ __html: data.description || (data.showId && typeof data.showId === 'object' && data.showId.description) || 'No description available for this title.' }} />
-       </div>
-      </div>
-
-     </div>
-    </div>
-
-    {/* TV Show Seasons & Episodes Section */}
-    {data.upcoming === 'Yes' ? (
-     <div className="fe-upcoming-episodes-message-v" style={{ textAlign: 'center', padding: '60px 20px', background: '#0a0a0a', borderTop: '1px solid rgba(255,255,255,0.05)', marginTop: '40px' }}>
-       <h3 style={{ color: '#fff', fontSize: '1.5rem', fontWeight: 800, marginBottom: '10px' }}>Episodes Coming Soon</h3>
-       <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '1rem' }}>Stay tuned! Episodes for this series will be available soon.</p>
-     </div>
-    ) : (seasons.length > 0 || data.contentType === 'Short Web Series') && (
-     <section className="fe-episodes-section-v">
-      
-      {/* Seasons Gallery Section */}
-      {data.contentType !== 'Short Web Series' && seasons.length > 0 && (
-       <div className="fe-seasons-block-v">
-        <h2 className="fe-seasons-title-v">Seasons</h2>
-        <div className="fe-seasons-grid-v">
-         {seasons.map((season) => (
-          <div 
-           key={season._id} 
-           className={`fe-season-card-v ${selectedSeasonId === season._id ? 'active' : ''}`}
-           onClick={() => {
-            navigate(`/details/seasons/${season._id}`);
-           }}
-          >
-           <div className="fe-season-poster-wrapper-v">
-            <img src={formatImageUrl(season, 'poster') || formatImageUrl(season, 'thumbnail')} alt={season.title} />
-           </div>
-           <h3 className="fe-season-card-title-v">{season.title}</h3>
-          </div>
-         ))}
-        </div>
-       </div>
-      )}
-
-      {/* Episodes Block Section */}
-      {(() => {
-       const isShortWeb = data.contentType === 'Short Web Series';
-       let filteredEpisodes = episodes;
-       let seasonNameText = '';
-       
-       if (!isShortWeb) {
-        const selectedSeasonObj = seasons.find(s => s._id === selectedSeasonId);
-        seasonNameText = selectedSeasonObj ? `${data.title} - ${selectedSeasonObj.title}` : '';
-        filteredEpisodes = episodes.filter(ep => ep.seasonId === selectedSeasonId || (ep.seasonId && (ep.seasonId._id === selectedSeasonId || ep.seasonId === selectedSeasonId)));
-       } else {
-        seasonNameText = `${data.title} - Episodes`;
-       }
-       
-       return (
-        <div className="fe-episodes-block-v">
-         {seasonNameText && <h2 className="fe-episodes-block-title-v">{seasonNameText}</h2>}
-         {filteredEpisodes.length === 0 ? (
-          <div className="no-episodes-v">No episodes available.</div>
-         ) : (
-          <div className="fe-episodes-grid-v">
-           {filteredEpisodes.map((ep, idx) => (
-            <div 
-             key={ep._id} 
-             className="fe-episode-card-v"
-             onClick={() => {
-              navigate(`/details/episodes/${ep._id}`);
-             }}
-            >
-             <div className="fe-episode-thumb-wrapper-v">
-              <img src={formatImageUrl(ep, 'poster') || formatImageUrl(ep, 'thumbnail')} alt={ep.title} />
-              <div className="fe-episode-hover-play-v">
-               <Play size={20} fill="white" color="white" />
-              </div>
-              {((data?.seriesAccess || '').toLowerCase() === 'paid' && (ep.access || '').toLowerCase() === 'paid') && (
-               <div className="fe-episode-crown-tag-v">
-                <Crown size={12} fill="white" color="white" />
-               </div>
-              )}
-             </div>
-             <h3 className="fe-episode-card-title-v">{ep.title}</h3>
-            </div>
-           ))}
-          </div>
-         )}
-        </div>
-       );
-      })()}
-     </section>
+      </>
     )}
 
     {/* You May Also Like Section */}
@@ -1177,8 +1534,8 @@ const FrontendDetails = () => {
      <div className={`fe-related-grid-v ${cleanType === 'sports' ? 'grid-sports-v' : cleanType === 'live' ? 'grid-live-v' : ''}`}>
       {related.map((item) => {
        let cardType = type;
-       if (cleanType === 'show' || cleanType === 'shows' || cleanType === 'series' || cleanType === 'short-web-series' || cleanType === 'episode' || cleanType === 'episodes' || cleanType === 'season' || cleanType === 'seasons') {
-        cardType = cleanType === 'short-web-series' ? 'short-web-series' : 'shows';
+       if (cleanType === 'show' || cleanType === 'shows' || cleanType === 'series' || cleanType === 'short-web-series' || cleanType === 'pocket-reel-series' || cleanType === 'pocket-reels' || cleanType === 'episode' || cleanType === 'episodes' || cleanType === 'season' || cleanType === 'seasons') {
+        cardType = (cleanType === 'pocket-reel-series' || cleanType === 'pocket-reels') ? 'pocket-reel-series' : (cleanType === 'short-web-series' ? 'short-web-series' : 'shows');
        }
        const isSports = cleanType === 'sports';
        const isLive = cleanType === 'live';
@@ -1186,7 +1543,7 @@ const FrontendDetails = () => {
         <Link to={`/details/${cardType}/${item._id}`} key={item._id} className={`fe-related-card-v ${isSports ? 'related-sports-v' : isLive ? 'related-live-v' : ''}`}>
          <div className="related-poster-v">
           <img src={formatImageUrl(item, isSports ? 'landscape' : 'poster')} alt={getTitle(item)} />
-          {checkIsPaid(item, isSports ? 'sports' : isLive ? 'live' : (cardType === 'shows' || cardType === 'short-web-series') ? 'show' : 'movie') && <div className="premium-tag-v"><Crown size={11} fill="currentColor" /></div>}
+          {checkIsPaid(item, isSports ? 'sports' : isLive ? 'live' : (cardType === 'shows' || cardType === 'short-web-series' || cardType === 'pocket-reel-series') ? 'show' : 'movie') && <div className="premium-tag-v"><Crown size={11} fill="currentColor" /></div>}
          </div>
          <h3>{getTitle(item)}</h3>
         </Link>
@@ -1196,9 +1553,9 @@ const FrontendDetails = () => {
     </section>
 
     {/* Fullscreen Cinema Player Overlay */}
-    {activeVideoUrl && (() => {
+    {activeVideoUrl && !isPocketReel && (() => {
       const filteredEpisodes = episodes.filter(ep => {
-        if (data.contentType === 'Short Web Series') return true;
+        if (data.contentType === 'Short Web Series' || data.contentType === 'Pocket Reel Series') return true;
         if (!ep.seasonId) return false;
         const epSeasonIdStr = typeof ep.seasonId === 'object' ? (ep.seasonId._id || ep.seasonId.id || '').toString() : ep.seasonId.toString();
         const currentSeasonIdStr = selectedSeasonId ? selectedSeasonId.toString() : '';
@@ -1216,7 +1573,7 @@ const FrontendDetails = () => {
 
       const getCurrentSubtitles = () => {
         if (!data) return { active: 'Inactive', list: [] };
-        if (cleanType === 'shows' || cleanType === 'web-series' || cleanType === 'short-web-series') {
+        if (cleanType === 'shows' || cleanType === 'web-series' || cleanType === 'short-web-series' || cleanType === 'pocket-reel-series' || cleanType === 'pocket-reels') {
           const currentEp = episodes.find(ep => {
             const epUrl = ep.videoFile || ep.videoUrl || ep.videoFile1080 || ep.videoFile720 || ep.videoFile480;
             return epUrl === activeVideoUrl;
@@ -1298,7 +1655,7 @@ const FrontendDetails = () => {
           </div>
 
           {/* Right: Other Episodes Sidebar */}
-          {(seasons.length > 0 || data.contentType === 'Short Web Series') && (
+          {(seasons.length > 0 || data.contentType === 'Short Web Series' || data.contentType === 'Pocket Reel Series') && (
            <div className="fe-cinema-sidebar-v">
             <h3>Other Episodes</h3>
             <div className="fe-cinema-sidebar-list-v">
@@ -2027,6 +2384,564 @@ const FrontendDetails = () => {
     .fe-rating-cancel-btn-v { background: #1a1a1a; color: #fff; border: 1px solid #333; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
     .fe-rating-cancel-btn-v:hover { background: #2a2a2a; }
     
+    /* Pocket Reel Series Details Layout (Pocket FM / ReelShort Style) */
+    .fe-pocket-detail-page-v {
+      max-width: 1380px;
+      margin: 0 auto;
+      padding: 90px 4% 40px;
+      position: relative;
+      z-index: 10;
+    }
+    .fe-pocket-main-layout-v {
+      display: flex;
+      gap: 28px;
+      align-items: flex-start;
+      margin-bottom: 24px;
+    }
+    .fe-pocket-left-column-v {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .fe-pocket-visual-main-v {
+      width: 100%;
+      background: #000;
+      border-radius: 16px;
+      overflow: hidden;
+      position: relative;
+      min-height: 520px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.8);
+    }
+    .fe-pocket-inline-player-v {
+      width: 100%;
+      height: 100%;
+      min-height: 520px;
+      display: flex;
+      background: #000;
+    }
+    .fe-pocket-poster-showcase-v {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at center, #1b1c24 0%, #08080c 100%);
+      min-height: 520px;
+    }
+    .fe-pocket-showcase-img {
+      width: 100%;
+      height: 100%;
+      max-height: 560px;
+      object-fit: contain;
+      transition: transform 0.6s ease;
+    }
+    .fe-pocket-poster-showcase-v:hover .fe-pocket-showcase-img {
+      transform: scale(1.02);
+    }
+    .fe-pocket-showcase-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.5) 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .fe-pocket-center-play-btn {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #b3d332 0%, #9cb82c 100%);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      box-shadow: 0 10px 30px rgba(179, 211, 50, 0.45);
+      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .fe-pocket-center-play-btn:hover {
+      transform: scale(1.1);
+      box-shadow: 0 12px 35px rgba(179, 211, 50, 0.65);
+    }
+    .fe-pulse-ring-glow {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      border: 2px solid rgba(179, 211, 50, 0.6);
+      animation: fePulseGlow 2s infinite cubic-bezier(0.25, 0, 0, 1);
+    }
+    @keyframes fePulseGlow {
+      0% { transform: scale(1); opacity: 0.8; }
+      100% { transform: scale(1.5); opacity: 0; }
+    }
+
+    /* Pocket Sidebar Drawer */
+    .fe-pocket-sidebar-drawer-v {
+      width: 390px;
+      flex-shrink: 0;
+      background: #0b0c10;
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      max-height: 560px;
+    }
+    .fe-pocket-tab-header-v {
+      display: flex;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.02);
+    }
+    .fe-pocket-tab-btn-v {
+      flex: 1;
+      padding: 16px 12px;
+      background: none;
+      border: none;
+      color: #8e99a8;
+      font-weight: 700;
+      font-size: 0.95rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      position: relative;
+      transition: color 0.3s ease;
+    }
+    .fe-pocket-tab-btn-v.active {
+      color: #fff;
+    }
+    .fe-pocket-tab-btn-v.active::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 15%;
+      right: 15%;
+      height: 3px;
+      background: linear-gradient(90deg, #b3d332, #9cb82c);
+      border-radius: 3px 3px 0 0;
+    }
+    .fe-pocket-tab-count {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #94a3b8;
+    }
+    .fe-pocket-episodes-content-v {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      overflow: hidden;
+    }
+    .fe-pocket-range-bar-v {
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      background: rgba(255, 255, 255, 0.01);
+    }
+    .fe-pocket-range-select {
+      background: transparent;
+      color: #b3d332;
+      border: none;
+      font-size: 0.8rem;
+      font-weight: 800;
+      letter-spacing: 0.6px;
+      cursor: pointer;
+      outline: none;
+      text-transform: uppercase;
+      width: 100%;
+    }
+    .fe-pocket-range-select option {
+      background: #0f1016;
+      color: #fff;
+    }
+    .fe-pocket-ep-scroll-list-v {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+    }
+    .fe-pocket-ep-scroll-list-v::-webkit-scrollbar {
+      width: 5px;
+    }
+    .fe-pocket-ep-scroll-list-v::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+    }
+    .fe-pocket-ep-row-v {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      gap: 12px;
+    }
+    .fe-pocket-ep-row-v:hover {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.1);
+      transform: translateX(3px);
+    }
+    .fe-pocket-ep-row-v.active {
+      background: rgba(179, 211, 50, 0.12);
+      border-color: rgba(179, 211, 50, 0.4);
+    }
+    .fe-pocket-ep-info-left {
+      flex: 1;
+      min-width: 0;
+    }
+    .fe-pocket-ep-title-row {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      font-weight: 700;
+      color: #fff;
+      font-size: 0.92rem;
+      margin-bottom: 3px;
+    }
+    .fe-pocket-ep-num {
+      color: #b3d332;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+    .fe-pocket-ep-name {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .fe-pocket-ep-submeta {
+      font-size: 0.74rem;
+      color: #788292;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .fe-pocket-ep-play-circle {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      background: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      color: #fff;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .fe-pocket-ep-row-v:hover .fe-pocket-ep-play-circle {
+      border-color: #b3d332;
+      color: #b3d332;
+      transform: scale(1.08);
+    }
+    .fe-pocket-ep-play-circle.playing {
+      background: linear-gradient(135deg, #b3d332, #9cb82c);
+      border-color: transparent;
+      color: #000;
+    }
+    .fe-pocket-no-eps {
+      color: #888;
+      font-size: 0.88rem;
+      padding: 40px 10px;
+      text-align: center;
+    }
+
+    /* Reviews Tab inside Pocket Sidebar */
+    .fe-pocket-reviews-tab-v {
+      padding: 24px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .fe-pocket-rating-summary {
+      text-align: center;
+      background: rgba(255, 255, 255, 0.03);
+      padding: 18px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .fe-pocket-rating-score {
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+      gap: 4px;
+      margin-bottom: 6px;
+    }
+    .fe-pocket-rating-score .score-num {
+      font-size: 2.2rem;
+      font-weight: 900;
+      color: #fff;
+    }
+    .fe-pocket-rating-score .score-max {
+      color: #777;
+      font-size: 1rem;
+    }
+    .fe-pocket-rating-stars-row {
+      display: flex;
+      justify-content: center;
+      gap: 4px;
+      margin-bottom: 6px;
+    }
+    .fe-pocket-rating-total {
+      font-size: 0.78rem;
+      color: #8895a5;
+      font-weight: 600;
+    }
+    .fe-pocket-user-rate-box {
+      text-align: center;
+      background: rgba(255, 255, 255, 0.02);
+      padding: 16px;
+      border-radius: 12px;
+    }
+    .rate-box-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #cbd5e1;
+      margin-bottom: 10px;
+    }
+    .rate-stars-interactive {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+    }
+    .pocket-star-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 2px;
+      transition: transform 0.2s;
+    }
+    .pocket-star-btn:hover {
+      transform: scale(1.2);
+    }
+    .rated-label {
+      color: #b3d332;
+      font-size: 0.78rem;
+      font-weight: 700;
+      margin-top: 8px;
+    }
+
+    /* Bottom Info Section */
+    .fe-pocket-bottom-info-v {
+      padding: 8px 0 20px;
+    }
+    .fe-pocket-status-pill-v {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: #b3d332;
+      font-size: 0.75rem;
+      font-weight: 800;
+      letter-spacing: 0.8px;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+    }
+    .soundwave-icon {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      height: 12px;
+    }
+    .soundwave-icon span {
+      display: block;
+      width: 2px;
+      height: 100%;
+      background: #b3d332;
+      border-radius: 1px;
+      animation: soundwaveAnim 1.2s infinite ease-in-out;
+    }
+    .soundwave-icon span:nth-child(2) { animation-delay: 0.2s; }
+    .soundwave-icon span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes soundwaveAnim {
+      0%, 100% { height: 4px; }
+      50% { height: 12px; }
+    }
+    .fe-pocket-header-action-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .fe-pocket-main-title {
+      font-size: 2.4rem;
+      font-weight: 800;
+      color: #fff;
+      margin: 0;
+      line-height: 1.15;
+      letter-spacing: -0.5px;
+    }
+    .fe-pocket-play-ep-btn {
+      background: linear-gradient(90deg, #b3d332 0%, #9cb82c 100%);
+      color: #000;
+      border: none;
+      padding: 12px 28px;
+      border-radius: 30px;
+      font-weight: 800;
+      font-size: 0.98rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(179, 211, 50, 0.4);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .fe-pocket-play-ep-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 25px rgba(179, 211, 50, 0.6);
+    }
+    .fe-pocket-stats-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #94a3b8;
+      font-size: 0.85rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .fe-pocket-stat-item.star-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      color: #fff;
+    }
+    .fe-review-count {
+      color: #94a3b8;
+      font-weight: 500;
+    }
+    .fe-pocket-desc-wrap {
+      margin-bottom: 22px;
+      max-width: 850px;
+    }
+    .fe-pocket-desc-text {
+      color: #cbd5e1;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      margin: 0;
+    }
+    .fe-pocket-desc-text.clamped {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .fe-pocket-more-toggle {
+      background: none;
+      border: none;
+      color: #b3d332;
+      font-weight: 800;
+      font-size: 0.9rem;
+      cursor: pointer;
+      padding: 4px 0 0;
+      display: inline-block;
+    }
+    .fe-pocket-meta-credits-v {
+      border-top: 1px dashed rgba(255, 255, 255, 0.12);
+      border-bottom: 1px dashed rgba(255, 255, 255, 0.12);
+      padding: 16px 0;
+      margin-bottom: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-width: 850px;
+    }
+    .fe-pocket-credit-row {
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+      font-size: 0.85rem;
+    }
+    .credit-label {
+      color: #64748b;
+      font-weight: 800;
+      font-size: 0.75rem;
+      letter-spacing: 0.5px;
+      width: 170px;
+      flex-shrink: 0;
+    }
+    .credit-value {
+      color: #e2e8f0;
+      font-weight: 600;
+    }
+    .fe-pocket-breadcrumbs-bottom {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #64748b;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-top: 10px;
+    }
+    .fe-pocket-breadcrumbs-bottom a {
+      color: #94a3b8;
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .fe-pocket-breadcrumbs-bottom a:hover {
+      color: #fff;
+    }
+    .fe-pocket-breadcrumbs-bottom .current-crumb {
+      color: #64748b;
+    }
+
+    @media (max-width: 992px) {
+      .fe-pocket-detail-page-v {
+        padding: 75px 4% 30px;
+      }
+      .fe-pocket-main-layout-v {
+        flex-direction: column;
+        gap: 20px;
+      }
+      .fe-pocket-visual-main-v {
+        min-height: 280px;
+        max-height: 420px;
+      }
+      .fe-pocket-inline-player-v, .fe-pocket-poster-showcase-v {
+        min-height: 280px;
+      }
+      .fe-pocket-sidebar-drawer-v {
+        width: 100%;
+        max-height: 480px;
+        position: static;
+        margin-top: 10px;
+      }
+      .fe-pocket-main-title {
+        font-size: 1.6rem;
+      }
+      .fe-pocket-header-action-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 14px;
+      }
+      .fe-pocket-play-ep-btn {
+        width: 100%;
+        justify-content: center;
+        padding: 13px 20px;
+      }
+    }
+
     @keyframes modalSlideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     @keyframes noteSlideUp { from { transform: translate(-50%, 40px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
    ` }} />

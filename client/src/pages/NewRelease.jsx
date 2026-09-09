@@ -468,6 +468,7 @@ const NewRelease = () => {
           <option value="Short Film">Short Films</option>
           <option value="TV Show">TV Shows</option>
           <option value="Short Web Series">Short Web Series</option>
+          <option value="Pocket Reel Series">Pocket Reel Series</option>
          </select>
        </div>
       </div>

@@ -71,10 +71,10 @@ const FrontendShortFilms = () => {
         const ratingVal = parseFloat(movie.imdbRating || '6.1');
         const percentage = (ratingVal / 10) * 100;
         const year = movie.releaseYear || (movie.releaseDate ? new Date(movie.releaseDate).getFullYear() : '2024');
-        const quality = movie.videoQuality || '4K Ultra HD';
-        const parts = quality.split(' ');
-        const prefix = parts[0] || '4K';
-        const suffix = parts.slice(1).join(' ') || 'Ultra HD';
+        const quality = movie.videoQuality;
+        const parts = (quality || '').split(' ');
+        const prefix = parts[0] || '';
+        const suffix = parts.slice(1).join(' ') || '';
 
         return (
          <Link to={`/details/movie/${movie._id}`} key={movie._id} className="fe-movie-card-new">
@@ -91,10 +91,12 @@ const FrontendShortFilms = () => {
               </div>
             ) : (
               <div className="card-overlay-hover">
-               <div className="fe-premium-badge-v">
-                <span className="badge-prefix-v">{prefix}</span>
-                <span className="badge-suffix-v">{suffix}</span>
-               </div>
+               {quality && quality !== 'None' && (
+                <div className="fe-premium-badge-v">
+                 <span className="badge-prefix-v">{prefix}</span>
+                 <span className="badge-suffix-v">{suffix}</span>
+                </div>
+               )}
                <div 
                 className="fe-badge-rating-v" 
                 style={{ background: `conic-gradient(#b3d332 ${percentage}%, rgba(255,255,255,0.1) ${percentage}%)` }}
@@ -157,18 +159,30 @@ const FrontendShortFilms = () => {
     @media (max-width: 992px) { .movies-grid { grid-template-columns: repeat(3, 1fr); gap: 20px; } .hero-content h1 { font-size: 3.5rem; } }
     @media (max-width: 768px) { 
      .fe-movies-hero { position: relative; height: auto; min-height: 220px; background-attachment: scroll; padding: 80px 20px 40px; background-image: url('https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=800&q=80'); }
-     .movies-grid { grid-template-columns: repeat(2, 1fr); gap: 15px; } 
+     .movies-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 10px !important; } 
      .hero-content h1 { font-size: 2.4rem; letter-spacing: -1px; margin-bottom: 8px; } 
      .hero-content p { font-size: 0.95rem; line-height: 1.4; }
-     .fe-movies-content { padding: 30px 15px; margin-top: 0; }
+     .fe-movies-content { padding: 25px 10px; margin-top: 0; }
      .card-info-new { padding: 0; }
-     .movie-title-v { font-size: 0.85rem; }
+     .movie-title-v { font-size: 0.72rem !important; line-height: 1.25; }
+     .genre-text-red { font-size: 0.6rem !important; margin-bottom: 2px; }
+     .age-badge { font-size: 0.5rem !important; padding: 1px 4px; }
+     .year-text { font-size: 0.6rem !important; }
+     .card-meta-top { margin-bottom: 3px; }
+     .card-image-wrapper { margin-bottom: 8px; }
+     .fe-badge-rating-v { width: 26px !important; height: 26px !important; font-size: 0.6rem !important; bottom: 6px !important; right: 6px !important; }
+     .fe-premium-indicator-v { width: 20px !important; height: 20px !important; top: 6px !important; right: 6px !important; }
+     .fe-premium-indicator-v svg { width: 10px !important; height: 10px !important; }
+     .fe-premium-badge-v { bottom: 6px !important; left: 6px !important; height: 14px !important; }
+     .badge-prefix-v { font-size: 0.45rem !important; padding: 0 3px !important; }
+     .badge-suffix-v { font-size: 0.5rem !important; padding: 0 3px !important; }
     }
     @media (max-width: 480px) {
      .fe-movies-hero { min-height: 180px; padding: 70px 15px 30px; }
      .hero-content h1 { font-size: 1.8rem; }
      .hero-content p { display: none; }
-     .movies-grid { gap: 12px; }
+     .movies-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 8px !important; }
+     .fe-movies-content { padding: 20px 8px; }
     }
    ` }} />
   </FrontendLayout>

@@ -45,6 +45,7 @@ const FrontendFooter = ({ settings = null, menuSettings = null }) => {
               {(!menuSettings || menuSettings.sports?.toUpperCase() !== 'OFF') && <Link to="/sports">Sports</Link>}
               {(!menuSettings || menuSettings.shortFilms?.toUpperCase() !== 'OFF') && <Link to="/short-films">Short Films</Link>}
               {(!menuSettings || menuSettings.webSeries?.toUpperCase() !== 'OFF') && <Link to="/web-series">Web Series</Link>}
+              {(!menuSettings || menuSettings.pocketReelSeries?.toUpperCase() !== 'OFF') && <Link to="/pocket-reel-series">Pocket Reel Series</Link>}
               {(!menuSettings || menuSettings.shorts?.toUpperCase() !== 'OFF') && <Link to="/shorts">Shorts</Link>}
               <Link to="/subscription">Subscription</Link>
               <Link to="/submission">Submission</Link>

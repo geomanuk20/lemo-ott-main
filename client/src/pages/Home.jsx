@@ -55,6 +55,8 @@ const isItemActive = (item, type, menuSettings) => {
       contentType = 'TV Show';
     } else if (normType === 'short-web-series') {
       contentType = 'Short Web Series';
+    } else if (normType === 'pocket-reel-series' || normType === 'pocket-reels') {
+      contentType = 'Pocket Reel Series';
     } else if (normType === 'sports' || normType === 'sport') {
       contentType = 'Sports';
     } else if (normType === 'live' || normType === 'channel' || normType === 'channels' || normType === 'tv-channel' || normType === 'tv-channels') {
@@ -83,6 +85,7 @@ const isItemActive = (item, type, menuSettings) => {
   if (contentType === 'Short Film' && menuSettings.shortFilms?.toUpperCase() === 'OFF') return false;
   if (contentType === 'TV Show' && menuSettings.shows?.toUpperCase() === 'OFF') return false;
   if (contentType === 'Short Web Series' && menuSettings.webSeries?.toUpperCase() === 'OFF') return false;
+  if (contentType === 'Pocket Reel Series' && menuSettings.pocketReelSeries?.toUpperCase() === 'OFF') return false;
   if (contentType === 'Sports' && menuSettings.sports?.toUpperCase() === 'OFF') return false;
   if (contentType === 'Live TV' && menuSettings.liveTv?.toUpperCase() === 'OFF') return false;
 
@@ -101,6 +104,7 @@ const isSliderActive = (slide, menuSettings) => {
   if (postType === 'Short Film' && menuSettings.shortFilms?.toUpperCase() === 'OFF') return false;
   if (postType === 'TV Shows' && menuSettings.shows?.toUpperCase() === 'OFF') return false;
   if (postType === 'Short Web Series' && menuSettings.webSeries?.toUpperCase() === 'OFF') return false;
+  if (postType === 'Pocket Reel Series' && menuSettings.pocketReelSeries?.toUpperCase() === 'OFF') return false;
   if (postType === 'Sports' && menuSettings.sports?.toUpperCase() === 'OFF') return false;
   if (postType === 'Live TV' && menuSettings.liveTv?.toUpperCase() === 'OFF') return false;
   
@@ -109,6 +113,7 @@ const isSliderActive = (slide, menuSettings) => {
   if (contentType === 'Short Film' && menuSettings.shortFilms?.toUpperCase() === 'OFF') return false;
   if (contentType === 'TV Show' && menuSettings.shows?.toUpperCase() === 'OFF') return false;
   if (contentType === 'Short Web Series' && menuSettings.webSeries?.toUpperCase() === 'OFF') return false;
+  if (contentType === 'Pocket Reel Series' && menuSettings.pocketReelSeries?.toUpperCase() === 'OFF') return false;
   if (contentType === 'Sports' && menuSettings.sports?.toUpperCase() === 'OFF') return false;
   if (contentType === 'Live TV' && menuSettings.liveTv?.toUpperCase() === 'OFF') return false;
 
@@ -215,7 +220,7 @@ const Home = () => {
 
     // Cache versioning: bump this version when server-side filtering changes
     // to force all users to get fresh data and discard stale cached content
-    const CACHE_VERSION = 'v2_active_only';
+    const CACHE_VERSION = 'v6_pocket_reel_fresh';
     const storedVersion = localStorage.getItem('home_cache_version');
     if (storedVersion !== CACHE_VERSION) {
       // Stale cache — clear it so inactive items don't flash on screen
@@ -246,6 +251,7 @@ const Home = () => {
           if (type === 'Live TV' && mSettings?.liveTv?.toUpperCase() === 'OFF') return false;
           if (type === 'Short Film' && mSettings?.shortFilms?.toUpperCase() === 'OFF') return false;
           if (type === 'Short Web Series' && mSettings?.webSeries?.toUpperCase() === 'OFF') return false;
+          if ((type === 'Pocket Reel Series' || type === 'Pocket Reel') && mSettings?.pocketReelSeries?.toUpperCase() === 'OFF') return false;
           if (type === 'Shorts' && mSettings?.shorts?.toUpperCase() === 'OFF') return false;
           // 'New Release', 'Language', 'Genre' sections always show
           return true;
@@ -261,6 +267,7 @@ const Home = () => {
         setAssets(data.assets || []);
         setExperiences(data.experiences || []);
         setSportsCategories(data.sportsCategories || []);
+        filteredHomeSections.sort((a, b) => (a.order || 0) - (b.order || 0));
         setHomeSections(filteredHomeSections);
         
         setSportsChannels(filteredChannels.filter(c => {
@@ -317,6 +324,7 @@ const Home = () => {
           if (type === 'Live TV' && currentMenuSettings?.liveTv?.toUpperCase() === 'OFF') return false;
           if (type === 'Short Film' && currentMenuSettings?.shortFilms?.toUpperCase() === 'OFF') return false;
           if (type === 'Short Web Series' && currentMenuSettings?.webSeries?.toUpperCase() === 'OFF') return false;
+          if ((type === 'Pocket Reel Series' || type === 'Pocket Reel') && currentMenuSettings?.pocketReelSeries?.toUpperCase() === 'OFF') return false;
           if (type === 'Shorts' && currentMenuSettings?.shorts?.toUpperCase() === 'OFF') return false;
           return true;
         });
@@ -330,6 +338,7 @@ const Home = () => {
         setSports(filteredSports);
         setChannels(filteredChannels);
         setShorts(filteredShorts);
+        filteredHomeSections.sort((a, b) => (a.order || 0) - (b.order || 0));
         setHomeSections(filteredHomeSections);
         
         setSportsChannels(filteredChannels.filter(c => {
@@ -501,6 +510,7 @@ const Home = () => {
              'Short Film': 'movie',
              'TV Shows': 'show',
              'Short Web Series': 'show',
+             'Pocket Reel Series': 'show',
              'Sports': 'sports',
              'Live TV': 'live'
             };
@@ -587,38 +597,41 @@ const Home = () => {
                       )}
                       <div className="fe-card-hover-v">
                         <div className="fe-hover-content-v">
-                          {m.upcoming === 'Yes' ? (
-                            <div style={{ color: '#b3d332', fontWeight: 800, fontSize: '0.65rem', letterSpacing: '0.5px', marginBottom: '15px' }}>COMING SOON</div>
+                          {!m.upcoming || m.upcoming !== 'Yes' ? (
+                            <>
+                              <div className="fe-play-btn-v"><Play size={20} fill="white" /></div>
+                              <div className="fe-card-badges-v">
+                                {(() => {
+                                  const quality = m.videoQuality;
+                                  if (!quality || quality === 'None') return null;
+                                  const parts = quality.split(' ');
+                                  const prefix = parts[0] || '';
+                                  const suffix = parts.slice(1).join(' ') || '';
+                                  return (
+                                    <div className="fe-premium-badge-v">
+                                      <span className="badge-prefix-v">{prefix}</span>
+                                      <span className="badge-suffix-v">{suffix}</span>
+                                    </div>
+                                  );
+                                })()}
+                                {(() => {
+                                  const ratingVal = parseFloat(m.imdbRating || '4.8');
+                                  const percentage = (ratingVal / 10) * 100;
+                                  return (
+                                    <div 
+                                      className="fe-badge-rating-v" 
+                                      style={{ background: `conic-gradient(#b3d332 ${percentage}%, rgba(255,255,255,0.1) ${percentage}%)` }}
+                                    >
+                                      <div className="rating-inner-v">{m.imdbRating || '4.8'}</div>
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                              <div className="fe-card-info-meta-v">{m.genres?.[0] || m.genre?.[0] || 'Thriller'}</div>
+                            </>
                           ) : (
-                            <div className="fe-play-btn-v"><Play size={20} fill="white" /></div>
+                            <div style={{ color: '#b3d332', fontWeight: 800, fontSize: '0.65rem', letterSpacing: '0.5px', marginBottom: '4px' }}>COMING SOON</div>
                           )}
-                          <div className="fe-card-badges-v">
-                            {(() => {
-                              const quality = m.videoQuality || '4K Ultra HD';
-                              const parts = quality.split(' ');
-                              const prefix = parts[0] || '4K';
-                              const suffix = parts.slice(1).join(' ') || 'Ultra HD';
-                              return (
-                                <div className="fe-premium-badge-v">
-                                  <span className="badge-prefix-v">{prefix}</span>
-                                  <span className="badge-suffix-v">{suffix}</span>
-                                </div>
-                              );
-                            })()}
-                            {(() => {
-                              const ratingVal = parseFloat(m.imdbRating || '4.8');
-                              const percentage = (ratingVal / 10) * 100;
-                              return (
-                                <div 
-                                  className="fe-badge-rating-v" 
-                                  style={{ background: `conic-gradient(#b3d332 ${percentage}%, rgba(255,255,255,0.1) ${percentage}%)` }}
-                                >
-                                  <div className="rating-inner-v">{m.imdbRating || '4.8'}</div>
-                                </div>
-                              );
-                            })()}
-                          </div>
-                          <div className="fe-card-info-meta-v">{m.genres?.[0] || m.genre?.[0] || 'Thriller'}</div>
                           <h3 className="fe-card-info-title-v">{m.title}</h3>
                           <div className="fe-card-meta-v">
                             <span>{m.language || 'Malayalam'}</span>
@@ -664,21 +677,22 @@ const Home = () => {
                         )}
                         <div className="online-card-overlay-v">
                           {show.upcoming === 'Yes' ? (
-                            <div style={{ color: '#b3d332', fontWeight: 800, fontSize: '0.65rem', letterSpacing: '0.5px', alignSelf: 'center', marginTop: '45%' }}>COMING SOON</div>
+                            <div style={{ color: '#b3d332', fontWeight: 800, fontSize: '0.65rem', letterSpacing: '0.5px' }}>COMING SOON</div>
                           ) : (
                             <>
                               {(() => {
-                                const quality = show.videoQuality || '4K Ultra HD';
-                            const parts = quality.split(' ');
-                            const prefix = parts[0] || '4K';
-                            const suffix = parts.slice(1).join(' ') || 'Ultra HD';
-                            return (
-                              <div className="fe-premium-badge-v">
-                                <span className="badge-prefix-v">{prefix}</span>
-                                <span className="badge-suffix-v">{suffix}</span>
-                              </div>
-                            );
-                          })()}
+                                const quality = show.videoQuality;
+                                if (!quality || quality === 'None') return null;
+                                const parts = quality.split(' ');
+                                const prefix = parts[0] || '';
+                                const suffix = parts.slice(1).join(' ') || '';
+                                return (
+                                  <div className="fe-premium-badge-v">
+                                    <span className="badge-prefix-v">{prefix}</span>
+                                    <span className="badge-suffix-v">{suffix}</span>
+                                  </div>
+                                );
+                              })()}
                           {(() => {
                             const ratingVal = parseFloat(show.imdbRating || show.rating || '4.8');
                             const percentage = (ratingVal / 10) * 100;
@@ -734,7 +748,7 @@ const Home = () => {
                               <Crown size={12} fill="currentColor" />
                             </div>
                           )}
-                          {item.videoQuality && (
+                          {item.videoQuality && item.videoQuality !== 'None' && (
                             <div className="fe-quality-badge-v">
                               {(() => {
                                 const q = item.videoQuality || 'HD';
@@ -840,38 +854,41 @@ const Home = () => {
                       )}
                       <div className="fe-card-hover-v">
                         <div className="fe-hover-content-v">
-                          {m.upcoming === 'Yes' ? (
-                            <div style={{ color: '#b3d332', fontWeight: 800, fontSize: '0.65rem', letterSpacing: '0.5px', marginBottom: '15px' }}>COMING SOON</div>
+                          {!m.upcoming || m.upcoming !== 'Yes' ? (
+                            <>
+                              <div className="fe-play-btn-v"><Play size={20} fill="white" /></div>
+                              <div className="fe-card-badges-v">
+                                {(() => {
+                                  const quality = m.videoQuality;
+                                  if (!quality || quality === 'None') return null;
+                                  const parts = quality.split(' ');
+                                  const prefix = parts[0] || '';
+                                  const suffix = parts.slice(1).join(' ') || '';
+                                  return (
+                                    <div className="fe-premium-badge-v">
+                                      <span className="badge-prefix-v">{prefix}</span>
+                                      <span className="badge-suffix-v">{suffix}</span>
+                                    </div>
+                                  );
+                                })()}
+                                {(() => {
+                                  const ratingVal = parseFloat(m.imdbRating || '4.8');
+                                  const percentage = (ratingVal / 10) * 100;
+                                  return (
+                                    <div 
+                                      className="fe-badge-rating-v" 
+                                      style={{ background: `conic-gradient(#b3d332 ${percentage}%, rgba(255,255,255,0.1) ${percentage}%)` }}
+                                    >
+                                      <div className="rating-inner-v">{m.imdbRating || '4.8'}</div>
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                              <div className="fe-card-info-meta-v">{m.genres?.[0] || m.genre?.[0] || 'New Release'}</div>
+                            </>
                           ) : (
-                            <div className="fe-play-btn-v"><Play size={20} fill="white" /></div>
+                            <div style={{ color: '#b3d332', fontWeight: 800, fontSize: '0.65rem', letterSpacing: '0.5px', marginBottom: '4px' }}>COMING SOON</div>
                           )}
-                          <div className="fe-card-badges-v">
-                            {(() => {
-                              const quality = m.videoQuality || '4K Ultra HD';
-                              const parts = quality.split(' ');
-                              const prefix = parts[0] || '4K';
-                              const suffix = parts.slice(1).join(' ') || 'Ultra HD';
-                              return (
-                                <div className="fe-premium-badge-v">
-                                  <span className="badge-prefix-v">{prefix}</span>
-                                  <span className="badge-suffix-v">{suffix}</span>
-                                </div>
-                              );
-                            })()}
-                            {(() => {
-                              const ratingVal = parseFloat(m.imdbRating || '4.8');
-                              const percentage = (ratingVal / 10) * 100;
-                              return (
-                                <div 
-                                  className="fe-badge-rating-v" 
-                                  style={{ background: `conic-gradient(#b3d332 ${percentage}%, rgba(255,255,255,0.1) ${percentage}%)` }}
-                                >
-                                  <div className="rating-inner-v">{m.imdbRating || '4.8'}</div>
-                                </div>
-                              );
-                            })()}
-                          </div>
-                          <div className="fe-card-info-meta-v">{m.genres?.[0] || m.genre?.[0] || 'New Release'}</div>
                           <h3 className="fe-card-info-title-v">{m.title}</h3>
                           <div className="fe-card-meta-v">
                             <span>{m.language || 'Malayalam'}</span>
@@ -885,17 +902,16 @@ const Home = () => {
             );
           }
         } else if (section.sectionType === 'Shorts') {
-          const sectionShorts = shorts.slice(0, section.limit || 15);
+          const sectionShorts = shorts.slice(0, section.limit || 24);
           if (sectionShorts.length > 0) {
             contentEl = (
               <section key={section._id} className="fe-watch-online-v" style={{ padding: '0 5%', margin: '40px 0' }}>
-                <div className="watch-online-header-v">
+                <div className="watch-online-header-v" style={{ marginBottom: '20px' }}>
                   <div style={{ textAlign: 'left' }}>
-                    <span className="watch-online-tag-v">VERTICAL SHORTS</span>
-                    <h2 className="watch-online-title-v">{section.title}</h2>
+                    <span className="watch-online-tag-v" style={{ marginBottom: 0 }}>SHORTS</span>
                   </div>
-                  <Link to="/shorts" state={{ initialShorts: shorts }} className="row-more-v" style={{ marginBottom: '10px' }} onClick={triggerAudioActivation}>
-                    WATCH SHORTS <ChevronRight size={14} />
+                  <Link to="/shorts" state={{ initialShorts: shorts }} className="row-more-v" style={{ marginBottom: '0' }} onClick={triggerAudioActivation}>
+                    VIEW ALL <ChevronRight size={14} />
                   </Link>
                 </div>
                 <div className="fe-shorts-list-v">
@@ -961,12 +977,11 @@ const Home = () => {
           if (shortFilms.length > 0) {
             contentEl = (
               <section key={section._id} className="fe-watch-online-v" style={{ padding: '0 5%', margin: '40px 0' }}>
-                <div className="watch-online-header-v">
+                <div className="watch-online-header-v" style={{ marginBottom: '20px' }}>
                   <div style={{ textAlign: 'left' }}>
-                    <span className="watch-online-tag-v">SHORT FILMS</span>
-                    <h2 className="watch-online-title-v">{section.title}</h2>
+                    <span className="watch-online-tag-v" style={{ marginBottom: 0 }}>SHORT FILMS</span>
                   </div>
-                  <Link to="/view-all/short-film/Short Films" className="row-more-v" style={{ marginBottom: '10px' }}>
+                  <Link to="/view-all/short-film/Short Films" className="row-more-v" style={{ marginBottom: '0' }}>
                     VIEW ALL <ChevronRight size={14} />
                   </Link>
                 </div>
@@ -987,38 +1002,41 @@ const Home = () => {
                       )}
                       <div className="fe-card-hover-v">
                         <div className="fe-hover-content-v">
-                          {m.upcoming === 'Yes' ? (
-                            <div style={{ color: '#b3d332', fontWeight: 800, fontSize: '0.65rem', letterSpacing: '0.5px', marginBottom: '15px' }}>COMING SOON</div>
+                          {!m.upcoming || m.upcoming !== 'Yes' ? (
+                            <>
+                              <div className="fe-play-btn-v"><Play size={20} fill="white" /></div>
+                              <div className="fe-card-badges-v">
+                                {(() => {
+                                  const quality = m.videoQuality;
+                                  if (!quality || quality === 'None') return null;
+                                  const parts = quality.split(' ');
+                                  const prefix = parts[0] || '';
+                                  const suffix = parts.slice(1).join(' ') || '';
+                                  return (
+                                    <div className="fe-premium-badge-v">
+                                      <span className="badge-prefix-v">{prefix}</span>
+                                      <span className="badge-suffix-v">{suffix}</span>
+                                    </div>
+                                  );
+                                })()}
+                                {(() => {
+                                  const ratingVal = parseFloat(m.imdbRating || '4.8');
+                                  const percentage = (ratingVal / 10) * 100;
+                                  return (
+                                    <div 
+                                      className="fe-badge-rating-v" 
+                                      style={{ background: `conic-gradient(#b3d332 ${percentage}%, rgba(255,255,255,0.1) ${percentage}%)` }}
+                                    >
+                                      <div className="rating-inner-v">{m.imdbRating || '4.8'}</div>
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                              <div className="fe-card-info-meta-v">{m.genres?.[0] || m.genre?.[0] || 'Short Film'}</div>
+                            </>
                           ) : (
-                            <div className="fe-play-btn-v"><Play size={20} fill="white" /></div>
+                            <div style={{ color: '#b3d332', fontWeight: 800, fontSize: '0.65rem', letterSpacing: '0.5px', marginBottom: '4px' }}>COMING SOON</div>
                           )}
-                          <div className="fe-card-badges-v">
-                            {(() => {
-                              const quality = m.videoQuality || '4K Ultra HD';
-                              const parts = quality.split(' ');
-                              const prefix = parts[0] || '4K';
-                              const suffix = parts.slice(1).join(' ') || 'Ultra HD';
-                              return (
-                                <div className="fe-premium-badge-v">
-                                  <span className="badge-prefix-v">{prefix}</span>
-                                  <span className="badge-suffix-v">{suffix}</span>
-                                </div>
-                              );
-                            })()}
-                            {(() => {
-                              const ratingVal = parseFloat(m.imdbRating || '4.8');
-                              const percentage = (ratingVal / 10) * 100;
-                              return (
-                                <div 
-                                  className="fe-badge-rating-v" 
-                                  style={{ background: `conic-gradient(#b3d332 ${percentage}%, rgba(255,255,255,0.1) ${percentage}%)` }}
-                                >
-                                  <div className="rating-inner-v">{m.imdbRating || '4.8'}</div>
-                                </div>
-                              );
-                            })()}
-                          </div>
-                          <div className="fe-card-info-meta-v">{m.genres?.[0] || m.genre?.[0] || 'Short Film'}</div>
                           <h3 className="fe-card-info-title-v">{m.title}</h3>
                           <div className="fe-card-meta-v">
                             <span>{m.language || 'Malayalam'}</span>
@@ -1064,21 +1082,22 @@ const Home = () => {
                         )}
                         <div className="online-card-overlay-v">
                           {show.upcoming === 'Yes' ? (
-                            <div style={{ color: '#b3d332', fontWeight: 800, fontSize: '0.65rem', letterSpacing: '0.5px', alignSelf: 'center', marginTop: '45%' }}>COMING SOON</div>
+                            <div style={{ color: '#b3d332', fontWeight: 800, fontSize: '0.65rem', letterSpacing: '0.5px' }}>COMING SOON</div>
                           ) : (
                             <>
                               {(() => {
-                                const quality = show.videoQuality || '4K Ultra HD';
-                            const parts = quality.split(' ');
-                            const prefix = parts[0] || '4K';
-                            const suffix = parts.slice(1).join(' ') || 'Ultra HD';
-                            return (
-                              <div className="fe-premium-badge-v">
-                                <span className="badge-prefix-v">{prefix}</span>
-                                <span className="badge-suffix-v">{suffix}</span>
-                              </div>
-                            );
-                          })()}
+                                const quality = show.videoQuality;
+                                if (!quality || quality === 'None') return null;
+                                const parts = quality.split(' ');
+                                const prefix = parts[0] || '';
+                                const suffix = parts.slice(1).join(' ') || '';
+                                return (
+                                  <div className="fe-premium-badge-v">
+                                    <span className="badge-prefix-v">{prefix}</span>
+                                    <span className="badge-suffix-v">{suffix}</span>
+                                  </div>
+                                );
+                              })()}
                           {(() => {
                             const ratingVal = parseFloat(show.imdbRating || show.rating || '4.8');
                             const percentage = (ratingVal / 10) * 100;
@@ -1109,71 +1128,97 @@ const Home = () => {
               </section>
             );
           }
-        }
-
-        // Render Experience Promos after the 2nd row for pleasant pacing
-        if (idx === 1 && assets.length > 0) {
-          return (
-            <React.Fragment key={section._id || idx}>
-              {contentEl}
-              <section className="fe-experience-section-v">
-                <div className="fe-experience-container-v">
-                  <div className="fe-experience-visual-v">
-                    <div className="visual-collage-v">
-                      {assets[0]?.url && (
-                        <img 
-                          src={assets[0]?.url} 
-                          alt="Experience 1" className="collage-img-1" 
-                        />
-                      )}
-                      {assets[1]?.url && (
-                        <img 
-                          src={assets[1]?.url} 
-                          alt="Experience 2" className="collage-img-2" 
-                        />
-                      )}
-                      {assets[2]?.url && (
-                        <img 
-                          src={assets[2]?.url} 
-                          alt="Experience 3" className="collage-img-3" 
-                        />
-                      )}
-                    </div>
+        } else if (section.sectionType === 'Pocket Reel Series' || section.sectionType === 'Pocket Reel') {
+          const pocketReelSeries = shows.filter(s => s.contentType === 'Pocket Reel Series' || s.contentType === 'Pocket Reel').slice(0, section.limit || 24);
+          if (pocketReelSeries.length > 0) {
+            contentEl = (
+              <div key={section._id} className="fe-row-v fe-pocket-reel-row-v">
+                <div className="watch-online-header-v" style={{ marginBottom: '20px' }}>
+                  <div style={{ textAlign: 'left' }}>
+                    <span className="watch-online-tag-v" style={{ marginBottom: 0 }}>POCKET REEL SERIES</span>
                   </div>
-                  <div className="fe-experience-info-v">
-                    <h2 className="exp-main-title-v">Best pick for hassle-free <span>streaming</span> experience.</h2>
-                    {experiences.length > 0 && experiences.map((exp) => {
-                      const IconComponent = {
-                        Globe: Globe,
-                        MonitorPlay: MonitorPlay,
-                        Shield: Shield,
-                        Zap: Globe,
-                        Film: MonitorPlay,
-                        PlayCircle: MonitorPlay
-                      }[exp.icon] || Globe;
+                  <Link to="/pocket-reel-series" className="row-more-v" style={{ marginBottom: '0' }}>
+                    VIEW ALL <ChevronRight size={14} />
+                  </Link>
+                </div>
+                <div className="fe-pocket-reel-list-v">
+                  {pocketReelSeries.map((show) => {
+                    const quality = show.videoQuality;
+                    const parts = (quality || '').split(' ');
+                    const prefix = parts[0] || '';
+                    const suffix = parts.slice(1).join(' ') || '';
+                    const ratingVal = parseFloat(show.imdbRating || show.rating || '4.8');
+                    const percentage = (ratingVal / 10) * 100;
+                    
+                    return (
+                      <div 
+                        key={show._id} 
+                        className="fe-pocket-reel-card-v"
+                        onClick={() => handleOpenModal(show, 'pocket-reel-series')}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <div className="fe-pocket-reel-poster-v">
+                          {formatImageUrl(show, 'poster') ? (
+                            <img src={formatImageUrl(show, 'poster')} alt={show.title} />
+                          ) : (
+                            <div style={{ width: '100%', height: '100%', background: '#181920', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', fontSize: '0.8rem' }}>No Poster</div>
+                          )}
+                          {((show.seriesAccess || '').toLowerCase() === 'paid') && (
+                            <div className="fe-premium-indicator-v">
+                              <Crown size={12} fill="currentColor" />
+                            </div>
+                          )}
+                          
+                          <div className="fe-pocket-reel-overlay-v">
+                            {show.upcoming === 'Yes' ? (
+                              <div style={{ color: '#b3d332', fontWeight: 800, fontSize: '0.65rem', letterSpacing: '0.5px' }}>COMING SOON</div>
+                            ) : (
+                              <>
+                                {quality && quality !== 'None' && (
+                                  <div className="fe-premium-badge-v" style={{ transform: 'scale(0.85)', transformOrigin: 'bottom left' }}>
+                                    <span className="badge-prefix-v">{prefix}</span>
+                                    <span className="badge-suffix-v">{suffix}</span>
+                                  </div>
+                                )}
+                                <div 
+                                  className="online-rating-v" 
+                                  style={{ width: '32px', height: '32px', fontSize: '0.7rem', background: `conic-gradient(#b3d332 ${percentage}%, rgba(255,255,255,0.1) ${percentage}%)` }}
+                                >
+                                  <div className="rating-inner-v">{show.imdbRating || show.rating || '4.8'}</div>
+                                </div>
+                              </>
+                            )}
+                          </div>
 
-                      return (
-                        <div key={exp._id} className="exp-feature-v">
-                          <div className="exp-feature-icon-v"><IconComponent size={32} /></div>
-                          <div className="exp-feature-text-v">
-                            <h3>{exp.title}</h3>
-                            <p>{exp.description}</p>
+                          <div className="fe-pocket-reel-hover-play">
+                            <div className="fe-pocket-reel-play-btn">
+                              <Play size={16} fill="white" color="white" />
+                            </div>
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
+
+                        <div className="fe-pocket-reel-meta-v">
+                          <div className="meta-top-v">
+                            <span className="meta-type-v" style={{ fontSize: '0.62rem', padding: '1px 5px' }}>{show.contentRating || '16+'}</span>
+                            <span className="meta-year-v" style={{ fontSize: '0.68rem' }}>{show.releaseYear || 2026}</span>
+                          </div>
+                          <div className="meta-genre-v" style={{ fontSize: '0.7rem' }}>{Array.isArray(show.genres) ? show.genres[0] : (show.genre || 'Pocket Reel')}</div>
+                          <h3 className="fe-pocket-reel-title-v">{show.title}</h3>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              </section>
-            </React.Fragment>
-          );
+              </div>
+            );
+          }
         }
 
         return contentEl;
       })}
 
-      {/* Fallback if homeSections didn't load or is empty, render experience block alone */}
-      {homeSections.length < 2 && assets.length > 0 && (
+      {/* Experience Promo Section (Positioned after all content rows) */}
+      {assets.length > 0 && (
         <section className="fe-experience-section-v">
           <div className="fe-experience-container-v">
             <div className="fe-experience-visual-v">
@@ -1286,19 +1331,19 @@ const Home = () => {
           )}
           <span>{selectedContent.year || selectedContent.releaseYear || new Date(selectedContent.createdAt).getFullYear()}</span>
           <span>{selectedContent.type?.toUpperCase()}</span>
-          {selectedContent.videoQuality && (
-           <div className="fe-quality-badge-v" style={{ position: 'static', display: 'inline-block', margin: '0' }}>
-            {(() => {
-             const q = selectedContent.videoQuality || 'HD';
-             const qLower = q.toLowerCase();
-             if (qLower.includes('8k')) return '8K';
-             if (qLower.includes('4k')) return '4K';
-             if (qLower.includes('ultra')) return 'ULTRA';
-             if (qLower.includes('full')) return 'FHD';
-             if (qLower.includes('hdr')) return 'HDR';
-             return q.split(' ')[0].toUpperCase();
-            })()}
-           </div>
+          {selectedContent.videoQuality && selectedContent.videoQuality !== 'None' && (
+            <div className="fe-quality-badge-v" style={{ position: 'static', display: 'inline-block', margin: '0' }}>
+             {(() => {
+              const q = selectedContent.videoQuality || 'HD';
+              const qLower = q.toLowerCase();
+              if (qLower.includes('8k')) return '8K';
+              if (qLower.includes('4k')) return '4K';
+              if (qLower.includes('ultra')) return 'ULTRA';
+              if (qLower.includes('full')) return 'FHD';
+              if (qLower.includes('hdr')) return 'HDR';
+              return q.split(' ')[0].toUpperCase();
+             })()}
+            </div>
           )}
           {selectedContent.duration && <span>{selectedContent.duration}</span>}
          </div>
@@ -1326,30 +1371,83 @@ const Home = () => {
     .frontend-wrapper { background: var(--bg-main, #050505); color: var(--text-primary, #fff); min-height: 100vh; font-family: 'Inter', sans-serif; overflow-x: hidden; transition: background-color 0.3s ease, color 0.3s ease; }
     
     /* Shorts row styling */
-    .fe-shorts-list-v { display: flex; gap: 24px; overflow-x: auto; padding: 20px 0; scrollbar-width: none; }
+    .fe-shorts-list-v { display: flex; gap: 16px; overflow-x: auto; padding: 12px 0 20px; scrollbar-width: none; }
     .fe-shorts-list-v::-webkit-scrollbar { display: none; }
-    .fe-short-card-v { flex-shrink: 0; width: 200px; cursor: pointer; transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
-    .fe-short-card-v:hover { transform: translateY(-8px); }
-    .fe-short-poster-v { width: 100%; aspect-ratio: 9/16; border-radius: 16px; overflow: hidden; background: #0b0c10; position: relative; border: 1px solid rgba(255,255,255,0.06); box-shadow: 0 10px 30px rgba(0,0,0,0.5); transition: box-shadow 0.4s ease, border-color 0.4s ease; }
-    .fe-short-card-v:hover .fe-short-poster-v, .fe-short-poster-v.active { border-color: rgba(179, 211, 50, 0.85) !important; box-shadow: 0 15px 35px rgba(179, 211, 50, 0.25), 0 0 25px rgba(179, 211, 50, 0.35) !important; }
+    .fe-short-card-v { flex-shrink: 0; width: 145px; cursor: pointer; transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
+    .fe-short-card-v:hover { transform: translateY(-6px); }
+    .fe-short-poster-v { width: 100%; aspect-ratio: 9/16; border-radius: 12px; overflow: hidden; background: #0b0c10; position: relative; border: 1px solid rgba(255,255,255,0.06); box-shadow: 0 8px 24px rgba(0,0,0,0.45); transition: box-shadow 0.35s ease, border-color 0.35s ease; }
+    .fe-short-card-v:hover .fe-short-poster-v, .fe-short-poster-v.active { border-color: rgba(179, 211, 50, 0.85) !important; box-shadow: 0 10px 25px rgba(179, 211, 50, 0.22), 0 0 20px rgba(179, 211, 50, 0.3) !important; }
     .fe-short-poster-v.active .fe-short-hover-play { opacity: 1; }
     .fe-short-poster-v.active .fe-short-play-btn { transform: scale(1); }
-    .fe-short-poster-v img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1); }
-    .fe-short-card-v:hover .fe-short-poster-v img { transform: scale(1.06); }
+    .fe-short-poster-v img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s cubic-bezier(0.25, 1, 0.5, 1); }
+    .fe-short-card-v:hover .fe-short-poster-v img { transform: scale(1.05); }
+
+    /* Pocket Reel Series Compact Row & Cards */
+    .fe-pocket-reel-row-v { margin-bottom: 50px; padding: 0 5%; }
+    .fe-pocket-reel-list-v { display: flex; gap: 16px; overflow-x: auto; padding: 12px 0 20px; scrollbar-width: none; }
+    .fe-pocket-reel-list-v::-webkit-scrollbar { display: none; }
+    .fe-pocket-reel-card-v { flex-shrink: 0; width: 145px; cursor: pointer; transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
+    .fe-pocket-reel-card-v:hover { transform: translateY(-6px); }
+    .fe-pocket-reel-poster-v { width: 100%; aspect-ratio: 9/16; border-radius: 12px; overflow: hidden; background: #0c0d12; position: relative; border: 1px solid rgba(255,255,255,0.06); box-shadow: 0 8px 24px rgba(0,0,0,0.45); transition: border-color 0.3s ease, box-shadow 0.3s ease; }
+    .fe-pocket-reel-card-v:hover .fe-pocket-reel-poster-v { border-color: rgba(179,211,50,0.85); box-shadow: 0 12px 28px rgba(0,0,0,0.7), 0 0 15px rgba(179,211,50,0.2); }
+    .fe-pocket-reel-poster-v img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s cubic-bezier(0.25, 1, 0.5, 1); }
+    .fe-pocket-reel-card-v:hover .fe-pocket-reel-poster-v img { transform: scale(1.05); }
+    .fe-pocket-reel-overlay-v { position: absolute; bottom: 8px; left: 8px; right: 8px; display: flex; justify-content: space-between; align-items: center; z-index: 5; opacity: 1; transition: 0.3s ease; }
+    .fe-pocket-reel-hover-play { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.25); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease; z-index: 6; }
+    .fe-pocket-reel-card-v:hover .fe-pocket-reel-hover-play { opacity: 1; }
+    .fe-pocket-reel-play-btn { width: 36px; height: 36px; background: #b3d332; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(179,211,50,0.4); transform: scale(0.8); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+    .fe-pocket-reel-card-v:hover .fe-pocket-reel-play-btn { transform: scale(1); }
+    .fe-pocket-reel-meta-v { display: flex; flex-direction: column; gap: 3px; padding: 8px 4px 0; }
+    .fe-pocket-reel-title-v { color: #fff; font-size: 0.78rem; font-weight: 700; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; }
+
+    @media (max-width: 768px) {
+      .fe-shorts-list-v { 
+        display: grid !important; 
+        grid-template-rows: repeat(2, auto) !important; 
+        grid-auto-flow: column !important; 
+        grid-auto-columns: calc((100% - 16px) / 3) !important; 
+        gap: 8px !important; 
+        overflow-x: auto !important; 
+        padding-bottom: 20px !important; 
+        scroll-snap-type: x mandatory !important; 
+      }
+      .fe-short-card-v { 
+        width: 100% !important; 
+        scroll-snap-align: start !important;
+      }
+      .fe-short-title { font-size: 0.68rem !important; }
+      .fe-stat-badge { font-size: 0.52rem !important; padding: 2px 4px !important; }
+
+      .fe-pocket-reel-list-v { 
+        display: grid !important; 
+        grid-template-rows: repeat(2, auto) !important; 
+        grid-auto-flow: column !important; 
+        grid-auto-columns: calc((100% - 16px) / 3) !important; 
+        gap: 8px !important; 
+        overflow-x: auto !important; 
+        padding-bottom: 20px !important; 
+        scroll-snap-type: x mandatory !important; 
+      }
+      .fe-pocket-reel-card-v { 
+        width: 100% !important; 
+        scroll-snap-align: start !important;
+      }
+      .fe-pocket-reel-title-v { font-size: 0.72rem !important; }
+    }
     
     /* Stats Badges */
-    .fe-short-stats-badges { position: absolute; top: 12px; left: 12px; right: 12px; display: flex; justify-content: space-between; z-index: 10; }
-    .fe-stat-badge { display: inline-flex; align-items: center; background: rgba(15, 15, 15, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); color: rgba(255,255,255,0.9); font-size: 0.68rem; font-weight: 700; padding: 4px 8px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); transition: all 0.2s ease; }
+    .fe-short-stats-badges { position: absolute; top: 8px; left: 8px; right: 8px; display: flex; justify-content: space-between; z-index: 10; }
+    .fe-stat-badge { display: inline-flex; align-items: center; background: rgba(15, 15, 15, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); color: rgba(255,255,255,0.9); font-size: 0.62rem; font-weight: 700; padding: 3px 6px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); transition: all 0.2s ease; }
     .fe-stat-badge.likes { color: #b3d332; border-color: rgba(179, 211, 50, 0.2); background: rgba(179, 211, 50, 0.1); }
     
     /* Bottom Title Overlay */
-    .fe-short-info-overlay { position: absolute; bottom: 0; left: 0; right: 0; padding: 40px 14px 14px; background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.3) 60%, transparent 100%); z-index: 5; }
-    .fe-short-title { color: #fff; font-size: 0.85rem; font-weight: 700; margin: 0; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
+    .fe-short-info-overlay { position: absolute; bottom: 0; left: 0; right: 0; padding: 30px 10px 10px; background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.3) 60%, transparent 100%); z-index: 5; }
+    .fe-short-title { color: #fff; font-size: 0.78rem; font-weight: 700; margin: 0; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
     
     /* Hover Play Indicator */
     .fe-short-hover-play { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.25); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease; z-index: 8; }
     .fe-short-card-v:hover .fe-short-hover-play { opacity: 1; }
-    .fe-short-play-btn { width: 44px; height: 44px; background: #b3d332; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(179,211,50,0.4); transform: scale(0.8); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+    .fe-short-play-btn { width: 36px; height: 36px; background: #b3d332; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(179,211,50,0.4); transform: scale(0.8); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
     .fe-short-card-v:hover .fe-short-play-btn { transform: scale(1); }
 
     .fe-hover-content-v { display: flex; flex-direction: column; align-items: flex-start; text-align: left; width: 100%; }
@@ -1528,35 +1626,34 @@ const Home = () => {
     .fe-row-v { margin-bottom: 60px; padding: 0 5%; }
     .row-header-v { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
     .row-title-v { font-size: clamp(1.2rem, 2vw, 1.8rem); font-weight: 800; letter-spacing: 1px; color: #fff; }
-    .row-more-v { font-size: 0.75rem; font-weight: 800; color: #b3d332; letter-spacing: 2px; text-decoration: none; display: flex; align-items: center; gap: 8px; opacity: 0.8; transition: 0.3s; }
-    .row-more-v:hover { opacity: 1; transform: translateX(5px); }
+    .row-more-v { font-size: 0.62rem; font-weight: 700; color: #b3d332; letter-spacing: 1px; text-decoration: none; display: flex; align-items: center; gap: 4px; opacity: 0.85; transition: 0.3s; }
+    .row-more-v:hover { opacity: 1; transform: translateX(3px); }
+    .row-more-v svg { width: 11px; height: 11px; }
 
-    .fe-movie-list-v { display: flex; gap: 25px; overflow-x: auto; padding-bottom: 30px; scroll-snap-type: x mandatory; }
-    .fe-movie-list-v::-webkit-scrollbar { height: 4px; }
-    .fe-movie-list-v::-webkit-scrollbar-track { background: #111; }
-    .fe-movie-list-v::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+    .fe-movie-list-v { display: flex; gap: 18px; overflow-x: auto; padding-bottom: 20px; scroll-snap-type: x mandatory; scrollbar-width: none; -ms-overflow-style: none; }
+    .fe-movie-list-v::-webkit-scrollbar { display: none; }
 
-    .fe-movie-card-v { width: 220px; height: 330px; flex-shrink: 0; position: relative; border-radius: 12px; overflow: hidden; transition: 0.5s cubic-bezier(0.16, 1, 0.3, 1); cursor: pointer; scroll-snap-align: start; }
-    .fe-featured-row-v .fe-movie-card-v { width: 260px; height: 390px; }
+    .fe-movie-card-v { width: 175px; height: 262px; flex-shrink: 0; position: relative; border-radius: 10px; overflow: hidden; transition: 0.5s cubic-bezier(0.16, 1, 0.3, 1); cursor: pointer; scroll-snap-align: start; }
+    .fe-featured-row-v .fe-movie-card-v { width: 210px; height: 315px; }
     
     .fe-movie-card-v img { width: 100%; height: 100%; object-fit: cover; display: block; transition: 0.8s cubic-bezier(0.16, 1, 0.3, 1); }
     .fe-movie-card-v:hover { transform: scale(1.05); z-index: 100; box-shadow: 0 25px 50px rgba(0,0,0,0.8); }
     .fe-movie-card-v:hover img { transform: scale(1.1); }
-    .fe-card-hover-v { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 60%); opacity: 1; transition: 0.3s; display: flex; flex-direction: column; justify-content: flex-end; padding: 15px; }
-    .fe-play-btn-v { width: 45px; height: 45px; background: #b3d332; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 10px; transform: scale(0); opacity: 0; transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+    .fe-card-hover-v { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 60%); opacity: 1; transition: 0.3s; display: flex; flex-direction: column; justify-content: flex-end; padding: 12px; }
+    .fe-play-btn-v { width: 38px; height: 38px; background: #b3d332; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 8px; transform: scale(0); opacity: 0; transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
     .fe-movie-card-v:hover .fe-play-btn-v { transform: scale(1); opacity: 1; }
 
-    .fe-card-badges-v { display: flex; gap: 8px; margin-bottom: 8px; transform: translateY(10px); opacity: 0; transition: 0.3s ease 0.1s; align-items: center; }
+    .fe-card-badges-v { display: flex; gap: 6px; margin-bottom: 6px; transform: translateY(10px); opacity: 0; transition: 0.3s ease 0.1s; align-items: center; }
     .fe-movie-card-v:hover .fe-card-badges-v { transform: translateY(0); opacity: 1; }
     
-    .fe-premium-badge-v { display: flex; border: 1px solid #000; border-radius: 2px; overflow: hidden; background: #fff; line-height: 1; height: 18px; }
-    .badge-prefix-v { background: #000; color: #fff; font-size: 0.65rem; font-weight: 400; padding: 0 6px; display: flex; align-items: center; justify-content: center; }
-    .badge-suffix-v { background: #fff; color: #000; font-size: 0.75rem; font-weight: 800; padding: 0 6px; display: flex; align-items: center; justify-content: center; letter-spacing: -0.2px; }
+    .fe-premium-badge-v { display: flex; border: 1px solid #000; border-radius: 2px; overflow: hidden; background: #fff; line-height: 1; height: 16px; }
+    .badge-prefix-v { background: #000; color: #fff; font-size: 0.6rem; font-weight: 400; padding: 0 5px; display: flex; align-items: center; justify-content: center; }
+    .badge-suffix-v { background: #fff; color: #000; font-size: 0.7rem; font-weight: 800; padding: 0 5px; display: flex; align-items: center; justify-content: center; letter-spacing: -0.2px; }
 
-    .fe-badge-rating-v { width: 36px; height: 36px; background: rgba(0,0,0,0.6); color: #fff; font-size: 0.75rem; font-weight: 800; border-radius: 50%; backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 10px rgba(22,196,127,0.2); padding: 2px; position: relative; }
-    .fe-premium-indicator-v { position: absolute; top: 10px; right: 10px; background: linear-gradient(135deg, #ffca28 0%, #ff8f00 100%); color: #000; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 8; box-shadow: 0 4px 15px rgba(255,143,0,0.4); border: 1px solid rgba(255,255,255,0.2); }
-    .fe-card-info-title-v { font-size: 0.9rem; font-weight: 800; margin-bottom: 4px; transition: 0.3s; color: #fff; }
-    .fe-card-info-meta-v { font-size: 0.65rem; font-weight: 800; background: #b3d332; color: #fff; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; padding: 3px 8px; border-radius: 4px; display: inline-block; width: fit-content; opacity: 0; transform: translateY(5px); transition: 0.4s; }
+    .fe-badge-rating-v { width: 32px; height: 32px; background: rgba(0,0,0,0.6); color: #fff; font-size: 0.7rem; font-weight: 800; border-radius: 50%; backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 10px rgba(22,196,127,0.2); padding: 2px; position: relative; }
+    .fe-premium-indicator-v { position: absolute; top: 8px; right: 8px; background: linear-gradient(135deg, #ffca28 0%, #ff8f00 100%); color: #000; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 8; box-shadow: 0 4px 15px rgba(255,143,0,0.4); border: 1px solid rgba(255,255,255,0.2); }
+    .fe-card-info-title-v { font-size: 0.82rem; font-weight: 800; margin-bottom: 3px; transition: 0.3s; color: #fff; }
+    .fe-card-info-meta-v { font-size: 0.6rem; font-weight: 800; background: #b3d332; color: #fff; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; padding: 2px 6px; border-radius: 3px; display: inline-block; width: fit-content; opacity: 0; transform: translateY(5px); transition: 0.4s; }
     .fe-movie-card-v:hover .fe-card-info-meta-v { opacity: 1; transform: translateY(0); }
     .fe-card-meta-v { font-size: 0.7rem; color: rgba(255,255,255,0.7); display: flex; align-items: center; gap: 6px; font-weight: 600; }
     .fe-card-meta-v .dot { color: #b3d332; font-weight: 900; }
@@ -1600,11 +1697,34 @@ const Home = () => {
      .fe-btn-primary-v { padding: 10px 25px !important; font-size: 0.7rem !important; letter-spacing: 1px !important; }
      .fe-card-info-title-v { font-size: 0.65rem !important; }
      .fe-card-info-meta-v { font-size: 0.5rem !important; padding: 2px 5px !important; }
-     .fe-card-meta-v { font-size: 0.55rem !important; }
-     .fe-movie-card-v { width: 140px; height: 210px; }
-     .fe-featured-row-v .fe-movie-card-v { width: 160px; height: 240px; }
+     .fe-movie-list-v { 
+      display: grid !important; 
+      grid-template-columns: repeat(3, 1fr) !important;
+      grid-template-rows: none !important;
+      grid-auto-flow: row !important;
+      gap: 10px !important; 
+      overflow: visible !important;
+      overflow-x: hidden !important; 
+      padding-bottom: 15px !important; 
+     }
+     .fe-movie-card-v { 
+      width: 100% !important; 
+      height: auto !important; 
+      aspect-ratio: 2/3 !important;
+     }
+     .fe-featured-row-v .fe-movie-list-v { 
+      grid-template-columns: repeat(3, 1fr) !important;
+      grid-template-rows: none !important;
+      grid-auto-flow: row !important;
+     }
+     .fe-featured-row-v .fe-movie-card-v { 
+      width: 100% !important; 
+      height: auto !important; 
+      aspect-ratio: 2/3 !important;
+     }
      .row-title-v { font-size: 1rem; }
-     .row-more-v { font-size: 0.55rem !important; gap: 4px !important; letter-spacing: 1px !important; }
+     .row-more-v { font-size: 0.5rem !important; gap: 3px !important; letter-spacing: 0.5px !important; }
+     .row-more-v svg { width: 9px !important; height: 9px !important; }
 
      /* Mobile Card Play button, badges, ratings overrides */
      .fe-play-btn-v { width: 30px !important; height: 30px !important; margin-bottom: 5px !important; }
@@ -1616,6 +1736,7 @@ const Home = () => {
      .rating-inner-v { font-size: 0.55rem !important; }
      .online-card-overlay-v { bottom: 6px !important; left: 6px !important; right: 6px !important; }
      .fe-card-badges-v { gap: 4px !important; margin-bottom: 4px !important; }
+     .fe-card-hover-v { padding: 8px !important; }
     }
 
     .fe-quick-modal-overlay-v { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 100000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px); padding: 20px; }

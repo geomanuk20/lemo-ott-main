@@ -695,12 +695,19 @@ body {
 }
 
 .login-logo {
-  font-size: 4rem;
-  font-weight: 900;
-  color: var(--accent-red);
-  letter-spacing: 2px;
-  margin-bottom: 40px;
-  text-shadow: 0 0 20px rgba(229, 9, 20, 0.2);
+  margin-bottom: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-logo-img {
+  max-width: 240px;
+  max-height: 80px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 15px rgba(0, 0, 0, 0.6));
 }
 
 .login-box {

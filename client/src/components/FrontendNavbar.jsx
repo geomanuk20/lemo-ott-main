@@ -193,6 +193,9 @@ const FrontendNavbar = ({
             {(!menuSettings || menuSettings.webSeries?.toUpperCase() !== 'OFF') && (
               <Link to="/web-series" className={location.pathname === '/web-series' ? 'active' : ''}>WEB SERIES</Link>
             )}
+            {(!menuSettings || menuSettings.pocketReelSeries?.toUpperCase() !== 'OFF') && (
+              <Link to="/pocket-reel-series" className={location.pathname === '/pocket-reel-series' || location.pathname === '/pocket-reels' ? 'active' : ''}>POCKET REEL</Link>
+            )}
             {(!menuSettings || menuSettings.shorts?.toUpperCase() !== 'OFF') && (
               <Link to="/shorts" className={location.pathname === '/shorts' ? 'active' : ''}>SHORTS</Link>
             )}

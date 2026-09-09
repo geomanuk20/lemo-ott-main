@@ -115,6 +115,10 @@ import AdminSubmissions from './pages/AdminSubmissions';
 import AdminCareers from './pages/AdminCareers';
 import FrontendCareers from './pages/FrontendCareers';
 import FrontendShorts from './pages/FrontendShorts';
+import PocketReelSeries from './pages/PocketReelSeries';
+import AddPocketReelSeries from './pages/AddPocketReelSeries';
+import EditPocketReelSeries from './pages/EditPocketReelSeries';
+import FrontendPocketReelSeries from './pages/FrontendPocketReelSeries';
 
 
 
@@ -463,6 +467,8 @@ function App() {
         <Route path="/view-all/:type/:title" element={<FrontendViewAll />} />
         <Route path="/submission" element={<FrontendSubmission />} />
         <Route path="/shorts" element={<FrontendShorts />} />
+        <Route path="/pocket-reel-series" element={<FrontendPocketReelSeries />} />
+        <Route path="/pocket-reels" element={<FrontendPocketReelSeries />} />
 
         
         {/* Dynamic Static Pages */}
@@ -512,6 +518,12 @@ function App() {
           <Route path="short-web-series/episodes" element={<Episodes />} />
           <Route path="short-web-series/episodes/add" element={<AddEpisode />} />
           <Route path="short-web-series/episodes/edit/:id" element={<EditEpisode />} />
+          <Route path="pocket-reel-series" element={<PocketReelSeries />} />
+          <Route path="pocket-reel-series/add" element={<AddPocketReelSeries />} />
+          <Route path="pocket-reel-series/edit/:id" element={<EditPocketReelSeries />} />
+          <Route path="pocket-reel-series/episodes" element={<Episodes />} />
+          <Route path="pocket-reel-series/episodes/add" element={<AddEpisode />} />
+          <Route path="pocket-reel-series/episodes/edit/:id" element={<EditEpisode />} />
           <Route path="new-release" element={<NewRelease />} />
           <Route path="new-release/add" element={<AddNewRelease />} />
           <Route path="new-release/edit/:id" element={<EditNewRelease />} />
@@ -551,9 +563,12 @@ function App() {
           <Route path="users/list/add" element={<AddUser />} />
           <Route path="users/list/edit/:id" element={<EditUser />} />
           <Route path="users/history/:id" element={<UserHistory />} />
-          <Route path="users/sub-admin" element={<SubAdmin />} />
-          <Route path="users/sub-admin/add" element={<AddAdmin />} />
-          <Route path="users/sub-admin/edit/:id" element={<EditAdmin />} />
+          <Route path="users/admin" element={<SubAdmin />} />
+          <Route path="users/admin/add" element={<AddAdmin />} />
+          <Route path="users/admin/edit/:id" element={<EditAdmin />} />
+          <Route path="users/sub-admin" element={<Navigate to="/admin/users/admin" replace />} />
+          <Route path="users/sub-admin/add" element={<Navigate to="/admin/users/admin/add" replace />} />
+          <Route path="users/sub-admin/edit/:id" element={<Navigate to="/admin/users/admin" replace />} />
           <Route path="users/deleted" element={<DeletedUsers />} />
           <Route path="tv-shows" element={<Navigate to="shows" replace />} />
           <Route path="sports" element={<Navigate to="video" replace />} />

@@ -247,7 +247,7 @@ const FrontendShorts = () => {
 
     const token = localStorage.getItem('token');
     if (!token) {
-      alert('Please sign in to like short videos.');
+      navigate('/login', { state: { from: location.pathname, shortId: targetShort._id } });
       return;
     }
 
@@ -263,12 +263,15 @@ const FrontendShorts = () => {
         const data = await res.json();
         // data returns: { likes: short.likes, hasLiked: liked }
         setShorts(prev => prev.map((s, i) => i === index ? { ...s, likes: data.likes, hasLiked: data.hasLiked } : s));
+      } else if (res.status === 401) {
+        localStorage.removeItem('token');
+        navigate('/login', { state: { from: location.pathname, shortId: targetShort._id } });
       } else {
         const errData = await res.json();
         alert(errData.message || 'Failed to update like status.');
       }
     } catch (e) {
-      console.error(e);
+      console.error('Error liking short:', e);
     }
   };
 

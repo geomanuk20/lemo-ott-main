@@ -476,13 +476,15 @@ const EditMovie = () => {
        </div>
        <div className="form-group">
         <label>Video Quality</label>
-        <select name="videoQuality" value={formData.videoQuality || '8K Ultra HD'} onChange={handleChange}>
+        <select name="videoQuality" value={formData.videoQuality || 'None'} onChange={handleChange}>
+         <option value="None">None</option>
          <option value="8K Ultra HD">8K Ultra HD</option>
          <option value="4K Ultra HD">4K Ultra HD</option>
          <option value="Ultra HD">Ultra HD</option>
          <option value="HDR">HDR</option>
          <option value="Full HD">Full HD</option>
          <option value="HD">HD</option>
+         <option value="SD">SD</option>
         </select>
        </div>
 

@@ -84,7 +84,9 @@ const EditEpisode = () => {
   fetchData();
  }, [id]);
 
+ const isPocketReelPath = window.location.pathname.includes('/pocket-reel-series');
  const isShortPath = window.location.pathname.includes('/short-web-series');
+ const isNoSeasonPath = isPocketReelPath || isShortPath;
 
  const handleChange = (e) => {
   const { name, value } = e.target;
@@ -114,7 +116,7 @@ const EditEpisode = () => {
   setLoading(true);
   try {
    const payload = { ...formData };
-    if (!payload.seasonId || isShortPath) {
+    if (!payload.seasonId || isNoSeasonPath) {
      payload.seasonId = null;
     } else if (typeof payload.seasonId === 'object') {
      payload.seasonId = payload.seasonId._id || payload.seasonId.id;
@@ -129,7 +131,7 @@ const EditEpisode = () => {
    });
    if (response.ok) {
     alert('Episode updated successfully!');
-    navigate(isShortPath ? '/admin/short-web-series/episodes' : '/admin/tv-shows/episodes');
+    navigate(isPocketReelPath ? '/admin/pocket-reel-series/episodes' : isShortPath ? '/admin/short-web-series/episodes' : '/admin/tv-shows/episodes');
    } else {
     const errData = await response.json();
     alert('Failed to update episode: ' + (errData.message || response.statusText));
@@ -147,7 +149,7 @@ const EditEpisode = () => {
  return (
   <div className="add-episode-page">
    <div className="top-nav">
-    <button className="back-btn" onClick={() => navigate(isShortPath ? '/admin/short-web-series/episodes' : '/admin/tv-shows/episodes')}>
+    <button className="back-btn" onClick={() => navigate(isPocketReelPath ? '/admin/pocket-reel-series/episodes' : isShortPath ? '/admin/short-web-series/episodes' : '/admin/tv-shows/episodes')}>
      <ArrowLeft size={20} color="#b3d332" strokeWidth={3} />
      <span>Back</span>
     </button>
@@ -173,7 +175,7 @@ const EditEpisode = () => {
        <label>Description</label>
        <Editor
         apiKey="o55omxnn9u998swbnw7mrv8vrpdfeh6b0c8dq4ibo1rh35cl"
-        initialValue={formData.description}
+        value={formData.description}
         init={{
          height: 300,
          menubar: true,
@@ -186,12 +188,14 @@ const EditEpisode = () => {
        />
       </div>
 
-      <div className="form-group">
-       <label>Access</label>
-       <select name="access" value={formData.access} onChange={handleChange}>
-        <option value="Paid">Paid</option>
-        <option value="Free">Free</option>
-       </select>
+      <div className="form-row-2">
+       <div className="form-group">
+        <label>Access</label>
+        <select name="access" value={formData.access} onChange={handleChange}>
+         <option value="Paid">Paid</option>
+         <option value="Free">Free</option>
+        </select>
+       </div>
       </div>
 
       <div className="form-group">
@@ -199,13 +203,13 @@ const EditEpisode = () => {
         <select name="showId" value={formData.showId} onChange={handleChange} required>
          <option value="">Select Show</option>
          {shows
-           .filter(show => isShortPath ? show.contentType === 'Short Web Series' : (show.contentType === 'TV Show' || !show.contentType))
+           .filter(show => isPocketReelPath ? show.contentType === 'Pocket Reel Series' : isShortPath ? show.contentType === 'Short Web Series' : (show.contentType === 'TV Show' || !show.contentType))
            .map(s => <option key={s._id} value={s._id}>{s.title}</option>)
          }
         </select>
        </div>
 
-       {!isShortPath && (
+       {!isNoSeasonPath && (
          <div className="form-group">
           <label>Seasons</label>
           <select name="seasonId" value={formData.seasonId} onChange={handleChange}>
@@ -258,7 +262,8 @@ const EditEpisode = () => {
          <span className="sub-label">(For File and URL)</span>
         </div>
         <div className="video-source-input">
-         <select name="videoQuality" value={formData.videoQuality || '8K Ultra HD'} onChange={handleChange} style={{ background: '#333', border: '1px solid #444', padding: '12px', color: '#fff', borderRadius: '4px', outline: 'none', width: '100%' }}>
+         <select name="videoQuality" value={formData.videoQuality || 'None'} onChange={handleChange} style={{ background: '#333', border: '1px solid #444', padding: '12px', color: '#fff', borderRadius: '4px', outline: 'none', width: '100%' }}>
+          <option value="None">None</option>
           <option value="8K Ultra HD">8K Ultra HD</option>
           <option value="4K Ultra HD">4K Ultra HD</option>
           <option value="Full HD">Full HD</option>

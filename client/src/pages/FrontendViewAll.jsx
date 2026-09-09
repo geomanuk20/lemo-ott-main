@@ -34,6 +34,7 @@ const isItemActive = (item, menuSettings) => {
   if (contentType === 'Short Film' && menuSettings.shortFilms?.toUpperCase() === 'OFF') return false;
   if (contentType === 'TV Show' && menuSettings.shows?.toUpperCase() === 'OFF') return false;
   if (contentType === 'Short Web Series' && menuSettings.webSeries?.toUpperCase() === 'OFF') return false;
+  if (contentType === 'Pocket Reel Series' && menuSettings.pocketReelSeries?.toUpperCase() === 'OFF') return false;
   if (contentType === 'Sports' && menuSettings.sports?.toUpperCase() === 'OFF') return false;
   if (contentType === 'Live TV' && menuSettings.liveTv?.toUpperCase() === 'OFF') return false;
 
@@ -68,6 +69,10 @@ const FrontendViewAll = () => {
         navigate('/', { replace: true });
         return;
       }
+      if ((type === 'pocket-reel-series' || type === 'pocket-reels') && settings.pocketReelSeries?.toUpperCase() === 'OFF') {
+        navigate('/', { replace: true });
+        return;
+      }
       if (type === 'sports' && settings.sports?.toUpperCase() === 'OFF') {
         navigate('/', { replace: true });
         return;
@@ -86,7 +91,7 @@ const FrontendViewAll = () => {
    try {
     let url = '';
     if (type === 'movies' || type === 'short-film') url = '/api/movies';
-    else if (type === 'shows' || type === 'short-web-series') url = '/api/shows';
+    else if (type === 'shows' || type === 'short-web-series' || type === 'pocket-reel-series' || type === 'pocket-reels') url = '/api/shows';
     else if (type === 'sports') url = '/api/sports-videos';
     else if (type === 'live') url = '/api/tv-channels';
     else if (type === 'new-releases') url = '/api/new-releases';
@@ -111,6 +116,8 @@ const FrontendViewAll = () => {
       filteredData = filteredData.filter(item => item.contentType === 'Short Film');
     } else if (type === 'short-web-series') {
       filteredData = filteredData.filter(item => item.contentType === 'Short Web Series');
+    } else if (type === 'pocket-reel-series' || type === 'pocket-reels') {
+      filteredData = filteredData.filter(item => item.contentType === 'Pocket Reel Series');
     }
 
     // Special filtering for "Popular", "Trending", etc if needed
@@ -139,10 +146,9 @@ const FrontendViewAll = () => {
      <button className="back-btn-v" onClick={() => navigate(-1)}>
       <ChevronLeft size={24} />
      </button>
-     <div className="header-info-v">
-      <span className="type-tag-v">{type?.toUpperCase().replace('-', ' ')}</span>
-      <h1>{title?.replace(/%20/g, ' ')}</h1>
-     </div>
+      <div className="header-info-v">
+       <span className="type-tag-v">{title ? title.replace(/%20/g, ' ').toUpperCase() : type?.toUpperCase().replace('-', ' ')}</span>
+      </div>
     </div>
 
     {items.length === 0 && !loading ? (
@@ -164,7 +170,7 @@ const FrontendViewAll = () => {
             <Crown size={12} fill="currentColor" />
            </div>
           )}
-          <div className="card-overlay-v">
+          <div className="card-overlay-v" style={item.upcoming === 'Yes' ? { opacity: 1, alignItems: 'flex-end', paddingBottom: '16px' } : {}}>
            {item.upcoming === 'Yes' ? (
               <div style={{ color: '#b3d332', fontWeight: 800, fontSize: '0.65rem', letterSpacing: '0.5px' }}>COMING SOON</div>
            ) : (
@@ -223,9 +229,16 @@ const FrontendViewAll = () => {
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
     @media (max-width: 768px) {
-     .fe-viewall-grid-v { grid-template-columns: repeat(2, 1fr); gap: 15px; }
+     .fe-viewall-grid-v { grid-template-columns: repeat(3, 1fr) !important; gap: 10px !important; }
      .header-info-v h1 { font-size: 1.5rem; }
-     .fe-viewall-page-v { padding-top: 100px; }
+     .fe-viewall-page-v { padding: 90px 10px 30px; }
+     .card-info-v { padding: 8px 4px; }
+     .card-info-v h3 { font-size: 0.72rem !important; }
+     .card-meta-v { font-size: 0.6rem !important; margin-bottom: 4px; }
+    }
+    @media (max-width: 480px) {
+     .fe-viewall-grid-v { grid-template-columns: repeat(3, 1fr) !important; gap: 8px !important; }
+     .fe-viewall-page-v { padding: 80px 8px 20px; }
     }
    ` }} />
   </FrontendLayout>

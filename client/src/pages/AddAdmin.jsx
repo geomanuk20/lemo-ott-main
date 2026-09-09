@@ -79,7 +79,7 @@ const AddAdmin = () => {
     const isCustomer = formData.role === 'customer' || formData.role === 'user';
     if (response.ok) {
      showNotification(isCustomer ? 'Customer created successfully!' : 'Admin added successfully!', 'success');
-     setTimeout(() => navigate(isCustomer ? '/admin/users/list' : '/admin/users/sub-admin'), 1500);
+     setTimeout(() => navigate(isCustomer ? '/admin/users/list' : '/admin/users/admin'), 1500);
     } else {
     showNotification(responseData.message || 'Error adding admin', 'error');
    }

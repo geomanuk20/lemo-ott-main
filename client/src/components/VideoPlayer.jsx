@@ -513,21 +513,111 @@ function CentralControlsOverlay({ isLive }) {
   );
 }
 
-// helper to convert hh:mm:ss to seconds
+// helper to convert hh:mm:ss or mm:ss or seconds to integer seconds
 const timeToSeconds = (timeStr) => {
-
   if (!timeStr) return 0;
-  const parts = String(timeStr).split(':').map(Number);
+  const str = String(timeStr).trim();
+  const parts = str.split(':').map(Number);
   if (parts.length === 3) {
-    return parts[0] * 3600 + parts[1] * 60 + parts[2];
+    return (parts[0] || 0) * 3600 + (parts[1] || 0) * 60 + (parts[2] || 0);
   } else if (parts.length === 2) {
-    return parts[0] * 60 + parts[1];
+    return (parts[0] || 0) * 60 + (parts[1] || 0);
   }
-  return Number(timeStr) || 0;
+  return Number(str) || 0;
+};
+
+// helper to parse multiple cue points or recurring interval for an ad slot
+const getAdTriggers = (slot, currentTime, slotIdx = 0) => {
+  if (!slot || !slot.source?.trim()) return [];
+  const triggers = [];
+  const slotKeyBase = slot._id ? String(slot._id) : `slot_${slotIdx}`;
+
+  // 1. Repeating interval mode
+  if (slot.repeatMode === 'interval' || (slot.repeatInterval && Number(slot.repeatInterval) > 0)) {
+    const intervalSec = (Number(slot.repeatInterval) || 5) * 60;
+    const initialOffset = timeToSeconds(String(slot.timestart || '00:00:10').split(/[,;]/)[0]);
+    if (intervalSec > 0 && currentTime >= initialOffset) {
+      const step = Math.floor((currentTime - initialOffset) / intervalSec);
+      if (step >= 0) {
+        const targetSec = initialOffset + step * intervalSec;
+        const isPreRoll = targetSec <= 3;
+        const shouldTrigger = isPreRoll
+          ? (currentTime >= 0 && currentTime < 8)
+          : (currentTime >= targetSec && currentTime < targetSec + 6);
+
+        if (shouldTrigger) {
+          triggers.push({
+            key: `${slotKeyBase}_interval_${step}`,
+            source: slot.source.trim(),
+            targetLink: slot.targetLink || '#',
+            skipAfter: slot.skipAfter ?? 5,
+            targetSec
+          });
+        }
+      }
+    }
+    return triggers;
+  }
+
+  // 2. Specific Timestamps mode (supports single '00:00:10' or multiple '00:00:10, 00:00:45, 00:05:00')
+  const rawTimestart = String(slot.timestart || '00:00:10');
+  const timeStrings = rawTimestart
+    .split(/[,;\n]+/)
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  timeStrings.forEach((timeStr) => {
+    const adStart = timeToSeconds(timeStr);
+    const isPreRoll = adStart <= 3;
+    const shouldTrigger = isPreRoll 
+      ? (currentTime >= 0 && currentTime < 8) 
+      : (currentTime >= adStart && currentTime < adStart + 6);
+
+    if (shouldTrigger) {
+      triggers.push({
+        key: `${slotKeyBase}_cue_${adStart}`,
+        source: slot.source.trim(),
+        targetLink: slot.targetLink || '#',
+        skipAfter: slot.skipAfter ?? 5,
+        targetSec: adStart
+      });
+    }
+  });
+
+  return triggers;
+};
+
+// Normalize contentType strings to standard keys
+const normalizeCategory = (cat) => {
+  if (!cat) return '';
+  const c = String(cat).toLowerCase().trim().replace(/[-_]/g, ' ');
+  if (c.includes('pocket')) return 'pocket_reel';
+  if (c.includes('web')) return 'web_series';
+  if (c.includes('tv') || c.includes('show') || c.includes('season') || c.includes('episode')) return 'tv_show';
+  if (c.includes('short') && c.includes('film')) return 'short_film';
+  if (c.includes('movie') || c.includes('cinema')) return 'movie';
+  if (c.includes('live') || c.includes('sport')) return 'live_tv';
+  return c;
+};
+
+// Check if an ad slot is targeted to the current video content type
+const isAdSlotApplicable = (slot, contentType) => {
+  if (!slot) return false;
+  const cats = slot.categories || slot.targetCategories || [];
+  if (!Array.isArray(cats) || cats.length === 0 || cats.includes('all') || cats.includes('All Categories')) {
+    return true;
+  }
+  if (!contentType) return true; // fallback if unknown
+
+  const currentNormalized = normalizeCategory(contentType);
+  return cats.some(c => {
+    const norm = normalizeCategory(c);
+    return norm === 'all' || norm === currentNormalized;
+  });
 };
 
 // Video.js (HlsVideo) controller component to handle play/pause sync and ads timing
-function AdsController({ isAdPlaying, adsConfig, playedAdsRef, triggerAd, vastPreRoll }) {
+function AdsController({ isAdPlaying, adsConfig, playedAdsRef, triggerAd, vastPreRoll, contentType }) {
   const paused = Player.usePlayer((s) => s.paused);
   const play = Player.usePlayer((s) => s.play);
   const pause = Player.usePlayer((s) => s.pause);
@@ -551,46 +641,47 @@ function AdsController({ isAdPlaying, adsConfig, playedAdsRef, triggerAd, vastPr
     if (adsConfig.defaultAds === 'Built-in Advertisement') {
       if (Array.isArray(adsConfig.builtInAds) && adsConfig.builtInAds.length > 0) {
         adsConfig.builtInAds.forEach((slot, idx) => {
-          const source = slot.source;
-          const timeStr = slot.timestart;
-          const targetLink = slot.targetLink;
-          const key = `slot_${slot._id || idx}_${timeStr}`;
-
-          if (source && timeStr && !playedAdsRef.current.has(key)) {
-            const adStart = timeToSeconds(timeStr);
-            if (currentTime >= adStart && currentTime < adStart + 4) {
-              playedAdsRef.current.add(key);
+          if (!isAdSlotApplicable(slot, contentType)) {
+            return;
+          }
+          const triggers = getAdTriggers(slot, currentTime, idx);
+          triggers.forEach(trig => {
+            if (!playedAdsRef.current.has(trig.key)) {
+              playedAdsRef.current.add(trig.key);
               if (!paused && pause) {
                 pause(); // Pause main video
               }
-              triggerAd(source, targetLink, slot.skipAfter ?? 5);
+              triggerAd(trig.source, trig.targetLink, trig.skipAfter);
             }
-          }
+          });
         });
       } else {
-        const checkAd = (num) => {
-          const source = adsConfig[`ad${num}Source`];
+        const checkLegacyAd = (num) => {
+          const source = adsConfig[`ad${num}Source`]?.trim();
           const timeStr = adsConfig[`ad${num}Timestart`];
           const targetLink = adsConfig[`ad${num}TargetLink`];
 
-          if (source && timeStr && !playedAdsRef.current.has(String(num))) {
-            const adStart = timeToSeconds(timeStr);
-            if (currentTime >= adStart && currentTime < adStart + 4) {
-              playedAdsRef.current.add(String(num));
-              if (!paused && pause) {
-                pause(); // Pause main video
+          if (source && timeStr) {
+            const mockSlot = { source, timestart: timeStr, targetLink, skipAfter: 5 };
+            const triggers = getAdTriggers(mockSlot, currentTime, num);
+            triggers.forEach(trig => {
+              if (!playedAdsRef.current.has(trig.key)) {
+                playedAdsRef.current.add(trig.key);
+                if (!paused && pause) {
+                  pause(); // Pause main video
+                }
+                triggerAd(trig.source, trig.targetLink, trig.skipAfter);
               }
-              triggerAd(source, targetLink, 5);
-            }
+            });
           }
         };
 
-        checkAd(1);
-        checkAd(2);
-        checkAd(3);
+        checkLegacyAd(1);
+        checkLegacyAd(2);
+        checkLegacyAd(3);
       }
     }
-  }, [currentTime, adsConfig, vastPreRoll, paused, pause, triggerAd, playedAdsRef]);
+  }, [currentTime, adsConfig, vastPreRoll, paused, pause, triggerAd, playedAdsRef, contentType]);
 
   // Keep it paused during ad playback
   useEffect(() => {
@@ -948,11 +1039,6 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
       try {
         const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
         const role = storedUser.role;
-        console.log('[DEBUG-ADS] checkUserGating - User Role:', role);
-        if (role === 'admin' || role === 'sub-admin') {
-          console.log('[DEBUG-ADS] checkUserGating - User is Admin/Sub-Admin. Gating bypassed (Ads disabled).');
-          return false; // Admins skip ads
-        }
         const planName = (storedUser.subscriptionPlan || 'Basic Plan').toLowerCase();
         const isPremiumUser = planName.includes('premium') || planName.includes('platinum') || planName.includes('pro');
         
@@ -964,15 +1050,17 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
           }
         }
         
-        console.log('[DEBUG-ADS] checkUserGating - Plan:', planName, '| Premium:', isPremiumUser, '| Expired:', isExpired);
-        if (isPremiumUser && !isExpired) {
-          console.log('[DEBUG-ADS] checkUserGating - User is Premium. Gating bypassed (Ads disabled).');
-          return false; // Active Premium subscription, skip ads
+        // Active non-expired Premium customer users bypass ads.
+        // Basic customers, guest viewers, and testing accounts see ads.
+        if (isPremiumUser && !isExpired && role === 'customer') {
+          console.log('[DEBUG-ADS] checkUserGating - User is Premium customer. Ads bypassed.');
+          return false;
         }
       } catch (e) {
         console.error('[DEBUG-ADS] Error parsing user for ad-gating:', e);
       }
-      console.log('[DEBUG-ADS] checkUserGating - Gating active. User should see ads.');
+      console.log('[DEBUG-ADS] checkUserGating - Ad display enabled for this playback session.');
+      return true;
       return true; // Basic, Guest, Expired see ads
     };
 
@@ -1014,13 +1102,20 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
     const skipDuration = Math.max(0, Number(customSkipSeconds) || 0);
     setAdSecondsLeft(skipDuration);
 
-    // Pause the Mux Player
+    // Pause the Main Player
     if (activePlayer === 'MUX_PLAYER' && playerRef.current) {
       try {
         playerRef.current.pause();
       } catch (e) {
         console.error('Failed to pause Mux Player:', e);
       }
+    } else if (containerRef.current) {
+      const mainVids = containerRef.current.querySelectorAll('video');
+      mainVids.forEach(v => {
+        if (!v.classList.contains('ad-video-element')) {
+          try { v.pause(); } catch(e) {}
+        }
+      });
     }
 
     // Set countdown timer
@@ -1043,13 +1138,20 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
     setAdClickUrl('');
     if (timerRef.current) clearInterval(timerRef.current);
 
-    // Resume playback of Mux Player
+    // Resume playback of Main Player
     if (activePlayer === 'MUX_PLAYER' && playerRef.current) {
       try {
         playerRef.current.play();
       } catch (e) {
         console.error('Failed to play Mux Player:', e);
       }
+    } else if (containerRef.current) {
+      const mainVids = containerRef.current.querySelectorAll('video');
+      mainVids.forEach(v => {
+        if (!v.classList.contains('ad-video-element')) {
+          try { v.play(); } catch(e) {}
+        }
+      });
     }
   };
 
@@ -1155,47 +1257,49 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
     if (adsConfig.defaultAds === 'Built-in Advertisement') {
       if (Array.isArray(adsConfig.builtInAds) && adsConfig.builtInAds.length > 0) {
         adsConfig.builtInAds.forEach((slot, idx) => {
-          const source = slot.source;
-          const timeStr = slot.timestart;
-          const targetLink = slot.targetLink;
-          const key = `slot_${slot._id || idx}_${timeStr}`;
-
-          if (source && timeStr && !playedAdsRef.current.has(key)) {
-            const adStart = timeToSeconds(timeStr);
-            if (currentTime >= adStart && currentTime < adStart + 4) {
-              playedAdsRef.current.add(key);
-              triggerAd(source, targetLink, slot.skipAfter ?? 5);
-            }
+          if (!isAdSlotApplicable(slot, contentType)) {
+            return;
           }
+          const triggers = getAdTriggers(slot, currentTime, idx);
+          triggers.forEach(trig => {
+            if (!playedAdsRef.current.has(trig.key)) {
+              playedAdsRef.current.add(trig.key);
+              triggerAd(trig.source, trig.targetLink, trig.skipAfter);
+            }
+          });
         });
       } else {
-        const checkAd = (num) => {
-          const source = adsConfig[`ad${num}Source`];
+        const checkLegacyAd = (num) => {
+          const source = adsConfig[`ad${num}Source`]?.trim();
           const timeStr = adsConfig[`ad${num}Timestart`];
           const targetLink = adsConfig[`ad${num}TargetLink`];
 
-          if (source && timeStr && !playedAdsRef.current.has(String(num))) {
-            const adStart = timeToSeconds(timeStr);
-            if (currentTime >= adStart && currentTime < adStart + 4) {
-              playedAdsRef.current.add(String(num));
-              triggerAd(source, targetLink, 5);
-            }
+          if (source && timeStr) {
+            const mockSlot = { source, timestart: timeStr, targetLink, skipAfter: 5 };
+            const triggers = getAdTriggers(mockSlot, currentTime, num);
+            triggers.forEach(trig => {
+              if (!playedAdsRef.current.has(trig.key)) {
+                playedAdsRef.current.add(trig.key);
+                triggerAd(trig.source, trig.targetLink, trig.skipAfter);
+              }
+            });
           }
         };
 
-        checkAd(1);
-        checkAd(2);
-        checkAd(3);
+        checkLegacyAd(1);
+        checkLegacyAd(2);
+        checkLegacyAd(3);
       }
     }
   };
 
   const getAdMediaUrlNormalized = () => {
     if (!adMediaUrl) return '';
-    if (adMediaUrl.startsWith('http') || adMediaUrl.startsWith('//') || adMediaUrl.startsWith('/')) {
-      return adMediaUrl;
+    const trimmed = adMediaUrl.trim();
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('//') || trimmed.startsWith('/')) {
+      return trimmed;
     }
-    let normalized = adMediaUrl;
+    let normalized = trimmed;
     if (normalized.startsWith('upload/')) {
       normalized = 'uploads/' + normalized.substring(7);
     }
@@ -1205,6 +1309,7 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
   // HLS/m3u8 capable ad player supporting autoplay bypass
   const AdVideoPlayer = ({ src, onEnded }) => {
     const videoRef = useRef(null);
+    const [muted, setMuted] = useState(false);
 
     useEffect(() => {
       const video = videoRef.current;
@@ -1214,15 +1319,16 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
 
       const initPlayer = () => {
         if (src.toLowerCase().includes('.m3u8')) {
-          if (window.Hls) {
-            if (window.Hls.isSupported()) {
-              hlsInstance = new window.Hls();
+          const startHls = (HlsLib) => {
+            if (HlsLib && HlsLib.isSupported()) {
+              hlsInstance = new HlsLib({ enableWorker: true });
               hlsInstance.loadSource(src);
               hlsInstance.attachMedia(video);
-              hlsInstance.on(window.Hls.Events.MANIFEST_PARSED, () => {
+              hlsInstance.on(HlsLib.Events.MANIFEST_PARSED, () => {
                 video.play().catch(err => {
                   console.log('[AdPlayer] Hls Autoplay blocked, trying muted play:', err);
                   video.muted = true;
+                  setMuted(true);
                   video.play().catch(e => console.error('[AdPlayer] Muted autoplay also failed:', e));
                 });
               });
@@ -1231,39 +1337,33 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
               video.play().catch(err => {
                 console.log('[AdPlayer] Native Hls Autoplay blocked, trying muted play:', err);
                 video.muted = true;
+                setMuted(true);
                 video.play().catch(e => console.error('[AdPlayer] Native muted autoplay failed:', e));
               });
             }
+          };
+
+          if (window.Hls) {
+            startHls(window.Hls);
           } else {
-            // Hls object not loaded on window, fallback to standard source
-            video.src = src;
-            video.play().catch(err => {
-              console.log('[AdPlayer] Standard Autoplay blocked, trying muted play:', err);
-              video.muted = true;
-              video.play().catch(e => console.error('[AdPlayer] Standard muted autoplay failed:', e));
-            });
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/hls.js@latest';
+            script.async = true;
+            script.onload = () => startHls(window.Hls);
+            document.head.appendChild(script);
           }
         } else {
           video.src = src;
           video.play().catch(err => {
             console.log('[AdPlayer] Video Autoplay blocked, trying muted play:', err);
             video.muted = true;
+            setMuted(true);
             video.play().catch(e => console.error('[AdPlayer] Video muted autoplay failed:', e));
           });
         }
       };
 
-      if (src.toLowerCase().includes('.m3u8') && !window.Hls) {
-        const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/hls.js@latest';
-        script.async = true;
-        script.onload = () => {
-          initPlayer();
-        };
-        document.head.appendChild(script);
-      } else {
-        initPlayer();
-      }
+      initPlayer();
 
       return () => {
         if (hlsInstance) {
@@ -1273,28 +1373,62 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
     }, [src]);
 
     return (
-      <video
-        ref={videoRef}
-        autoPlay
-        playsInline
-        controls={false}
-        onContextMenu={(e) => e.preventDefault()}
-        onEnded={onEnded}
-        onError={onEnded} // Skip ad if video source fails to load
-        style={{
-          width: '100%',
-          height: '100%',
-          objectFit: 'contain'
-        }}
-      />
+      <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+        <video
+          ref={videoRef}
+          className="ad-video-element"
+          autoPlay
+          playsInline
+          controls={false}
+          onContextMenu={(e) => e.preventDefault()}
+          onEnded={onEnded}
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'contain'
+          }}
+        />
+        {muted && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (videoRef.current) {
+                videoRef.current.muted = false;
+                setMuted(false);
+              }
+            }}
+            style={{
+              position: 'absolute',
+              bottom: '15px',
+              left: '15px',
+              background: 'rgba(0,0,0,0.75)',
+              color: '#fff',
+              border: '1px solid rgba(255,255,255,0.2)',
+              padding: '6px 12px',
+              borderRadius: '4px',
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              zIndex: 10
+            }}
+          >
+            🔊 Click to Unmute Ad
+          </button>
+        )}
+      </div>
     );
   };
 
   const renderAdOverlay = () => {
     const normalizedAdMediaUrl = getAdMediaUrlNormalized();
-    const isAdVideo = normalizedAdMediaUrl.toLowerCase().match(/\.(mp4|webm|ogg|mov|m3u8)$/) || 
-                      normalizedAdMediaUrl.includes('video') || 
-                      normalizedAdMediaUrl.includes('/uploads/');
+    const isAdVideo = Boolean(
+      normalizedAdMediaUrl.match(/\.(mp4|webm|ogg|mov|m3u8)($|\?)/i) || 
+      normalizedAdMediaUrl.includes('.m3u8') ||
+      normalizedAdMediaUrl.includes('.mp4') ||
+      normalizedAdMediaUrl.includes('video') || 
+      normalizedAdMediaUrl.includes('/uploads/')
+    );
 
     return (
       <div 
@@ -1326,7 +1460,8 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
           justifyContent: 'space-between',
           alignItems: 'center',
           pointerEvents: 'none',
-          width: 'calc(100% - 60px)'
+          width: 'calc(100% - 60px)',
+          zIndex: 10
         }}>
           <div style={{
             background: 'rgba(255,255,255,0.15)',
@@ -1385,7 +1520,7 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
             <img
               src={normalizedAdMediaUrl}
               alt="Advertisement"
-              onError={skipAd} // Skip ad if image source fails to load
+              onError={skipAd}
               style={{
                 width: '100%',
                 height: '100%',
@@ -1520,7 +1655,7 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
       : '179, 211, 50';
 
   const accentText = isModernLight ? '#000000' : '#ffffff';
-  const isAutoplayEnabled = playerSettings?.autoplay === 'YES';
+  const isAutoplayEnabled = rest.autoPlay !== undefined ? Boolean(rest.autoPlay) : (playerSettings?.autoplay !== 'NO');
   const isRewindForwardEnabled = playerSettings?.rewindForward !== 'NO';
 
   const playbackId = null;
@@ -2406,6 +2541,7 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
               playedAdsRef={playedAdsRef} 
               triggerAd={triggerAd} 
               vastPreRoll={vastPreRoll} 
+              contentType={contentType}
             />
           )}
 
