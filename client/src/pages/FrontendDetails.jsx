@@ -167,7 +167,6 @@ const FrontendDetails = () => {
  const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
  const [isRatingSubmitting, setIsRatingSubmitting] = useState(false);
  const [pocketTab, setPocketTab] = useState('episodes'); // 'episodes' | 'reviews'
- const [pocketRange, setPocketRange] = useState('all');
  const [isDescExpanded, setIsDescExpanded] = useState(false);
  const [currentPocketEp, setCurrentPocketEp] = useState(null);
  const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -1082,44 +1081,13 @@ Cancel
 
             {pocketTab === 'episodes' ? (
               <div className="fe-pocket-episodes-content-v">
-                {/* Filter / Range Row */}
-                <div className="fe-pocket-range-bar-v">
-                  <select 
-                    value={pocketRange} 
-                    onChange={(e) => setPocketRange(e.target.value)}
-                    className="fe-pocket-range-select"
-                  >
-                    <option value="all">ALL {episodes.length} EPISODES</option>
-                    {(() => {
-                      const chunkSize = 25;
-                      const chunks = [];
-                      for (let i = 0; i < episodes.length; i += chunkSize) {
-                        const start = i + 1;
-                        const end = Math.min(i + chunkSize, episodes.length);
-                        chunks.push(<option key={i} value={`${start}-${end}`}>EPISODES {start} - {end}</option>);
-                      }
-                      return chunks;
-                    })()}
-                  </select>
-                </div>
-
                 {/* Scrollable Episode List */}
                 <div className="fe-pocket-ep-scroll-list-v">
-                  {(() => {
-                    let displayedEps = episodes;
-                    if (pocketRange !== 'all') {
-                      const [startStr, endStr] = pocketRange.split('-');
-                      const startIdx = parseInt(startStr, 10) - 1;
-                      const endIdx = parseInt(endStr, 10);
-                      displayedEps = episodes.slice(startIdx, endIdx);
-                    }
-
-                    if (displayedEps.length === 0) {
-                      return <div className="fe-pocket-no-eps">No episodes published yet.</div>;
-                    }
-
-                    return displayedEps.map((ep, idx) => {
-                      const realIndex = pocketRange === 'all' ? idx : (parseInt(pocketRange.split('-')[0], 10) - 1 + idx);
+                  {episodes.length === 0 ? (
+                    <div className="fe-pocket-no-eps">No episodes published yet.</div>
+                  ) : (
+                    episodes.map((ep, idx) => {
+                      const realIndex = idx;
                       const epUrl = ep.videoFile || ep.videoUrl || ep.videoFile1080 || ep.videoFile720 || ep.videoFile480;
                       const isCurrent = (currentPocketEp && currentPocketEp._id === ep._id) || (activeVideoUrl && activeVideoUrl === epUrl);
 
@@ -1153,8 +1121,8 @@ Cancel
                           </button>
                         </div>
                       );
-                    });
-                  })()}
+                    })
+                  )}
                 </div>
               </div>
             ) : (
