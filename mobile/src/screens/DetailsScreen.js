@@ -201,7 +201,7 @@ export default function DetailsScreen({ route, navigation }) {
   const checkIsPaid = (item, contentType) => {
     if (!item) return false;
     const t = (contentType || '').toLowerCase().trim();
-    if (t === 'show' || t === 'shows' || t === 'series' || t === 'short-web-series' || t === 'web-series') {
+    if (t === 'show' || t === 'shows' || t === 'series' || t === 'short-web-series' || t === 'web-series' || t === 'pocket-reel-series' || t === 'pocket-reels') {
       return (item.seriesAccess || '').toLowerCase() === 'paid';
     } else if (t === 'live' || t === 'channel' || t === 'channels' || t === 'tv-channel' || t === 'tv-channels') {
       return (item.tvAccess || '').toLowerCase() === 'paid' || (item.access || '').toLowerCase() === 'paid';

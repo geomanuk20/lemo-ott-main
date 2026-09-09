@@ -16,7 +16,7 @@ import { Clapperboard, Heart, Eye, Clock, Play, Pause } from 'lucide-react-nativ
 import { useIsFocused } from '@react-navigation/native';
 import client from '../api/client';
 
-export default function ShortsScreen({ route }) {
+export default function ShortsScreen({ navigation, route }) {
   const { width, height } = useWindowDimensions();
   const isFocused = useIsFocused();
   const [shorts, setShorts] = useState([]);
@@ -135,7 +135,9 @@ export default function ShortsScreen({ route }) {
       }
     } catch (err) {
       console.error('Error toggling like:', err);
-      alert('Please log in to like shorts');
+      if (navigation && typeof navigation.navigate === 'function') {
+        navigation.navigate('Login');
+      }
     }
   };
 

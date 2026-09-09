@@ -91,13 +91,16 @@ export default function ShowsScreen({ navigation }) {
     // 1. Filter by Menu Settings content types
     if (menuSettings) {
       const isWebSeries = (show.contentType || '').toLowerCase() === 'short web series' || (show.contentType || '').toLowerCase() === 'short-web-series';
-      const isTvShow = !isWebSeries;
+      const isPocketReel = (show.contentType || '').toLowerCase() === 'pocket reel series' || (show.contentType || '').toLowerCase() === 'pocket-reel-series' || (show.contentType || '').toLowerCase() === 'pocket reels' || (show.contentType || '').toLowerCase() === 'pocket-reels';
+      const isTvShow = !isWebSeries && !isPocketReel;
       
       const tvShowsOff = menuSettings.shows?.toUpperCase() === 'OFF';
       const webSeriesOff = menuSettings.webSeries?.toUpperCase() === 'OFF';
+      const pocketReelOff = menuSettings.pocketReelSeries?.toUpperCase() === 'OFF';
 
       if (isTvShow && tvShowsOff) return false;
       if (isWebSeries && webSeriesOff) return false;
+      if (isPocketReel && pocketReelOff) return false;
     }
 
     // 2. Filter by Genre

@@ -746,16 +746,27 @@ export default function PlayerScreen({ route, navigation }) {
   const toggleFullscreen = async () => {
     if (ScreenOrientation) {
       try {
+        const isVertical = (contentType || '').toLowerCase().includes('pocket') || 
+                           (contentType || '').toLowerCase().includes('reel') || 
+                           (contentType || '').toLowerCase().includes('short') ||
+                           (status?.naturalSize && status.naturalSize.height > status.naturalSize.width);
+
         const current = await ScreenOrientation.getOrientationAsync();
         const isLandscape = 
           current === ScreenOrientation.Orientation.LANDSCAPE_LEFT || 
           current === ScreenOrientation.Orientation.LANDSCAPE_RIGHT;
-        if (isLandscape) {
+
+        if (isVertical) {
           await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
-          setResizeMode(ResizeMode.CONTAIN);
+          setResizeMode(prev => prev === ResizeMode.CONTAIN ? ResizeMode.COVER : ResizeMode.CONTAIN);
         } else {
-          await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
-          setResizeMode(ResizeMode.COVER);
+          if (isLandscape) {
+            await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+            setResizeMode(ResizeMode.CONTAIN);
+          } else {
+            await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
+            setResizeMode(ResizeMode.CONTAIN);
+          }
         }
       } catch (e) {
         console.warn(e);

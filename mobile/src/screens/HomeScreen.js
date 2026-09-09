@@ -124,7 +124,7 @@ export default function HomeScreen({ navigation }) {
   const checkIsPaid = (item, contentType) => {
     if (!item) return false;
     const t = (contentType || '').toLowerCase().trim();
-    if (t === 'show' || t === 'shows' || t === 'series' || t === 'short-web-series' || t === 'web-series') {
+    if (t === 'show' || t === 'shows' || t === 'series' || t === 'short-web-series' || t === 'web-series' || t === 'pocket-reel-series' || t === 'pocket-reels') {
       return (item.seriesAccess || '').toLowerCase() === 'paid';
     } else if (t === 'live' || t === 'channel' || t === 'channels' || t === 'tv-channel' || t === 'tv-channels') {
       return (item.tvAccess || '').toLowerCase() === 'paid' || (item.access || '').toLowerCase() === 'paid';
@@ -726,7 +726,7 @@ export default function HomeScreen({ navigation }) {
                 }
               }
               if (type === 'Shows') {
-                const tvShows = data.shows.filter(s => s.contentType !== 'Short Web Series' && s.contentType !== 'short-web-series');
+                const tvShows = data.shows.filter(s => s.contentType !== 'Short Web Series' && s.contentType !== 'short-web-series' && s.contentType !== 'Pocket Reel Series' && s.contentType !== 'pocket-reel-series' && s.contentType !== 'Pocket Reels' && s.contentType !== 'pocket-reels');
                 const filtered = tvShows.filter(item => isItemActive(item, menuSettings));
                 if (filtered.length > 0) {
                   const showExp = !experienceRendered;
@@ -754,6 +754,32 @@ export default function HomeScreen({ navigation }) {
               if (type === 'Short Web Series') {
                 const webSeries = data.shows.filter(s => s.contentType === 'Short Web Series' || s.contentType === 'short-web-series');
                 const filtered = webSeries.filter(item => isItemActive(item, menuSettings));
+                if (filtered.length > 0) {
+                  const showExp = !experienceRendered;
+                  experienceRendered = true;
+                  return (
+                    <React.Fragment key={key}>
+                      <View style={styles.sectionContainer}>
+                        <View style={styles.sectionHeader}>
+                          <Text style={styles.sectionTitle}>{title}</Text>
+                        </View>
+                        <FlatList
+                          data={filtered.slice(0, section.limit || 20)}
+                          renderItem={({ item }) => renderMediaCard({ item, type: 'show' })}
+                          keyExtractor={(item) => item._id}
+                          horizontal
+                          showsHorizontalScrollIndicator={false}
+                          contentContainerStyle={styles.listContent}
+                        />
+                      </View>
+                      {showExp && renderExperienceSection()}
+                    </React.Fragment>
+                  );
+                }
+              }
+              if (type === 'Pocket Reel Series' || type === 'Pocket Reels' || type === 'pocket-reel-series') {
+                const pocketSeries = data.shows.filter(s => s.contentType === 'Pocket Reel Series' || s.contentType === 'pocket-reel-series' || s.contentType === 'Pocket Reels' || s.contentType === 'pocket-reels');
+                const filtered = pocketSeries.filter(item => isItemActive(item, menuSettings));
                 if (filtered.length > 0) {
                   const showExp = !experienceRendered;
                   experienceRendered = true;
@@ -898,13 +924,13 @@ export default function HomeScreen({ navigation }) {
                 </View>
               )}
               {renderExperienceSection()}
-              {data.shows.filter(s => s.contentType !== 'Short Web Series' && s.contentType !== 'short-web-series').filter(item => isItemActive(item, menuSettings)).length > 0 && (!menuSettings || menuSettings.shows?.toUpperCase() !== 'OFF') && (
+              {data.shows.filter(s => s.contentType !== 'Short Web Series' && s.contentType !== 'short-web-series' && s.contentType !== 'Pocket Reel Series' && s.contentType !== 'pocket-reel-series' && s.contentType !== 'Pocket Reels' && s.contentType !== 'pocket-reels').filter(item => isItemActive(item, menuSettings)).length > 0 && (!menuSettings || menuSettings.shows?.toUpperCase() !== 'OFF') && (
                 <View style={styles.sectionContainer}>
                   <View style={styles.sectionHeader}>
                     <Text style={styles.sectionTitle}>TV Shows</Text>
                   </View>
                   <FlatList
-                    data={data.shows.filter(s => s.contentType !== 'Short Web Series' && s.contentType !== 'short-web-series').filter(item => isItemActive(item, menuSettings))}
+                    data={data.shows.filter(s => s.contentType !== 'Short Web Series' && s.contentType !== 'short-web-series' && s.contentType !== 'Pocket Reel Series' && s.contentType !== 'pocket-reel-series' && s.contentType !== 'Pocket Reels' && s.contentType !== 'pocket-reels').filter(item => isItemActive(item, menuSettings))}
                     renderItem={({ item }) => renderMediaCard({ item, type: 'show' })}
                     keyExtractor={(item) => item._id}
                     horizontal
@@ -920,6 +946,21 @@ export default function HomeScreen({ navigation }) {
                   </View>
                   <FlatList
                     data={data.shows.filter(s => s.contentType === 'Short Web Series' || s.contentType === 'short-web-series').filter(item => isItemActive(item, menuSettings))}
+                    renderItem={({ item }) => renderMediaCard({ item, type: 'show' })}
+                    keyExtractor={(item) => item._id}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.listContent}
+                  />
+                </View>
+              )}
+              {data.shows.filter(s => s.contentType === 'Pocket Reel Series' || s.contentType === 'pocket-reel-series' || s.contentType === 'Pocket Reels' || s.contentType === 'pocket-reels').filter(item => isItemActive(item, menuSettings)).length > 0 && (!menuSettings || menuSettings.pocketReelSeries?.toUpperCase() !== 'OFF') && (
+                <View style={styles.sectionContainer}>
+                  <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>Pocket Reel Series</Text>
+                  </View>
+                  <FlatList
+                    data={data.shows.filter(s => s.contentType === 'Pocket Reel Series' || s.contentType === 'pocket-reel-series' || s.contentType === 'Pocket Reels' || s.contentType === 'pocket-reels').filter(item => isItemActive(item, menuSettings))}
                     renderItem={({ item }) => renderMediaCard({ item, type: 'show' })}
                     keyExtractor={(item) => item._id}
                     horizontal
