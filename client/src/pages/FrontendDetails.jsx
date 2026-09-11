@@ -809,6 +809,63 @@ const FrontendDetails = () => {
 
  if (!data) return <FrontendLayout><div style={{padding: '150px', textAlign: 'center', color: '#fff'}}>Content not found</div></FrontendLayout>;
 
+  const renderVisualStatsAndActions = () => (
+    <>
+      {/* Sleek Stats Bar */}
+      <div className="fe-visual-stats-v">
+        <div className="stat-item-v">
+          <Eye size={15} />
+          <span>{formatViews(data.views, data._id)}</span>
+        </div>
+        <div className="stat-sep-dot">•</div>
+        <div className="stat-item-v">
+          <Calendar size={15} />
+          <span>{new Date(data.releaseDate || data.createdAt).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}</span>
+        </div>
+        <div className="stat-sep-dot">•</div>
+        <div className="stat-item-v">
+          <Clock size={15} />
+          <span>{data.duration || '2h 30m'}</span>
+        </div>
+        <div className="stat-sep-dot">•</div>
+        <div className="fe-rating-pill-v">
+          <div className="fe-rating-score-box">
+            <Star size={13} fill="#b3d332" color="#b3d332" />
+            <span className="imdb-val-v">{parseFloat(data.imdbRating || '7.5').toFixed(1)}</span>
+          </div>
+          {data.ratingsCount && data.ratingsCount > 0 ? (
+            <span className="fe-ratings-count-v">({data.ratingsCount})</span>
+          ) : null}
+        </div>
+      </div>
+
+      {/* Modern Cohesive Action Buttons */}
+      <div className="fe-visual-actions-v">
+        <button 
+          className={`action-btn-v watchlist-v ${isWatchlisted ? 'active' : ''}`} 
+          onClick={handleWatchlist}
+        >
+          {isWatchlisted ? <Check size={17} /> : <Plus size={17} />}
+          <span>{isWatchlisted ? 'In Watchlist' : 'Watchlist'}</span>
+        </button>
+        <button 
+          className={`action-btn-v rate-btn-v ${userRating > 0 ? 'active' : ''}`} 
+          onClick={handleOpenRatingModal}
+        >
+          <Star size={17} fill={userRating > 0 ? '#ffd700' : 'transparent'} color={userRating > 0 ? '#ffd700' : 'currentColor'} />
+          <span>{userRating > 0 ? `Rated ${userRating}★` : 'Rate'}</span>
+        </button>
+        <button 
+          className="action-btn-v share-v" 
+          onClick={() => setIsShareModalOpen(true)}
+        >
+          <Share2 size={17} />
+          <span>Share</span>
+        </button>
+      </div>
+    </>
+  );
+
  return (
   <FrontendLayout isTransparent={true}>
    <div className="fe-details-page-v">
@@ -1269,48 +1326,9 @@ Cancel
             </div>
            </div>
            
-           {/* Bottom Stats */}
-           <div className="fe-visual-stats-v">
-            <div className="stat-item-v"><Eye size={16} /> <span>{formatViews(data.views, data._id)}</span></div>
-            <div className="stat-item-v"><Calendar size={16} /> <span>{new Date(data.releaseDate || data.createdAt).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}</span></div>
-            <div className="stat-item-v"><Clock size={16} /> <span>{data.duration || '2h 30m'}</span></div>
-            <div className="fe-rating-wrapper-v" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
-              {(() => {
-               const ratingVal = parseFloat(data.imdbRating || '7.5');
-               const percentage = (ratingVal / 10) * 100;
-               return (
-                <div 
-                 className="fe-rating-circle-v" 
-                 style={{ background: `conic-gradient(#b3d332 ${percentage}%, rgba(255,255,255,0.1) ${percentage}%)`, margin: 0 }}
-                >
-                 <div className="rating-inner-v">
-                  <span className="imdb-val-v">{ratingVal.toFixed(1)}</span>
-                 </div>
-                </div>
-               );
-              })()}
-              <span className="fe-ratings-count-v" style={{ fontSize: '0.68rem', fontWeight: 700, color: '#888', textTransform: 'lowercase' }}>
-               {data.ratingsCount && data.ratingsCount > 0 
-                 ? `${data.ratingsCount} ${data.ratingsCount === 1 ? 'rating' : 'ratings'}`
-                 : 'no ratings'}
-              </span>
-             </div>
-           </div>
-
-           {/* Action Buttons */}
-           <div className="fe-visual-actions-v">
-            <button className={`action-btn-v watchlist-v ${isWatchlisted ? 'active' : ''}`} onClick={handleWatchlist}>
-             {isWatchlisted ? <Check size={18} /> : <Plus size={18} />}
-             <span>{isWatchlisted ? 'In Watchlist' : 'Add to Watchlist'}</span>
-            </button>
-            <button className={`action-btn-v rate-btn-v ${userRating > 0 ? 'active' : ''}`} onClick={handleOpenRatingModal}>
-             <Star size={18} fill={userRating > 0 ? '#b3d332' : 'transparent'} color={userRating > 0 ? '#b3d332' : 'currentColor'} />
-             <span>{userRating > 0 ? `Rated ${userRating}★` : 'Rate'}</span>
-            </button>
-            <button className="action-btn-v share-v" onClick={() => setIsShareModalOpen(true)}>
-             <Share2 size={18} />
-             <span>Share</span>
-            </button>
+           {/* Desktop Stats & Action Buttons (Hidden on tablet/mobile) */}
+           <div className="fe-desktop-stats-actions">
+            {renderVisualStatsAndActions()}
            </div>
           </div>
 
@@ -1331,11 +1349,22 @@ Cancel
            })()}
            <h1 className="fe-info-title-v">{getTitle(data)}</h1>
            <div className="fe-info-meta-top-v">
-            <span className="meta-genre-v">{
-             ((data.genres && data.genres.length > 0 ? data.genres : (data.showId && typeof data.showId === 'object' && data.showId.genres)) || []).join(' | ') || 'Drama'
-            }</span>
-            <span className="meta-sep-v">|</span>
-            <span className="meta-lang-v">{data.language || (data.showId && typeof data.showId === 'object' && data.showId.language) || 'English'}</span>
+              {(() => {
+                const genres = ((data.genres && data.genres.length > 0 ? data.genres : (data.showId && typeof data.showId === 'object' && data.showId.genres)) || []);
+
+                return (
+                  <div className="fe-meta-chips-row">
+                    {genres.map((g, idx) => (
+                      <span key={idx} className="meta-chip-item fe-chip-genre">{g}</span>
+                    ))}
+                  </div>
+                );
+              })()}
+           </div>
+
+           {/* Mobile & Tablet Stats & Action Buttons (Under Title & Category on <= 1200px) */}
+           <div className="fe-mobile-tablet-stats-actions">
+            {renderVisualStatsAndActions()}
            </div>
 
             {data.trailerUrl && data.trailerUrl.trim() !== "" && (
@@ -1344,51 +1373,7 @@ Cancel
              </button>
             )}
 
-            {/* Quality Badges */}
-            <div className="fe-info-badges-v">
-             {data.upcoming === 'Yes' ? (
-              <div className="fe-upcoming-badge-v">
-               <span className="badge-prefix-v">UPCOMING</span>
-               <span className="badge-suffix-v">SOON</span>
-              </div>
-             ) : data.videoQuality !== 'None' ? (
-              <div className="fe-quality-badge-v">
-                {(() => {
-                  const q = data.videoQuality || 'HD';
-                  const qLower = q.toLowerCase();
-                  if (qLower.includes('8k')) return '8K';
-                  if (qLower.includes('4k')) return '4K';
-                  if (qLower.includes('ultra')) return 'ULTRA';
-                  if (qLower.includes('full')) return 'FHD';
-                  if (qLower.includes('hdr')) return 'HDR';
-                  return q.split(' ')[0].toUpperCase();
-                })()}
-              </div>
-             ) : null}
-             <div className="fe-age-badge-v">{data.contentRating || '16+'}</div>
-            </div>
 
-            {/* Show Meta Info */}
-            <div className="fe-info-grid-meta-v">
-             <div className="meta-row-v">
-              <span className="meta-label-v">Status:</span>
-              <span className="meta-value-v">{data.status || 'Active'}</span>
-             </div>
-             <div className="meta-row-v">
-              <span className="meta-label-v">Release:</span>
-              <span className="meta-value-v">{data.releaseYear || new Date(data.releaseDate || data.createdAt).getFullYear()}</span>
-             </div>
-             <div className="meta-row-v">
-              <span className="meta-label-v">Access:</span>
-              <span className="meta-value-v highlight-access-v">{data.seriesAccess || data.access || data.tvAccess || 'Free'}</span>
-             </div>
-             {data.duration && (
-              <div className="meta-row-v">
-               <span className="meta-label-v">Duration:</span>
-               <span className="meta-value-v">{data.duration}</span>
-              </div>
-             )}
-            </div>
 
            {(type === 'movie' || type === 'show' || type === 'shows' || type === 'series' || type === 'short-web-series' || type === 'new-releases' || type === 'episode' || type === 'episodes' || type === 'season' || type === 'seasons') && (
              <div className="fe-info-cast-v">
@@ -1447,87 +1432,89 @@ Cancel
          </div>
         </div>
 
-        {/* TV Show Seasons & Episodes Section */}
-        {data.upcoming === 'Yes' ? (
-         <div className="fe-upcoming-episodes-message-v" style={{ textAlign: 'center', padding: '60px 20px', background: '#0a0a0a', borderTop: '1px solid rgba(255,255,255,0.05)', marginTop: '40px' }}>
-           <h3 style={{ color: '#fff', fontSize: '1.5rem', fontWeight: 800, marginBottom: '10px' }}>Episodes Coming Soon</h3>
-           <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '1rem' }}>Stay tuned! Episodes for this series will be available soon.</p>
-         </div>
-        ) : (seasons.length > 0 || data.contentType === 'Short Web Series' || data.contentType === 'Pocket Reel Series') && (
-         <section className="fe-episodes-section-v">
-          
-          {/* Seasons Gallery Section */}
-          {data.contentType !== 'Short Web Series' && data.contentType !== 'Pocket Reel Series' && seasons.length > 0 && (
-           <div className="fe-seasons-block-v">
-            <h2 className="fe-seasons-title-v">Seasons</h2>
-            <div className="fe-seasons-grid-v">
-             {seasons.map((season) => (
-              <div 
-               key={season._id} 
-               className={`fe-season-card-v ${selectedSeasonId === season._id ? 'active' : ''}`}
-               onClick={() => {
-                navigate(`/details/seasons/${season._id}`);
-               }}
-              >
-               <div className="fe-season-poster-wrapper-v">
-                <img src={formatImageUrl(season, 'poster') || formatImageUrl(season, 'thumbnail')} alt={season.title} />
-               </div>
-               <h3 className="fe-season-card-title-v">{season.title}</h3>
-              </div>
-             ))}
-            </div>
+        {/* TV Show Seasons & Episodes Section (Only for Series / Shows) */}
+        {(cleanType === 'show' || cleanType === 'shows' || cleanType === 'series' || cleanType === 'short-web-series' || cleanType === 'pocket-reel-series' || cleanType === 'pocket-reels' || data.contentType === 'Short Web Series' || data.contentType === 'Pocket Reel Series') && (
+          data.upcoming === 'Yes' ? (
+           <div className="fe-upcoming-episodes-message-v" style={{ textAlign: 'center', padding: '60px 20px', background: '#0a0a0a', borderTop: '1px solid rgba(255,255,255,0.05)', marginTop: '40px' }}>
+             <h3 style={{ color: '#fff', fontSize: '1.5rem', fontWeight: 800, marginBottom: '10px' }}>Episodes Coming Soon</h3>
+             <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '1rem' }}>Stay tuned! Episodes for this series will be available soon.</p>
            </div>
-          )}
-
-          {/* Episodes Block Section */}
-          {(() => {
-           const isShortWeb = data.contentType === 'Short Web Series' || data.contentType === 'Pocket Reel Series';
-           let filteredEpisodes = episodes;
-           let seasonNameText = '';
-           
-           if (!isShortWeb) {
-            const selectedSeasonObj = seasons.find(s => s._id === selectedSeasonId);
-            seasonNameText = selectedSeasonObj ? `${data.title} - ${selectedSeasonObj.title}` : '';
-            filteredEpisodes = episodes.filter(ep => ep.seasonId === selectedSeasonId || (ep.seasonId && (ep.seasonId._id === selectedSeasonId || ep.seasonId === selectedSeasonId)));
-           } else {
-            seasonNameText = `${data.title} - Episodes`;
-           }
-           
-           return (
-            <div className="fe-episodes-block-v">
-             {seasonNameText && <h2 className="fe-episodes-block-title-v">{seasonNameText}</h2>}
-             {filteredEpisodes.length === 0 ? (
-              <div className="no-episodes-v">No episodes available.</div>
-             ) : (
-              <div className="fe-episodes-grid-v">
-               {filteredEpisodes.map((ep, idx) => (
+          ) : (seasons.length > 0 || data.contentType === 'Short Web Series' || data.contentType === 'Pocket Reel Series') ? (
+           <section className="fe-episodes-section-v">
+            
+            {/* Seasons Gallery Section */}
+            {data.contentType !== 'Short Web Series' && data.contentType !== 'Pocket Reel Series' && seasons.length > 0 && (
+             <div className="fe-seasons-block-v">
+              <h2 className="fe-seasons-title-v">Seasons</h2>
+              <div className="fe-seasons-grid-v">
+               {seasons.map((season) => (
                 <div 
-                 key={ep._id} 
-                 className="fe-episode-card-v"
+                 key={season._id} 
+                 className={`fe-season-card-v ${selectedSeasonId === season._id ? 'active' : ''}`}
                  onClick={() => {
-                  navigate(`/details/episodes/${ep._id}`);
+                  navigate(`/details/seasons/${season._id}`);
                  }}
                 >
-                 <div className="fe-episode-thumb-wrapper-v">
-                  <img src={formatImageUrl(ep, 'poster') || formatImageUrl(ep, 'thumbnail')} alt={ep.title} />
-                  <div className="fe-episode-hover-play-v">
-                   <Play size={20} fill="white" color="white" />
-                  </div>
-                  {((data?.seriesAccess || '').toLowerCase() === 'paid' && (ep.access || '').toLowerCase() === 'paid') && (
-                   <div className="fe-episode-crown-tag-v">
-                    <Crown size={12} fill="white" color="white" />
-                   </div>
-                  )}
+                 <div className="fe-season-poster-wrapper-v">
+                  <img src={formatImageUrl(season, 'poster') || formatImageUrl(season, 'thumbnail')} alt={season.title} />
                  </div>
-                 <h3 className="fe-episode-card-title-v">{ep.title}</h3>
+                 <h3 className="fe-season-card-title-v">{season.title}</h3>
                 </div>
                ))}
               </div>
-             )}
-            </div>
-           );
-          })()}
-         </section>
+             </div>
+            )}
+
+            {/* Episodes Block Section */}
+            {(() => {
+             const isShortWeb = data.contentType === 'Short Web Series' || data.contentType === 'Pocket Reel Series';
+             let filteredEpisodes = episodes;
+             let seasonNameText = '';
+             
+             if (!isShortWeb) {
+              const selectedSeasonObj = seasons.find(s => s._id === selectedSeasonId);
+              seasonNameText = selectedSeasonObj ? `${data.title} - ${selectedSeasonObj.title}` : '';
+              filteredEpisodes = episodes.filter(ep => ep.seasonId === selectedSeasonId || (ep.seasonId && (ep.seasonId._id === selectedSeasonId || ep.seasonId === selectedSeasonId)));
+             } else {
+              seasonNameText = `${data.title} - Episodes`;
+             }
+             
+             return (
+              <div className="fe-episodes-block-v">
+               {seasonNameText && <h2 className="fe-episodes-block-title-v">{seasonNameText}</h2>}
+               {filteredEpisodes.length === 0 ? (
+                <div className="no-episodes-v">No episodes available.</div>
+               ) : (
+                <div className="fe-episodes-grid-v">
+                 {filteredEpisodes.map((ep, idx) => (
+                  <div 
+                   key={ep._id} 
+                   className="fe-episode-card-v"
+                   onClick={() => {
+                    navigate(`/details/episodes/${ep._id}`);
+                   }}
+                  >
+                   <div className="fe-episode-thumb-wrapper-v">
+                    <img src={formatImageUrl(ep, 'poster') || formatImageUrl(ep, 'thumbnail')} alt={ep.title} />
+                    <div className="fe-episode-hover-play-v">
+                     <Play size={20} fill="white" color="white" />
+                    </div>
+                    {((data?.seriesAccess || '').toLowerCase() === 'paid' && (ep.access || '').toLowerCase() === 'paid') && (
+                     <div className="fe-episode-crown-tag-v">
+                      <Crown size={12} fill="white" color="white" />
+                     </div>
+                    )}
+                   </div>
+                   <h3 className="fe-episode-card-title-v">{ep.title}</h3>
+                  </div>
+                 ))}
+                </div>
+               )}
+              </div>
+             );
+            })()}
+           </section>
+          ) : null
         )}
       </>
     )}
@@ -2060,29 +2047,197 @@ Cancel
      100% { transform: scale(2); opacity: 0; }
     }
 
-    .fe-visual-stats-v { display: flex; align-items: center; gap: 10px; margin-top: 15px; color: #888; font-size: 0.72rem; font-weight: 600; }
-    .stat-item-v { display: flex; align-items: center; gap: 4px; }
-    .stat-item-v svg { width: 12px; height: 12px; }
-    
-    .fe-rating-circle-v { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; padding: 2px; font-size: 0.72rem; font-weight: 900; color: #fff; background: rgba(0,0,0,0.5); box-shadow: 0 0 10px rgba(22,196,127,0.15); animation: scaleIn 0.5s ease-out; }
-    .rating-inner-v { background: #000; width: 100%; height: 100%; border-radius: 50%; display: flex; align-items: center; justify-content: center; position: relative; }
-    .imdb-val-v { color: #b3d332; }
+    /* Sleek Visual Stats Bar */
+    .fe-visual-stats-v {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 14px;
+      padding: 10px 16px;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.015) 100%);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-radius: 12px;
+      color: #94a3b8;
+      font-size: 0.8rem;
+      font-weight: 600;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+    }
+    .stat-item-v {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #cbd5e1;
+    }
+    .stat-item-v svg {
+      color: #b3d332;
+      filter: drop-shadow(0 0 4px rgba(179, 211, 50, 0.3));
+    }
+    .stat-sep-dot {
+      color: rgba(255, 255, 255, 0.15);
+      font-size: 0.8rem;
+      user-select: none;
+    }
+    .fe-rating-pill-v {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(179, 211, 50, 0.1);
+      border: 1px solid rgba(179, 211, 50, 0.25);
+      padding: 4px 8px;
+      border-radius: 20px;
+    }
+    .fe-rating-score-box {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      color: #b3d332;
+      font-weight: 800;
+      font-size: 0.78rem;
+    }
+    .fe-rating-score-box .imdb-val-v {
+      color: #b3d332;
+    }
+    .fe-ratings-count-v {
+      color: #64748b;
+      font-size: 0.68rem;
+      font-weight: 600;
+    }
 
-    @keyframes scaleIn { from { transform: scale(0); } to { transform: scale(1); } }
+    /* Modern Action Buttons */
+    .fe-visual-actions-v {
+      display: flex;
+      gap: 10px;
+      margin-top: 14px;
+      width: 100%;
+    }
+    .action-btn-v {
+      flex: 1;
+      height: 44px;
+      border: none;
+      padding: 0 14px;
+      border-radius: 12px;
+      font-weight: 750;
+      font-size: 0.82rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      white-space: nowrap;
+      user-select: none;
+    }
+    .action-btn-v:hover {
+      transform: translateY(-2px);
+    }
+    .action-btn-v:active {
+      transform: scale(0.97);
+    }
+    .watchlist-v {
+      background: linear-gradient(135deg, #b3d332 0%, #95b81b 100%);
+      color: #0b0f02;
+      box-shadow: 0 4px 14px rgba(179, 211, 50, 0.35);
+    }
+    .watchlist-v:hover {
+      box-shadow: 0 6px 20px rgba(179, 211, 50, 0.5);
+      filter: brightness(1.06);
+    }
+    .watchlist-v.active {
+      background: rgba(179, 211, 50, 0.12);
+      border: 1px solid rgba(179, 211, 50, 0.4);
+      color: #b3d332;
+      box-shadow: none;
+    }
+    .rate-btn-v {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #e2e8f0;
+    }
+    .rate-btn-v:hover {
+      background: rgba(255, 215, 0, 0.08);
+      border-color: rgba(255, 215, 0, 0.4);
+      color: #ffd700;
+    }
+    .rate-btn-v.active {
+      background: rgba(255, 215, 0, 0.12);
+      border-color: #ffd700;
+      color: #ffd700;
+    }
+    .share-v {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #e2e8f0;
+    }
+    .share-v:hover {
+      background: rgba(0, 136, 255, 0.08);
+      border-color: rgba(0, 136, 255, 0.4);
+      color: #38bdf8;
+    }
 
-    .fe-visual-actions-v { display: flex; gap: 10px; margin-top: 18px; }
-    .action-btn-v { border: none; padding: 8px 16px; border-radius: 6px; font-weight: 800; font-size: 0.78rem; display: flex; align-items: center; gap: 8px; cursor: pointer; transition: 0.3s; }
-    .watchlist-v { background: #b3d332; color: #fff; }
-    .watchlist-v.active { background: #333; }
-    .share-v { background: #0088ff; color: #fff; }
-    .action-btn-v:hover { transform: translateY(-2px); filter: brightness(1.1); }
+    .fe-desktop-stats-actions { display: block; width: 100%; }
+    .fe-mobile-tablet-stats-actions { display: none; width: 100%; margin-top: 15px; margin-bottom: 25px; }
 
     /* Info Right */
     .fe-details-info-v { flex: 1; padding-top: 10px; }
     .fe-episode-parent-show-v { font-size: 0.8rem; font-weight: 800; color: #b3d332; text-transform: uppercase; margin-bottom: 10px; display: inline-block; letter-spacing: 1.5px; }
-    .fe-info-title-v { font-size: 2.2rem; font-weight: 800; margin-bottom: 8px; line-height: 1.1; }
-    .fe-info-meta-top-v { display: flex; align-items: center; gap: 12px; color: #aaa; font-weight: 700; margin-bottom: 20px; font-size: 0.9rem; }
-    .meta-genre-v { color: #fff; }
+    .fe-info-title-v {
+      font-size: 2.3rem;
+      font-weight: 850;
+      letter-spacing: -0.5px;
+      margin-bottom: 12px;
+      line-height: 1.15;
+      color: #ffffff;
+      text-shadow: 0 2px 12px rgba(0,0,0,0.6);
+    }
+    .fe-info-meta-top-v {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .fe-meta-chips-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .meta-chip-item {
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+    }
+    .fe-chip-type {
+      background: rgba(179, 211, 50, 0.12);
+      color: #b3d332;
+      border: 1px solid rgba(179, 211, 50, 0.35);
+      text-transform: uppercase;
+    }
+    .fe-chip-genre {
+      background: rgba(255, 255, 255, 0.06);
+      color: #f1f5f9;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .fe-chip-lang {
+      background: rgba(255, 255, 255, 0.04);
+      color: #94a3b8;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .fe-chip-quality {
+      background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.03));
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      font-weight: 800;
+    }
     
     .fe-trailer-btn-v { background: #ff9800; color: #fff; border: none; padding: 14px 28px; border-radius: 8px; font-weight: 800; font-size: 0.85rem; letter-spacing: 1px; display: flex; align-items: center; gap: 10px; cursor: pointer; transition: 0.3s; margin-bottom: 40px; box-shadow: 0 10px 20px rgba(255,152,0,0.2); }
     .fe-trailer-btn-v:hover { background: #f57c00; transform: translateY(-2px); box-shadow: 0 15px 30px rgba(255,152,0,0.4); }
@@ -2175,65 +2330,41 @@ Cancel
     .premium-tag-v { position: absolute; top: 10px; right: 10px; background: #ff9800; color: #000; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
 
     @media (max-width: 1200px) {
-     .fe-info-title-v { font-size: 2.8rem; }
+     .fe-info-title-v { font-size: 2.4rem; }
      .fe-details-container-v { flex-direction: column; }
      .fe-details-visual-v { flex: 1; width: 100%; }
-     .fe-visual-stats-v {
-       background: rgba(255, 255, 255, 0.02);
-       border: 1px solid rgba(255, 255, 255, 0.06);
-       border-radius: 12px;
-       padding: 10px 18px;
-       margin-top: 15px;
-       display: flex;
-       align-items: center;
-       justify-content: space-between;
-       gap: 12px;
-       flex-wrap: nowrap;
-     }
-     .fe-visual-actions-v {
-       display: flex;
-       gap: 10px;
-       margin-top: 15px;
-       width: 100%;
-     }
-     .fe-visual-actions-v .action-btn-v {
-       flex: 1;
-       justify-content: center;
-       padding: 10px 12px;
-       font-size: 0.78rem;
-       border-radius: 8px;
-     }
+     .fe-desktop-stats-actions { display: none !important; }
+     .fe-mobile-tablet-stats-actions { display: block !important; }
     }
 
     @media (max-width: 768px) {
-     .fe-info-title-v { font-size: 2rem; }
+     .fe-info-title-v { font-size: 1.85rem; }
      .fe-visual-stats-v {
-       padding: 8px 14px;
+       padding: 8px 12px;
        gap: 8px;
+       font-size: 0.74rem;
      }
      .stat-item-v {
-       font-size: 0.68rem;
+       font-size: 0.72rem;
        gap: 4px;
-     }
-     .fe-rating-wrapper-v {
-       transform: scale(0.85);
      }
      .fe-visual-actions-v {
        gap: 8px;
-       margin-top: 12px;
+       margin-top: 10px;
      }
-     .fe-visual-actions-v .action-btn-v {
-       padding: 8px 8px;
-       font-size: 0.72rem;
-       border-radius: 8px;
-       gap: 4px;
+     .action-btn-v {
+       height: 40px;
+       padding: 0 8px;
+       font-size: 0.75rem;
+       border-radius: 10px;
+       gap: 5px;
      }
       .fe-cast-group { flex-direction: column; gap: 6px; width: 100%; }
       .fe-cast-label { min-width: auto; padding-top: 0; font-size: 0.78rem; width: 100%; }
       .fe-cast-list { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; }
       .fe-cast-chip { font-size: 0.78rem; padding: 5px 12px; max-width: 100%; word-break: break-word; }
-     .fe-info-meta-top-v { font-size: 0.9rem; margin-bottom: 20px; }
-     .fe-info-desc-v { font-size: 0.95rem; }
+     .fe-info-meta-top-v { margin-bottom: 14px; }
+     .fe-info-desc-v { font-size: 0.92rem; }
      .fe-related-grid-v { grid-template-columns: repeat(2, 1fr); gap: 15px; }
      .fe-related-grid-v.grid-sports-v {
       grid-template-columns: repeat(2, 1fr) !important;
@@ -2294,42 +2425,32 @@ Cancel
       font-size: 0.8rem;
       max-width: 100px;
      }
-    }    }
     }
 
     @media (max-width: 480px) {
       .fe-visual-stats-v {
-        flex-wrap: wrap;
-        justify-content: center;
-        gap: 10px 15px;
-        padding: 10px;
+        padding: 8px 10px;
+        gap: 6px;
       }
       .stat-item-v {
         font-size: 0.68rem;
+        gap: 3px;
       }
-      .fe-rating-wrapper-v {
-        width: 100%;
-        display: flex;
-        flex-direction: row !important;
-        align-items: center;
-        justify-content: center;
-        gap: 10px;
-        border-top: 1px solid rgba(255, 255, 255, 0.05);
-        padding-top: 8px;
-        margin-top: 5px;
+      .stat-item-v svg {
+        width: 13px;
+        height: 13px;
       }
-      .fe-visual-actions-v {
-        flex-wrap: wrap;
-        gap: 8px;
+      .fe-rating-pill-v {
+        padding: 2px 6px;
       }
-      .fe-visual-actions-v .action-btn-v {
-        flex: 1 1 calc(50% - 5px);
-        justify-content: center;
+      .fe-rating-score-box {
         font-size: 0.72rem;
-        padding: 8px 6px;
       }
-      .fe-visual-actions-v .share-v {
-        flex: 1 1 100%;
+      .action-btn-v {
+        height: 38px;
+        font-size: 0.72rem;
+        padding: 0 4px;
+        gap: 4px;
       }
     }
 
