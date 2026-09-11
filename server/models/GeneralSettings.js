@@ -22,9 +22,12 @@ const GeneralSettingsSchema = new mongoose.Schema({
   facebookUrl: { type: String, default: 'https://www.facebook.com/lemoottlive' },
   twitterUrl: { type: String, default: 'https://twitter.com/viaviwebtech/' },
   instagramUrl: { type: String, default: 'https://www.instagram.com/lemoott_live/' },
+  youtubeUrl: { type: String, default: '' },
   
   googlePlayUrl: { type: String, default: 'https://play.google.com/store/apps/dev?id=71574785' },
   appleStoreUrl: { type: String, default: 'https://apps.apple.com/in/developer/vishal-pamar/id1' },
+  androidAppUrl: { type: String, default: '' },
+  iosAppUrl: { type: String, default: '' },
   
   gdprConsent: { type: String, default: 'Active' },
   gdprTitle: { type: String, default: 'This website is using cookies' },

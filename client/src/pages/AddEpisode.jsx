@@ -29,6 +29,8 @@ const AddEpisode = () => {
   duration: '',
   status: 'Active',
   upcoming: 'No',
+  isScheduled: false,
+  scheduledPublishTime: '',
   poster: '',
   videoType: 'Local',
   videoQuality: '8K Ultra HD',
@@ -108,6 +110,12 @@ const AddEpisode = () => {
    if (!payload.seasonId || isNoSeasonPath) {
     payload.seasonId = null;
    }
+   if (payload.isScheduled && payload.scheduledPublishTime) {
+     payload.scheduledPublishTime = new Date(payload.scheduledPublishTime).toISOString();
+   } else {
+     payload.scheduledPublishTime = null;
+     payload.isScheduled = false;
+   }
    const response = await fetch('/api/episodes', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -180,6 +188,36 @@ const AddEpisode = () => {
          <option value="Yes">Yes</option>
         </select>
        </div>
+      </div>
+
+      <div className="form-row-2">
+       <div className="form-group">
+        <label>Schedule Release</label>
+        <select 
+          name="isScheduled" 
+          value={formData.isScheduled ? 'Yes' : 'No'} 
+          onChange={(e) => setFormData(prev => ({ 
+            ...prev, 
+            isScheduled: e.target.value === 'Yes',
+            scheduledPublishTime: e.target.value === 'Yes' ? prev.scheduledPublishTime : ''
+          }))}
+        >
+         <option value="No">No (Publish Immediately)</option>
+         <option value="Yes">Yes (Schedule Date & Time)</option>
+        </select>
+       </div>
+       {formData.isScheduled && (
+        <div className="form-group">
+         <label>Scheduled Date & Time*</label>
+         <input 
+           type="datetime-local" 
+           name="scheduledPublishTime" 
+           value={formData.scheduledPublishTime} 
+           onChange={handleChange} 
+           required={formData.isScheduled}
+         />
+        </div>
+       )}
       </div>
 
       <div className="form-group">

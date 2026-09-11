@@ -23,6 +23,8 @@ const EditShort = () => {
     views: 0,
     likes: 0,
     access: 'Free',
+    isScheduled: false,
+    scheduledPublishTime: '',
     videoType: 'Local'
   });
 
@@ -41,6 +43,8 @@ const EditShort = () => {
             views: data.views || 0,
             likes: data.likes || 0,
             access: data.access || 'Free',
+          isScheduled: data.isScheduled || false,
+          scheduledPublishTime: data.scheduledPublishTime ? new Date(new Date(data.scheduledPublishTime).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '',
             videoType: data.videoUrl && data.videoUrl.startsWith('http') && !data.videoUrl.includes('cloudinary') ? 'URL' : 'Local'
           });
         } else {

@@ -34,6 +34,8 @@ const EditMovie = () => {
   description: '',
   sortInfo: '',
   upcoming: 'No',
+  isScheduled: false,
+  scheduledPublishTime: '',
   access: 'Paid',
   seriesAccess: 'Paid',
   language: '',
@@ -86,6 +88,8 @@ const EditMovie = () => {
       description: movie.description || '',
       sortInfo: movie.sortInfo || '',
       upcoming: movie.upcoming || 'No',
+      isScheduled: movie.isScheduled || false,
+      scheduledPublishTime: movie.scheduledPublishTime ? new Date(new Date(movie.scheduledPublishTime).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '',
       access: movie.access || movie.seriesAccess || 'Paid',
       seriesAccess: movie.seriesAccess || movie.access || 'Paid',
       language: movie.language || '',
@@ -133,8 +137,8 @@ const EditMovie = () => {
  }, [id]);
 
  const handleChange = (e) => {
-  const { name, value } = e.target;
-  setFormData(prev => ({ ...prev, [name]: value }));
+  const { name, value, type, checked } = e.target;
+  setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
  };
 
  const handleSubChange = (index, value) => {
@@ -190,6 +194,13 @@ const EditMovie = () => {
    const submissionData = {
     ...formData
    };
+
+   if (submissionData.isScheduled && submissionData.scheduledPublishTime) {
+    submissionData.scheduledPublishTime = new Date(submissionData.scheduledPublishTime).toISOString();
+   } else {
+    submissionData.isScheduled = false;
+    submissionData.scheduledPublishTime = null;
+   }
 
    const response = await fetch(`/api/movies/${id}`, {
     method: 'PUT',
@@ -266,6 +277,35 @@ const EditMovie = () => {
           <option value="Free">Free</option>
          </select>
         </div>
+       </div>
+       <div className="form-row">
+        <div className={`form-group ${formData.isScheduled ? 'half' : ''}`}>
+         <label>Schedule Release</label>
+         <select 
+           name="isScheduled" 
+           value={formData.isScheduled ? 'Yes' : 'No'} 
+           onChange={(e) => setFormData(prev => ({ 
+             ...prev, 
+             isScheduled: e.target.value === 'Yes',
+             scheduledPublishTime: e.target.value === 'Yes' ? prev.scheduledPublishTime : ''
+           }))}
+         >
+          <option value="No">No (Publish Immediately)</option>
+          <option value="Yes">Yes (Schedule Date & Time)</option>
+         </select>
+        </div>
+        {formData.isScheduled && (
+         <div className="form-group half">
+          <label>Scheduled Date & Time*</label>
+          <input 
+            type="datetime-local" 
+            name="scheduledPublishTime" 
+            value={formData.scheduledPublishTime} 
+            onChange={handleChange} 
+            required={formData.isScheduled}
+          />
+         </div>
+        )}
        </div>
        <div className="form-group">
         <label>Language</label>

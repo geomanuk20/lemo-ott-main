@@ -31,6 +31,8 @@ const AddMovie = () => {
   title: '',
   description: '',
   upcoming: 'No',
+  isScheduled: false,
+  scheduledPublishTime: '',
   access: 'Paid',
   language: 'Select Language',
   genres: [],
@@ -142,6 +144,13 @@ const AddMovie = () => {
     ...formData
    };
 
+   if (submissionData.isScheduled && submissionData.scheduledPublishTime) {
+    submissionData.scheduledPublishTime = new Date(submissionData.scheduledPublishTime).toISOString();
+   } else {
+    submissionData.isScheduled = false;
+    submissionData.scheduledPublishTime = null;
+   }
+
    if (!submissionData.releaseDate) {
     delete submissionData.releaseDate;
    }
@@ -221,6 +230,35 @@ const AddMovie = () => {
           <option value="Free">Free</option>
          </select>
         </div>
+       </div>
+       <div className="form-row">
+        <div className={`form-group ${formData.isScheduled ? 'half' : ''}`}>
+         <label>Schedule Release</label>
+         <select 
+           name="isScheduled" 
+           value={formData.isScheduled ? 'Yes' : 'No'} 
+           onChange={(e) => setFormData(prev => ({ 
+             ...prev, 
+             isScheduled: e.target.value === 'Yes',
+             scheduledPublishTime: e.target.value === 'Yes' ? prev.scheduledPublishTime : ''
+           }))}
+         >
+          <option value="No">No (Publish Immediately)</option>
+          <option value="Yes">Yes (Schedule Date & Time)</option>
+         </select>
+        </div>
+        {formData.isScheduled && (
+         <div className="form-group half">
+          <label>Scheduled Date & Time*</label>
+          <input 
+            type="datetime-local" 
+            name="scheduledPublishTime" 
+            value={formData.scheduledPublishTime} 
+            onChange={handleChange} 
+            required={formData.isScheduled}
+          />
+         </div>
+        )}
        </div>
        <div className="form-group">
         <label>Language</label>

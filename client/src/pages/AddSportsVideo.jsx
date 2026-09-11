@@ -21,6 +21,8 @@ const AddSportsVideo = () => {
   title: '',
   description: '',
   access: 'Paid',
+  isScheduled: false,
+  scheduledPublishTime: '',
   category: '',
   date: '',
   duration: '',

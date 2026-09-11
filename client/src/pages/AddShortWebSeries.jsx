@@ -15,6 +15,8 @@ const AddShortWebSeries = () => {
   description: '',
   sortInfo: '',
   upcoming: 'No',
+  isScheduled: false,
+  scheduledPublishTime: '',
   seriesAccess: 'Paid',
   language: '',
   genres: [],

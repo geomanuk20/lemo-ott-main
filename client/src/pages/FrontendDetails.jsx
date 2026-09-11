@@ -59,6 +59,18 @@ const formatPlayCount = (count, docId = '') => {
   return num + ' Views';
 };
 
+const filterVisibleEpisodes = (epList) => {
+  if (!Array.isArray(epList)) return [];
+  const now = new Date();
+  return epList.filter(ep => {
+    if (ep.status && ep.status !== 'Active') return false;
+    if (ep.isScheduled && ep.scheduledPublishTime && new Date(ep.scheduledPublishTime) > now) {
+      return false; // Hide scheduled episodes until publish time arrives
+    }
+    return true;
+  });
+};
+
 const timeAgo = (dateStr) => {
   if (!dateStr) return '2M AGO';
   try {
@@ -434,9 +446,10 @@ const FrontendDetails = () => {
       const episodesRes = await fetch(`/api/episodes?showId=${id}`);
       if (episodesRes.ok) {
        const episodesData = await episodesRes.json();
-       setEpisodes(episodesData);
-       if (episodesData.length > 0) {
-        setCurrentPocketEp(episodesData[0]);
+       const visibleEps = filterVisibleEpisodes(episodesData);
+       setEpisodes(visibleEps);
+       if (visibleEps.length > 0) {
+        setCurrentPocketEp(visibleEps[0]);
        }
       }
      } else if (normalizedType === 'episode' || normalizedType === 'episodes') {
@@ -458,9 +471,10 @@ const FrontendDetails = () => {
        const episodesRes = await fetch(`/api/episodes?showId=${showIdStr}`);
        if (episodesRes.ok) {
         const episodesData = await episodesRes.json();
-        setEpisodes(episodesData);
-        if (episodesData.length > 0) {
-         setCurrentPocketEp(episodesData[0]);
+        const visibleEps = filterVisibleEpisodes(episodesData);
+        setEpisodes(visibleEps);
+        if (visibleEps.length > 0) {
+         setCurrentPocketEp(visibleEps[0]);
         }
        }
       }
@@ -481,9 +495,10 @@ const FrontendDetails = () => {
        const episodesRes = await fetch(`/api/episodes?showId=${showIdStr}`);
        if (episodesRes.ok) {
         const episodesData = await episodesRes.json();
-        setEpisodes(episodesData);
-        if (episodesData.length > 0) {
-         setCurrentPocketEp(episodesData[0]);
+        const visibleEps = filterVisibleEpisodes(episodesData);
+        setEpisodes(visibleEps);
+        if (visibleEps.length > 0) {
+         setCurrentPocketEp(visibleEps[0]);
         }
        }
       }
@@ -1090,13 +1105,18 @@ Cancel
                       const realIndex = idx;
                       const epUrl = ep.videoFile || ep.videoUrl || ep.videoFile1080 || ep.videoFile720 || ep.videoFile480;
                       const isCurrent = (currentPocketEp && currentPocketEp._id === ep._id) || (activeVideoUrl && activeVideoUrl === epUrl);
-                      const isUpcoming = ep.upcoming === 'Yes';
+                      const isScheduled = ep.isScheduled && ep.scheduledPublishTime && new Date(ep.scheduledPublishTime) > new Date();
+                      const isUpcoming = ep.upcoming === 'Yes' || isScheduled;
 
                       return (
                         <div 
                           key={ep._id} 
                           className={`fe-pocket-ep-row-v ${isCurrent ? 'active' : ''} ${isUpcoming ? 'upcoming' : ''}`}
                           onClick={() => {
+                            if (isScheduled) {
+                              alert(`This episode is scheduled to release on ${new Date(ep.scheduledPublishTime).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}.`);
+                              return;
+                            }
                             if (isUpcoming) {
                               alert('This episode is coming soon! Stay tuned.');
                               return;
@@ -1113,16 +1133,24 @@ Cancel
                             <div className="fe-pocket-ep-title-row" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                               <span className="fe-pocket-ep-num">E{realIndex + 1}.</span>
                               <span className="fe-pocket-ep-name">{ep.title}</span>
-                              {isUpcoming && (
+                              {isScheduled ? (
+                                <span style={{ background: '#0088ff', color: '#fff', fontSize: '10px', fontWeight: '800', padding: '2px 7px', borderRadius: '4px', letterSpacing: '0.5px' }}>
+                                  🕒 SCHEDULED
+                                </span>
+                              ) : isUpcoming ? (
                                 <span style={{ background: '#ff9800', color: '#000', fontSize: '10px', fontWeight: '800', padding: '2px 7px', borderRadius: '4px', letterSpacing: '0.5px' }}>
                                   COMING SOON
                                 </span>
-                              )}
+                              ) : null}
                             </div>
                             <div className="fe-pocket-ep-submeta">
-                              <span>{ep.duration || '10:13M'}</span>
-                              <span className="fe-bullet-dot">•</span>
-                              <span>{timeAgo(ep.createdAt || ep.releaseDate)}</span>
+                              {ep.duration ? (
+                                <>
+                                  <span>{ep.duration}</span>
+                                  <span className="fe-bullet-dot">•</span>
+                                </>
+                              ) : null}
+                              <span>{isScheduled ? `Release ${new Date(ep.scheduledPublishTime).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` : timeAgo(ep.createdAt || ep.releaseDate)}</span>
                             </div>
                           </div>
                           
@@ -2912,6 +2940,16 @@ Cancel
         aspect-ratio: 9 / 16;
         min-height: unset;
       }
+      .fe-pocket-inline-player-v > div,
+      .fe-pocket-inline-player-v .video-skin,
+      .fe-pocket-inline-player-v .media-default-skin,
+      .fe-pocket-inline-player-v media-player,
+      .fe-pocket-inline-player-v video {
+        width: 100% !important;
+        height: 100% !important;
+        min-height: 100% !important;
+        object-fit: cover !important;
+      }
       .fe-pocket-sidebar-drawer-v {
         width: 100%;
         max-height: 480px;
@@ -2947,10 +2985,20 @@ Cancel
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9);
       }
       .fe-pocket-inline-player-v, .fe-pocket-poster-showcase-v {
-        width: 100%;
-        height: 100%;
+        width: 100% !important;
+        height: 100% !important;
         aspect-ratio: 9 / 16;
         min-height: unset;
+      }
+      .fe-pocket-inline-player-v > div,
+      .fe-pocket-inline-player-v .video-skin,
+      .fe-pocket-inline-player-v .media-default-skin,
+      .fe-pocket-inline-player-v media-player,
+      .fe-pocket-inline-player-v video {
+        width: 100% !important;
+        height: 100% !important;
+        min-height: 100% !important;
+        object-fit: cover !important;
       }
       .fe-pocket-main-title {
         font-size: 1.35rem;

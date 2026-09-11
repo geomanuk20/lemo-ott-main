@@ -296,6 +296,15 @@ const TVChannels = () => {
            onChange={() => handleSelectOne(channel._id)}
           />
           <img src={channel.logo || 'https://via.placeholder.com/300x170'} alt={channel.name} className="poster-img" />
+         {channel.isScheduled && channel.scheduledPublishTime && new Date(channel.scheduledPublishTime) > new Date() ? (
+           <div style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(0, 136, 255, 0.9)', color: '#fff', fontSize: '10px', fontWeight: '800', padding: '3px 8px', borderRadius: '4px', letterSpacing: '0.5px', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', gap: '4px', zIndex: 2 }}>
+             <span>🕒 {new Date(channel.scheduledPublishTime).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+           </div>
+         ) : channel.upcoming === 'Yes' ? (
+           <div style={{ position: 'absolute', top: '8px', right: '8px', background: '#ff9800', color: '#000', fontSize: '10px', fontWeight: '800', padding: '3px 8px', borderRadius: '4px', letterSpacing: '0.5px', zIndex: 2 }}>
+             COMING SOON
+           </div>
+         ) : null}
          </div>
          <div className="item-info">
           <h3 className="item-title">{channel.name}</h3>

@@ -18,6 +18,8 @@ const movieSchema = new mongoose.Schema({
   releaseDate: Date,
   duration: String,
   status: { type: String, default: 'Active' },
+  isScheduled: { type: Boolean, default: false },
+  scheduledPublishTime: { type: Date, default: null },
   
   thumbnail: String,
   poster: String,

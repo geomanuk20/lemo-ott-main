@@ -573,7 +573,6 @@ const Home = () => {
               <div key={section._id} className="fe-row-v fe-featured-row-v">
                 <div className="watch-online-header-v">
                   <div style={{ textAlign: 'left' }}>
-                    <span className="watch-online-tag-v">FEATURED MOVIES</span>
                     <h2 className="watch-online-title-v">{section.title}</h2>
                   </div>
                   <Link to="/view-all/movies/Movies" className="row-more-v" style={{ marginBottom: '10px' }}>
@@ -651,7 +650,6 @@ const Home = () => {
               <section key={section._id} className="fe-watch-online-v" style={{ padding: '0 5%', margin: '40px 0' }}>
                 <div className="watch-online-header-v">
                   <div style={{ textAlign: 'left' }}>
-                    <span className="watch-online-tag-v">ONLINE STREAMING</span>
                     <h2 className="watch-online-title-v">{section.title}</h2>
                   </div>
                   <Link to="/shows" className="row-more-v" style={{ marginBottom: '10px' }}>
@@ -730,7 +728,6 @@ const Home = () => {
               <div key={section._id} className="fe-row-v fe-landscape-row-v">
                 <div className="watch-online-header-v">
                   <div style={{ textAlign: 'left' }}>
-                    <span className="watch-online-tag-v">SPORTS VIDEO</span>
                     <h2 className="watch-online-title-v">{section.title}</h2>
                   </div>
                   <Link to="/view-all/sports/Sports" className="row-more-v" style={{ marginBottom: '10px' }}>
@@ -784,7 +781,6 @@ const Home = () => {
               <section key={section._id} className="fe-watch-online-v" style={{ padding: '0 5%', margin: '40px 0' }}>
                 <div className="watch-online-header-v">
                   <div style={{ textAlign: 'left' }}>
-                    <span className="watch-online-tag-v">LIVE STREAMING</span>
                     <h2 className="watch-online-title-v">{section.title}</h2>
                   </div>
                   <Link to="/view-all/live/Live TV" className="row-more-v" style={{ marginBottom: '10px' }}>
@@ -830,7 +826,6 @@ const Home = () => {
               <div key={section._id} className="fe-row-v fe-featured-row-v">
                 <div className="watch-online-header-v">
                   <div style={{ textAlign: 'left' }}>
-                    <span className="watch-online-tag-v">LATEST RELEASES</span>
                     <h2 className="watch-online-title-v">{section.title}</h2>
                   </div>
                   <Link to="/view-all/new-releases/New Releases" className="row-more-v" style={{ marginBottom: '10px' }}>
@@ -908,7 +903,6 @@ const Home = () => {
               <section key={section._id} className="fe-watch-online-v" style={{ padding: '0 5%', margin: '40px 0' }}>
                 <div className="watch-online-header-v">
                   <div style={{ textAlign: 'left' }}>
-                    <span className="watch-online-tag-v">TRENDING SHORTS</span>
                     <h2 className="watch-online-title-v">{section.title || 'Shorts'}</h2>
                   </div>
                   <Link to="/shorts" state={{ initialShorts: shorts }} className="row-more-v" style={{ marginBottom: '10px' }} onClick={triggerAudioActivation}>
@@ -980,7 +974,6 @@ const Home = () => {
               <section key={section._id} className="fe-watch-online-v" style={{ padding: '0 5%', margin: '40px 0' }}>
                 <div className="watch-online-header-v">
                   <div style={{ textAlign: 'left' }}>
-                    <span className="watch-online-tag-v">SHORT FILMS</span>
                     <h2 className="watch-online-title-v">{section.title || 'Short Films'}</h2>
                   </div>
                   <Link to="/view-all/short-film/Short Films" className="row-more-v" style={{ marginBottom: '10px' }}>
@@ -1058,7 +1051,6 @@ const Home = () => {
               <section key={section._id} className="fe-watch-online-v" style={{ padding: '0 5%', margin: '40px 0' }}>
                 <div className="watch-online-header-v">
                   <div style={{ textAlign: 'left' }}>
-                    <span className="watch-online-tag-v">SHORT WEB SERIES</span>
                     <h2 className="watch-online-title-v">{section.title}</h2>
                   </div>
                   <Link to="/web-series" className="row-more-v" style={{ marginBottom: '10px' }}>
@@ -1137,7 +1129,6 @@ const Home = () => {
               <div key={section._id} className="fe-row-v fe-pocket-reel-row-v">
                 <div className="watch-online-header-v">
                   <div style={{ textAlign: 'left' }}>
-                    <span className="watch-online-tag-v">POCKET REEL SERIES</span>
                     <h2 className="watch-online-title-v">{section.title || 'Pocket Reel Series'}</h2>
                   </div>
                   <Link to="/pocket-reel-series" className="row-more-v" style={{ marginBottom: '10px' }}>
@@ -1582,10 +1573,10 @@ const Home = () => {
     }
 
     /* Watch Online Section */
-    .fe-watch-online-v { padding: 80px 5%; background: #000; text-align: center; }
-    .watch-online-header-v { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 50px; text-align: left; }
-    .watch-online-tag-v { font-size: 0.8rem; font-weight: 800; color: #888; letter-spacing: 3px; display: block; margin-bottom: 10px; }
-    .watch-online-title-v { font-size: 3rem; font-weight: 800; color: #fff; margin: 0; }
+    .fe-watch-online-v { padding: 40px 5%; background: #000; text-align: center; }
+    .watch-online-header-v { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 25px; text-align: left; }
+    .watch-online-tag-v { display: none; }
+    .watch-online-title-v { font-size: 1.75rem; font-weight: 700; color: #fff; margin: 0; letter-spacing: -0.3px; }
     
     .watch-online-grid-v { display: grid; grid-template-columns: repeat(6, 1fr); gap: 25px; max-width: 1400px; margin: 0 auto; }
     .online-movie-card-v { text-align: left; }
@@ -1612,7 +1603,7 @@ const Home = () => {
     }
 
     @media (max-width: 768px) {
-     .watch-online-title-v { font-size: 2.2rem; }
+     .watch-online-title-v { font-size: 1.35rem; }
      .watch-online-grid-v { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 15px; }
      .online-quality-v { font-size: 0.5rem; padding: 3px 6px; }
      .online-rating-v { width: 30px; height: 30px; font-size: 0.7rem; }
@@ -1620,7 +1611,7 @@ const Home = () => {
     }
 
     @media (max-width: 480px) {
-     .watch-online-title-v { font-size: 1.8rem; }
+     .watch-online-title-v { font-size: 1.2rem; }
      .watch-online-grid-v { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; }
      .meta-title-v { font-size: 0.85rem; }
      .watch-online-header-v { margin-bottom: 25px; }

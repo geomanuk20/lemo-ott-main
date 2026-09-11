@@ -6,6 +6,8 @@ const tvChannelSchema = new mongoose.Schema({
   category: { type: mongoose.Schema.Types.ObjectId, ref: 'TVCategory', required: true },
   tvAccess: { type: String, default: 'Paid' },
   status: { type: String, default: 'Active' },
+  isScheduled: { type: Boolean, default: false },
+  scheduledPublishTime: { type: Date, default: null },
   streamType: { type: String, default: 'HLS/m3u8 / MPEG-DASH / YouTube / Vimeo' },
   server1Url: { type: String },
   server2Url: { type: String },

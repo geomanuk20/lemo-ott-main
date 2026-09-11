@@ -20,6 +20,8 @@ const AddShort = () => {
     views: 0,
     likes: 0,
     access: 'Free',
+    isScheduled: false,
+    scheduledPublishTime: '',
     videoType: 'Local' // 'Local' (File upload) or 'URL' (Text input)
   });
 

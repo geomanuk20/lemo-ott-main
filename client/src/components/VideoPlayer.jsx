@@ -970,7 +970,14 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
   const [vastPreRoll, setVastPreRoll] = useState(null);
   const playedAdsRef = useRef(new Set());
   const timerRef = useRef(null);
-  const [aspectRatioMode, setAspectRatioMode] = useState('contain'); // 'contain' | 'fill' | 'cover'
+  const isVerticalContent = contentType === 'pocket-reel-series' || contentType === 'pocket-reel' || contentType === 'shorts' || contentType === 'short';
+  const [aspectRatioMode, setAspectRatioMode] = useState(isVerticalContent ? 'cover' : 'contain'); // 'contain' | 'fill' | 'cover'
+
+  useEffect(() => {
+    if (isVerticalContent) {
+      setAspectRatioMode('cover');
+    }
+  }, [contentType, src, isVerticalContent]);
 
   // Subtitles dropdown and active track states
   const [activeTrackIdx, setActiveTrackIdx] = useState(-1);
@@ -2432,8 +2439,12 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
         0px 2px 4px rgba(0,0,0,0.8) !important;
     }
     /* Video Object Fit & Anti-Download Protection Rules */
-    video, .vjs-tech, .video-player-container video {
+    video, .vjs-tech, .video-player-container video, .media-default-skin video, [part="video"], .video-skin video {
       object-fit: ${aspectRatioMode} !important;
+      width: 100% !important;
+      height: 100% !important;
+      max-width: 100% !important;
+      max-height: 100% !important;
     }
     video, .video-skin, .video-player-container {
       -webkit-touch-callout: none !important;
@@ -2561,6 +2572,12 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
             onEnded={onEnded}
             onTimeUpdate={(e) => {
               handlePlayerTimeUpdate(e.target.currentTime, e.target.duration);
+            }}
+            onLoadedMetadata={(e) => {
+              const video = e.target;
+              if (video && video.videoHeight > video.videoWidth) {
+                setAspectRatioMode('cover');
+              }
             }}
             style={playerStyle}
           >

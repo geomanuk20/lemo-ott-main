@@ -1,10 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Globe, Shield, Info, MonitorPlay } from 'lucide-react';
+import { Globe, Shield, Info } from 'lucide-react';
 import { formatBrandingUrl } from '../utils/branding';
 
 const FrontendFooter = ({ settings = null, menuSettings = null }) => {
   const [pages, setPages] = useState([]);
+  const [internalSettings, setInternalSettings] = useState(() => {
+    try {
+      const cached = localStorage.getItem('fe_general_settings');
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
 
   useEffect(() => {
     const fetchPages = async () => {
@@ -18,22 +26,43 @@ const FrontendFooter = ({ settings = null, menuSettings = null }) => {
         console.error('Pages discovery anomaly:', err);
       }
     };
+
+    const fetchSettingsIfNeeded = async () => {
+      if (!settings || !settings.siteLogo) {
+        try {
+          const res = await fetch('/api/general-settings');
+          if (res.ok) {
+            const data = await res.json();
+            setInternalSettings(data);
+            localStorage.setItem('fe_general_settings', JSON.stringify(data));
+          }
+        } catch (err) {
+          console.error('Footer settings fetch error:', err);
+        }
+      }
+    };
+
     fetchPages();
-  }, []);
+    fetchSettingsIfNeeded();
+  }, [settings]);
+
+  const effectiveSettings = settings && Object.keys(settings).length > 0 && settings.siteLogo 
+    ? { ...(internalSettings || {}), ...settings } 
+    : (internalSettings || settings || {});
 
   return (
     <footer className="fe-footer-v">
       <div className="fe-footer-content-v">
         <div className="footer-top-v">
           <div className="footer-brand-v">
-            <div className="fe-logo-v">
+            <Link to="/" className="fe-logo-v" aria-label="LEMO OTT Home">
               <img 
-                src={formatBrandingUrl(settings?.siteLogo, '/assets/logo.png')} 
-                alt={settings?.siteName || "LEMO OTT"} 
+                src={formatBrandingUrl(effectiveSettings?.siteLogo, '/assets/logo.png')} 
+                alt={effectiveSettings?.siteName || "LEMO OTT"} 
                 onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/assets/logo.png'; }}
               />
-            </div>
-            <p>{settings?.description || 'Elevate your cinematic experience with our high-fidelity streaming platform. Discover the best in Hollywood and world cinema.'}</p>
+            </Link>
+            <p>{effectiveSettings?.description || 'Elevate your cinematic experience with our high-fidelity streaming platform. Discover the best in Hollywood and world cinema.'}</p>
           </div>
           <div className="footer-links-grid-v">
             <div className="footer-col-v">
@@ -72,24 +101,24 @@ const FrontendFooter = ({ settings = null, menuSettings = null }) => {
 
         </div>
         <div className="footer-bottom-v">
-          <p>{settings?.copyrightText ? settings.copyrightText.replace(/Video\.com/gi, 'lemoott.com').replace(/www\.viaviweb\.com/gi, 'lemoott.com') : `© ${new Date().getFullYear()} lemoott.com. All Rights Reserved.`}</p>
+          <p>{effectiveSettings?.copyrightText ? effectiveSettings.copyrightText.replace(/Video\.com/gi, 'lemoott.com').replace(/www\.viaviweb\.com/gi, 'lemoott.com') : `© ${new Date().getFullYear()} lemoott.com. All Rights Reserved.`}</p>
           <div className="footer-icons-v">
-            {settings?.facebookUrl && (
-              <a href={settings.facebookUrl} target="_blank" rel="noopener noreferrer" aria-label="Facebook">
+            {effectiveSettings?.facebookUrl && (
+              <a href={effectiveSettings.facebookUrl} target="_blank" rel="noopener noreferrer" aria-label="Facebook">
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
                 </svg>
               </a>
             )}
-            {settings?.twitterUrl && (
-              <a href={settings.twitterUrl} target="_blank" rel="noopener noreferrer" aria-label="Twitter">
+            {effectiveSettings?.twitterUrl && (
+              <a href={effectiveSettings.twitterUrl} target="_blank" rel="noopener noreferrer" aria-label="Twitter">
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"/>
                 </svg>
               </a>
             )}
-            {settings?.instagramUrl && (
-              <a href={settings.instagramUrl} target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+            {effectiveSettings?.instagramUrl && (
+              <a href={effectiveSettings.instagramUrl} target="_blank" rel="noopener noreferrer" aria-label="Instagram">
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
                   <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
@@ -99,7 +128,17 @@ const FrontendFooter = ({ settings = null, menuSettings = null }) => {
             )}
             <Link to="/" aria-label="Home"><Globe size={18} /></Link>
             <Link to="/privacy" aria-label="Privacy Policy"><Shield size={18} /></Link>
-            <Link to="/live-tv" aria-label="Live TV"><MonitorPlay size={18} /></Link>
+            <a 
+              href={effectiveSettings?.youtubeUrl || "https://www.youtube.com"} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              aria-label="YouTube"
+            >
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/>
+                <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/>
+              </svg>
+            </a>
             <Link to="/about" aria-label="About Us"><Info size={18} /></Link>
           </div>
         </div>
@@ -112,8 +151,8 @@ const FrontendFooter = ({ settings = null, menuSettings = null }) => {
         
         .footer-top-v { display: flex; justify-content: space-between; gap: 80px; margin-bottom: 60px; }
         .footer-brand-v { flex: 1.5; }
-        .footer-brand-v .fe-logo-v { width: 120px; height: auto; display: flex; align-items: center; margin-bottom: 25px; }
-        .footer-brand-v .fe-logo-v img { width: 100%; height: auto; object-fit: contain; }
+        .footer-brand-v .fe-logo-v { width: 140px; max-width: 100%; height: auto; min-height: 36px; display: inline-flex; align-items: center; margin-bottom: 25px; text-decoration: none; }
+        .footer-brand-v .fe-logo-v img { width: 100%; max-height: 48px; height: auto; object-fit: contain; }
         .footer-brand-v p { color: #888; font-size: 0.95rem; line-height: 1.6; max-width: 350px; }
 
         .footer-links-grid-v { flex: 3; display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px; }
@@ -122,7 +161,7 @@ const FrontendFooter = ({ settings = null, menuSettings = null }) => {
         .footer-col-v a:hover { color: #b3d332; padding-left: 5px; }
 
         .footer-bottom-v { border-top: 1px solid #1a1a1a; padding-top: 40px; display: flex; justify-content: space-between; align-items: center; color: #555; font-size: 0.85rem; }
-        .footer-icons-v { display: flex; gap: 20px; color: #555; }
+        .footer-icons-v { display: flex; gap: 20px; color: #555; align-items: center; }
         .footer-icons-v a { color: inherit; display: flex; align-items: center; justify-content: center; text-decoration: none; transition: 0.3s; }
         .footer-icons-v a:hover { color: #b3d332; }
         .footer-icons-v *:hover { color: #b3d332; cursor: pointer; transition: 0.3s; }

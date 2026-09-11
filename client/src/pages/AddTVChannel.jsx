@@ -15,6 +15,8 @@ const AddTVChannel = () => {
   description: '',
   category: '',
   tvAccess: 'Paid',
+  isScheduled: false,
+  scheduledPublishTime: '',
   status: 'Active',
   streamType: 'LemoOTT Live',
   server1Url: '',

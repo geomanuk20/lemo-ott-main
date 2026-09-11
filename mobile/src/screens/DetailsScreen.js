@@ -549,6 +549,15 @@ export default function DetailsScreen({ route, navigation }) {
   const handlePlayEpisode = (episode) => {
     console.log('[DetailsScreen] Playing Episode:', episode);
 
+    const isScheduled = episode.isScheduled && episode.scheduledPublishTime && new Date(episode.scheduledPublishTime) > new Date();
+    if (isScheduled) {
+      showAlert(
+        'Scheduled Release',
+        `This episode is scheduled to release on ${new Date(episode.scheduledPublishTime).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}.`
+      );
+      return;
+    }
+
     if (episode.upcoming?.toLowerCase() === 'yes') {
       showAlert(
         'Coming Soon',
@@ -647,6 +656,9 @@ export default function DetailsScreen({ route, navigation }) {
                           !seasons || seasons.length === 0;
 
   const currentEpisodes = episodes.filter(ep => {
+    if (ep.isScheduled && ep.scheduledPublishTime && new Date(ep.scheduledPublishTime) > new Date()) {
+      return false; // Hide scheduled episodes from mobile app until publish time arrives
+    }
     if (isPocketOrShort) return true;
     if (!ep.seasonId) return true;
     const epSeasonIdStr = typeof ep.seasonId === 'object' ? (ep.seasonId?._id || ep.seasonId?.id || '').toString() : ep.seasonId.toString();
@@ -920,11 +932,15 @@ export default function DetailsScreen({ route, navigation }) {
                       <View style={styles.episodeDetails}>
                         <View style={styles.episodeTitleRow}>
                           <Text style={styles.episodeTitle} numberOfLines={1}>{episode.title}</Text>
-                          {episode.upcoming?.toLowerCase() === 'yes' && (
+                          {episode.isScheduled && episode.scheduledPublishTime && new Date(episode.scheduledPublishTime) > new Date() ? (
+                            <View style={[styles.episodeUpcomingBadge, { backgroundColor: '#0088ff' }]}>
+                              <Text style={[styles.episodeUpcomingBadgeText, { color: '#ffffff' }]}>SCHEDULED</Text>
+                            </View>
+                          ) : episode.upcoming?.toLowerCase() === 'yes' ? (
                             <View style={styles.episodeUpcomingBadge}>
                               <Text style={styles.episodeUpcomingBadgeText}>COMING SOON</Text>
                             </View>
-                          )}
+                          ) : null}
                           {(((detail?.seriesAccess || '').toLowerCase() === 'paid' && (episode.access || '').toLowerCase() === 'paid')) && (() => {
                              const isSubscribed = isPremiumUser();
                              return (

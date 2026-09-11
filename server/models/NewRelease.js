@@ -30,6 +30,8 @@ const newReleaseSchema = new mongoose.Schema({
     url: String
   }],
   status: { type: String, default: 'Active' },
+  isScheduled: { type: Boolean, default: false },
+  scheduledPublishTime: { type: Date, default: null },
   seoTitle: String,
   metaDescription: String,
   keywords: String,

@@ -268,15 +268,24 @@ const Episodes = () => {
        .filter(ep => ep.title.toLowerCase().includes(searchTerm.toLowerCase()))
        .map((episode) => (
         <div key={episode._id} className="item-card">
-        <div className="poster-wrapper">
-         <input 
-          type="checkbox" 
-          className="item-checkbox" 
-          checked={selectedEpisodes.includes(episode._id)}
-          onChange={() => handleSelectEpisode(episode._id)}
-         />
-         <img src={formatImageUrl(episode, 'poster') || 'https://via.placeholder.com/300x450'} alt={episode.title} className="poster-img" />
-        </div>
+         <div className="poster-wrapper">
+          <input 
+           type="checkbox" 
+           className="item-checkbox" 
+           checked={selectedEpisodes.includes(episode._id)}
+           onChange={() => handleSelectEpisode(episode._id)}
+          />
+          <img src={formatImageUrl(episode, 'poster') || 'https://via.placeholder.com/300x450'} alt={episode.title} className="poster-img" />
+          {episode.isScheduled && episode.scheduledPublishTime && new Date(episode.scheduledPublishTime) > new Date() ? (
+            <div style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(0, 136, 255, 0.9)', color: '#fff', fontSize: '10px', fontWeight: '800', padding: '3px 8px', borderRadius: '4px', letterSpacing: '0.5px', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', gap: '4px', zIndex: 2 }}>
+              <span>🕒 {new Date(episode.scheduledPublishTime).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+            </div>
+          ) : episode.upcoming === 'Yes' ? (
+            <div style={{ position: 'absolute', top: '8px', right: '8px', background: '#ff9800', color: '#000', fontSize: '10px', fontWeight: '800', padding: '3px 8px', borderRadius: '4px', letterSpacing: '0.5px', zIndex: 2 }}>
+              COMING SOON
+            </div>
+          ) : null}
+         </div>
         <div className="item-info">
          <h3 className="item-title">{episode.title}</h3>
           <p className="item-subtitle">

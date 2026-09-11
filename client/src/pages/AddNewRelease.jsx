@@ -31,6 +31,8 @@ const AddNewRelease = () => {
   title: '',
   description: '',
   upcoming: 'No',
+  isScheduled: false,
+  scheduledPublishTime: '',
   access: 'Paid',
   language: 'Select Language',
   genres: [],
@@ -221,6 +223,35 @@ const AddNewRelease = () => {
           <option value="Free">Free</option>
          </select>
         </div>
+       </div>
+       <div className="form-row">
+        <div className={`form-group ${formData.isScheduled ? 'half' : ''}`}>
+         <label>Schedule Release</label>
+         <select 
+           name="isScheduled" 
+           value={formData.isScheduled ? 'Yes' : 'No'} 
+           onChange={(e) => setFormData(prev => ({ 
+             ...prev, 
+             isScheduled: e.target.value === 'Yes',
+             scheduledPublishTime: e.target.value === 'Yes' ? prev.scheduledPublishTime : ''
+           }))}
+         >
+          <option value="No">No (Publish Immediately)</option>
+          <option value="Yes">Yes (Schedule Date & Time)</option>
+         </select>
+        </div>
+        {formData.isScheduled && (
+         <div className="form-group half">
+          <label>Scheduled Date & Time*</label>
+          <input 
+            type="datetime-local" 
+            name="scheduledPublishTime" 
+            value={formData.scheduledPublishTime} 
+            onChange={handleChange} 
+            required={formData.isScheduled}
+          />
+         </div>
+        )}
        </div>
        <div className="form-group">
         <label>Language</label>

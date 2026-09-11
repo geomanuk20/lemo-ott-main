@@ -10,6 +10,8 @@ const sportsVideoSchema = new mongoose.Schema({
   date: { type: String },
   duration: { type: String },
   status: { type: String, default: 'Active' },
+  isScheduled: { type: Boolean, default: false },
+  scheduledPublishTime: { type: Date, default: null },
   videoType: { type: String, default: 'Local' },
   videoQuality: { type: String, default: 'Active' },
   videoFile: { type: String },

@@ -15,6 +15,8 @@ const showSchema = new mongoose.Schema({
   poster: String,
   thumbnail: String,
   status: { type: String, default: 'Active' },
+  isScheduled: { type: Boolean, default: false },
+  scheduledPublishTime: { type: Date, default: null },
   releaseYear: Number,
   videoQuality: { type: String, default: '4K Ultra HD' },
   seoTitle: String,

@@ -35,8 +35,11 @@ const GeneralSettings = () => {
   facebookUrl: 'https://www.facebook.com/lemoottlive',
   twitterUrl: 'https://twitter.com/viaviwebtech/',
   instagramUrl: 'https://www.instagram.com/lemoott_live/',
+  youtubeUrl: '',
   googlePlayUrl: 'https://play.google.com/store/apps/dev?id=71574785',
   appleStoreUrl: 'https://apps.apple.com/in/developer/vishal-pamar/id1',
+  androidAppUrl: '',
+  iosAppUrl: '',
   gdprConsent: 'Active',
   gdprTitle: 'This website is using cookies',
   gdprText: 'We use them to give you the best experience...',
@@ -51,7 +54,7 @@ const GeneralSettings = () => {
   try {
    const response = await fetch(API_URL);
    const data = await response.json();
-   setFormData(data);
+   setFormData(prev => ({ ...prev, ...data }));
   } catch (err) {
    console.error('Error fetching settings:', err);
   } finally {

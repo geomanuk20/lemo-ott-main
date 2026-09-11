@@ -245,7 +245,7 @@ const isAdminRequest = async (req) => {
     const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, JWT_SECRET);
     const user = await User.findById(decoded.id);
-    return user && ['admin', 'sub-admin'].includes(user.role);
+    return user && !user.isDeleted && (user.status || 'Active') === 'Active' && ['admin', 'sub-admin'].includes(user.role);
   } catch (_) {
     return false;
   }
@@ -456,6 +456,23 @@ const signVideoDocuments = async (docs, req) => {
     return Promise.all(docs.map(doc => signVideoDocument(doc, req)));
   }
   return signVideoDocument(docs, req);
+};
+
+const getPublishedFilter = () => ({
+  $or: [
+    { isScheduled: { $ne: true } },
+    { scheduledPublishTime: { $exists: false } },
+    { scheduledPublishTime: null },
+    { scheduledPublishTime: { $lte: new Date() } }
+  ]
+});
+
+const isContentPublished = (doc) => {
+  if (!doc) return false;
+  if (doc.isScheduled && doc.scheduledPublishTime && new Date(doc.scheduledPublishTime) > new Date()) {
+    return false;
+  }
+  return true;
 };
 
 const multer = require('multer');
@@ -850,7 +867,7 @@ app.post('/api/login', async (req, res) => {
 
     const user = await User.findOne({ email: normalizedEmail });
     
-    if (!user) {
+    if (!user || user.isDeleted) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
@@ -872,11 +889,6 @@ app.post('/api/login', async (req, res) => {
     if (!user.subscriptionPlan || user.subscriptionPlan === '' || !user.expiryDate || user.expiryDate === '') {
       user.subscriptionPlan = 'Basic Plan';
       user.expiryDate = '2099-12-31';
-    }
-
-    // Auto-promote the main user to Admin to prevent lockout
-    if (user.email === 'geomanuk20@gmail.com' && user.role !== 'admin') {
-      user.role = 'admin';
     }
 
     const token = jwt.sign(
@@ -946,8 +958,8 @@ app.get('/api/auth/validate', async (req, res) => {
       return res.status(401).json({ message: 'Invalid or expired token' });
     }
     const user = await User.findById(decoded.id);
-    if (!user) {
-      return res.status(401).json({ message: 'User not found' });
+    if (!user || user.isDeleted) {
+      return res.status(401).json({ message: 'User not found or deactivated' });
     }
     if ((user.status || 'Active') !== 'Active') {
       return res.status(401).json({ message: 'User account is suspended' });
@@ -1105,12 +1117,6 @@ app.post('/api/auth/google', async (req, res) => {
       await user.save();
     }
 
-    // Auto-promote the main user to Admin to prevent lockout
-    if (user.email === 'geomanuk20@gmail.com' && user.role !== 'admin') {
-      user.role = 'admin';
-      await user.save();
-    }
-
     const jwtToken = jwt.sign(
       { id: user._id, role: user.role },
       process.env.JWT_SECRET,
@@ -1185,12 +1191,6 @@ app.post('/api/auth/social-login-mobile', async (req, res) => {
       if ((user.status || 'Active') !== 'Active') {
         return res.status(403).json({ message: 'User account is inactive/suspended' });
       }
-    }
-
-    // Auto-promote the main user to Admin to prevent lockout
-    if (user.email === 'geomanuk20@gmail.com' && user.role !== 'admin') {
-      user.role = 'admin';
-      await user.save();
     }
 
     const token = jwt.sign(
@@ -1293,12 +1293,6 @@ app.post('/api/auth/facebook', async (req, res) => {
     if (!user.subscriptionPlan || user.subscriptionPlan === '' || !user.expiryDate || user.expiryDate === '') {
       user.subscriptionPlan = 'Basic Plan';
       user.expiryDate = '2099-12-31';
-      await user.save();
-    }
-
-    // Auto-promote the main user to Admin to prevent lockout
-    if (user.email === 'geomanuk20@gmail.com' && user.role !== 'admin') {
-      user.role = 'admin';
       await user.save();
     }
 
@@ -2408,6 +2402,7 @@ app.get('/api/movies', cacheMiddleware('movies', 300), async (req, res) => {
     const query = {};
     if (!isAdmin) {
       query.status = 'Active';
+      Object.assign(query, getPublishedFilter());
       const menuSettings = await MenuSettings.findOne().lean();
       if (menuSettings) {
         const moviesOff = menuSettings.movies?.toUpperCase() === 'OFF';
@@ -2440,6 +2435,9 @@ app.get('/api/movies/:id', cacheMiddleware('movies', 600), async (req, res) => {
 
     const isAdmin = await isAdminRequest(req);
     if (!isAdmin) {
+      if (!isContentPublished(movie)) {
+        return res.status(404).json({ message: 'Movie is scheduled and not yet released' });
+      }
       const menuSettings = await MenuSettings.findOne().lean();
       if (menuSettings) {
         const isShortFilm = movie.contentType === 'Short Film' || movie.contentType === 'short-film';
@@ -2497,7 +2495,7 @@ app.get('/api/new-releases', async (req, res) => {
     if (!isAdmin && menuSettings && menuSettings.movies?.toUpperCase() === 'OFF') {
       return res.json([]);
     }
-    const query = isAdmin ? {} : { status: 'Active' };
+    const query = isAdmin ? {} : { status: 'Active', ...getPublishedFilter() };
     const newReleases = await NewRelease.find(query).sort({ createdAt: -1 });
     const signedNewReleases = await signVideoDocuments(newReleases, req);
     res.json(signedNewReleases);
@@ -2509,14 +2507,21 @@ app.get('/api/new-releases', async (req, res) => {
 
 app.get('/api/new-releases/:id', async (req, res) => {
   try {
-    const menuSettings = await MenuSettings.findOne().lean();
-    if (menuSettings && menuSettings.movies?.toUpperCase() === 'OFF') {
-      return res.status(403).json({ message: 'Content is disabled' });
-    }
     const newRelease = await NewRelease.findById(req.params.id)
       .populate('actors')
       .populate('directors');
     if (!newRelease) return res.status(404).json({ message: 'New Release not found' });
+
+    const isAdmin = await isAdminRequest(req);
+    if (!isAdmin) {
+      if (!isContentPublished(newRelease)) {
+        return res.status(404).json({ message: 'New Release is scheduled and not yet released' });
+      }
+      const menuSettings = await MenuSettings.findOne().lean();
+      if (menuSettings && menuSettings.movies?.toUpperCase() === 'OFF') {
+        return res.status(403).json({ message: 'Content is disabled' });
+      }
+    }
     const signedNewRelease = await signVideoDocument(newRelease, req);
     res.json(signedNewRelease);
   } catch (err) {
@@ -3567,7 +3572,9 @@ app.post('/api/live-stream/regenerate-key', async (req, res) => {
 // Shorts CRUD Routes
 app.get('/api/shorts', async (req, res) => {
   try {
-    const shorts = await Short.find().sort({ createdAt: -1 });
+    const isAdmin = await isAdminRequest(req);
+    const query = isAdmin ? {} : { status: 'Active', ...getPublishedFilter() };
+    const shorts = await Short.find(query).sort({ createdAt: -1 });
     
     // Check if user is logged in to populate hasLiked boolean
     let userId = null;
@@ -3658,6 +3665,12 @@ app.get('/api/shorts/:id', async (req, res) => {
   try {
     const short = await Short.findById(req.params.id);
     if (!short) return res.status(404).json({ message: 'Short not found' });
+    const isAdmin = await isAdminRequest(req);
+    if (!isAdmin) {
+      if (short.status !== 'Active' || !isContentPublished(short)) {
+        return res.status(404).json({ message: 'Short is scheduled and not yet released' });
+      }
+    }
     res.json(short);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -5230,6 +5243,7 @@ app.get('/api/shows', async (req, res) => {
     const query = {};
     if (!isAdmin) {
       query.status = 'Active';
+      Object.assign(query, getPublishedFilter());
       const menuSettings = await MenuSettings.findOne().lean();
       if (menuSettings) {
         const showsOff = menuSettings.shows?.toUpperCase() === 'OFF';
@@ -5267,6 +5281,9 @@ app.get('/api/shows/:id', async (req, res) => {
 
     const isAdmin = await isAdminRequest(req);
     if (!isAdmin) {
+      if (!isContentPublished(show)) {
+        return res.status(404).json({ message: 'Show is scheduled and not yet released' });
+      }
       const menuSettings = await MenuSettings.findOne().lean();
       if (menuSettings) {
         const ct = (show.contentType || '').toLowerCase().trim();
@@ -5379,7 +5396,7 @@ app.get('/api/sports-videos', async (req, res) => {
         return res.json([]);
       }
     }
-    const query = isAdmin ? {} : { status: 'Active' };
+    const query = isAdmin ? {} : { status: 'Active', ...getPublishedFilter() };
     const videos = await SportsVideo.find(query).populate('category');
     const signedVideos = await signVideoDocuments(videos, req);
     res.json(signedVideos);
@@ -5400,6 +5417,9 @@ app.get('/api/sports-videos/:id', async (req, res) => {
     }
     const video = await SportsVideo.findById(req.params.id);
     if (!video) return res.status(404).json({ message: 'Video not found' });
+    if (!isAdmin && !isContentPublished(video)) {
+      return res.status(404).json({ message: 'Sports video is scheduled and not yet released' });
+    }
     const signedVideo = await signVideoDocument(video, req);
     res.json(signedVideo);
   } catch (err) {
@@ -5499,7 +5519,15 @@ app.get('/api/episodes', async (req, res) => {
   try {
     const isAdmin = await isAdminRequest(req);
     const filter = {};
-    if (!isAdmin) filter.status = 'Active';
+    if (!isAdmin) {
+      filter.status = 'Active';
+      filter.$or = [
+        { isScheduled: { $ne: true } },
+        { scheduledPublishTime: { $exists: false } },
+        { scheduledPublishTime: null },
+        { scheduledPublishTime: { $lte: new Date() } }
+      ];
+    }
     if (req.query.showId) filter.showId = req.query.showId;
     if (req.query.seasonId) filter.seasonId = req.query.seasonId;
     const episodes = await Episode.find(filter)
@@ -5515,9 +5543,17 @@ app.get('/api/episodes', async (req, res) => {
 
 app.get('/api/episodes/:id', async (req, res) => {
   try {
+    const isAdmin = await isAdminRequest(req);
     const episode = await Episode.findById(req.params.id)
       .populate('showId', 'title contentType')
       .populate('seasonId', 'title');
+    if (!episode) return res.status(404).json({ message: 'Episode not found' });
+    if (!isAdmin) {
+      if (episode.status !== 'Active') return res.status(404).json({ message: 'Episode is not active' });
+      if (episode.isScheduled && episode.scheduledPublishTime && new Date(episode.scheduledPublishTime) > new Date()) {
+        return res.status(404).json({ message: 'Episode is scheduled and not yet released' });
+      }
+    }
     const signedEpisode = await signVideoDocument(episode, req);
     res.json(signedEpisode);
   } catch (err) {
@@ -5640,7 +5676,7 @@ app.get('/api/tv-channels', async (req, res) => {
         return res.json([]);
       }
     }
-    const query = isAdmin ? {} : { status: 'Active' };
+    const query = isAdmin ? {} : { status: 'Active', ...getPublishedFilter() };
     const channels = await TVChannel.find(query).populate('category').sort({ createdAt: -1 });
     res.json(channels);
   } catch (err) {
@@ -5659,6 +5695,9 @@ app.get('/api/tv-channels/:id', async (req, res) => {
     }
     const channel = await TVChannel.findById(req.params.id).populate('category');
     if (!channel) return res.status(404).json({ message: 'Channel not found' });
+    if (!isAdmin && !isContentPublished(channel)) {
+      return res.status(404).json({ message: 'Channel is scheduled and not yet released' });
+    }
 
     const ratingCount = await Rating.countDocuments({ contentId: channel._id });
     const channelObj = channel.toObject();
@@ -5868,12 +5907,12 @@ app.get('/api/search', async (req, res) => {
       return res.json([]);
     }
     const regex = new RegExp(q.trim(), 'i');
-    const filter = { status: 'Active', $or: [{ title: regex }, { description: regex }] };
+    const filter = { status: 'Active', ...getPublishedFilter(), $or: [{ title: regex }, { description: regex }] };
 
     const [movies, shows, sports, newReleases, menuSettings] = await Promise.all([
       Movie.find(filter).limit(10).lean(),
       Show.find(filter).limit(10).lean(),
-      SportsVideo.find({ status: 'Active', $or: [{ title: regex }, { description: regex }] }).limit(5).lean(),
+      SportsVideo.find({ status: 'Active', ...getPublishedFilter(), $or: [{ title: regex }, { description: regex }] }).limit(5).lean(),
       NewRelease.find(filter).limit(5).lean(),
       MenuSettings.findOne().lean(),
     ]);
@@ -5932,23 +5971,24 @@ app.get('/api/search', async (req, res) => {
 // Aggregated Home Data Route for Performance
 app.get('/api/home-aggregated', async (req, res) => {
   try {
+    const pubFilter = { status: 'Active', ...getPublishedFilter() };
     const [
       sliders, movies, assets, experiences, shows, 
       newReleases, sports, channels, sportsCategories, settings, homeSections, menuSettings, shorts
     ] = await Promise.all([
       Slider.find({ status: { $regex: /^active$/i } }).sort({ createdAt: -1 }).lean().maxTimeMS(5000),
-      Movie.find({ status: 'Active' }).sort({ createdAt: -1 }).limit(20).lean().maxTimeMS(5000),
+      Movie.find(pubFilter).sort({ createdAt: -1 }).limit(20).lean().maxTimeMS(5000),
       Asset.find().lean().maxTimeMS(5000),
       Experience.find({ status: 'Active' }).sort({ order: 1 }).lean().maxTimeMS(5000),
-      Show.find({ status: 'Active' }).sort({ createdAt: -1 }).limit(100).lean().maxTimeMS(5000),
-      NewRelease.find({ status: 'Active' }).sort({ createdAt: -1 }).limit(20).lean().maxTimeMS(5000),
-      SportsVideo.find({ status: 'Active' }).sort({ createdAt: -1 }).limit(20).lean().maxTimeMS(5000),
-      TVChannel.find({ status: 'Active' }).sort({ createdAt: -1 }).limit(50).lean().maxTimeMS(5000),
+      Show.find(pubFilter).sort({ createdAt: -1 }).limit(100).lean().maxTimeMS(5000),
+      NewRelease.find(pubFilter).sort({ createdAt: -1 }).limit(20).lean().maxTimeMS(5000),
+      SportsVideo.find(pubFilter).sort({ createdAt: -1 }).limit(20).lean().maxTimeMS(5000),
+      TVChannel.find(pubFilter).sort({ createdAt: -1 }).limit(50).lean().maxTimeMS(5000),
       SportsCategory.find().lean().maxTimeMS(5000),
       GeneralSettings.findOne().lean().maxTimeMS(5000),
       HomeSection.find({ status: 'Active' }).sort({ order: 1 }).lean().maxTimeMS(5000),
       MenuSettings.findOne().lean().maxTimeMS(5000),
-      Short.find({ status: 'Active' }).sort({ createdAt: -1 }).limit(20).lean().maxTimeMS(5000)
+      Short.find(pubFilter).sort({ createdAt: -1 }).limit(20).lean().maxTimeMS(5000)
     ]);
 
     console.log('[DEBUG /home-aggregated]:');

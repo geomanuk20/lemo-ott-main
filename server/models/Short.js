@@ -6,6 +6,8 @@ const ShortSchema = new mongoose.Schema({
   videoUrl: { type: String, required: true },
   thumbnailUrl: { type: String, default: '' },
   status: { type: String, enum: ['Active', 'Inactive'], default: 'Active' },
+  isScheduled: { type: Boolean, default: false },
+  scheduledPublishTime: { type: Date, default: null },
   views: { type: Number, default: 0 },
   likes: { type: Number, default: 0 },
   likedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],

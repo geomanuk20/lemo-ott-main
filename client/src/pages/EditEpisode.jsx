@@ -31,6 +31,8 @@ const EditEpisode = () => {
   duration: '',
   status: 'Active',
   upcoming: 'No',
+  isScheduled: false,
+  scheduledPublishTime: '',
   poster: '',
   videoType: 'Local',
   videoQuality: '8K Ultra HD',
@@ -76,6 +78,15 @@ const EditEpisode = () => {
       cleanedEpisodeData.seasonId = '';
     }
     cleanedEpisodeData.upcoming = cleanedEpisodeData.upcoming || 'No';
+    if (cleanedEpisodeData.scheduledPublishTime) {
+      const date = new Date(cleanedEpisodeData.scheduledPublishTime);
+      const tzOffset = date.getTimezoneOffset() * 60000;
+      const localISOTime = new Date(date.getTime() - tzOffset).toISOString().slice(0, 16);
+      cleanedEpisodeData.scheduledPublishTime = localISOTime;
+    } else {
+      cleanedEpisodeData.scheduledPublishTime = '';
+    }
+    cleanedEpisodeData.isScheduled = Boolean(cleanedEpisodeData.isScheduled);
     setFormData(cleanedEpisodeData);
    } catch (err) {
     console.error('Error fetching data:', err);
@@ -125,6 +136,12 @@ const EditEpisode = () => {
     }
    if (payload.showId && typeof payload.showId === 'object') {
     payload.showId = payload.showId._id || payload.showId.id;
+   }
+   if (payload.isScheduled && payload.scheduledPublishTime) {
+     payload.scheduledPublishTime = new Date(payload.scheduledPublishTime).toISOString();
+   } else {
+     payload.scheduledPublishTime = null;
+     payload.isScheduled = false;
    }
    const response = await fetch(`/api/episodes/${id}`, {
     method: 'PUT',
@@ -205,6 +222,36 @@ const EditEpisode = () => {
          <option value="Yes">Yes</option>
         </select>
        </div>
+      </div>
+
+      <div className="form-row-2">
+        <div className="form-group">
+         <label>Schedule Release</label>
+         <select 
+           name="isScheduled" 
+           value={formData.isScheduled ? 'Yes' : 'No'} 
+           onChange={(e) => setFormData(prev => ({ 
+             ...prev, 
+             isScheduled: e.target.value === 'Yes',
+             scheduledPublishTime: e.target.value === 'Yes' ? prev.scheduledPublishTime : ''
+           }))}
+         >
+          <option value="No">No (Publish Immediately)</option>
+          <option value="Yes">Yes (Schedule Date & Time)</option>
+         </select>
+        </div>
+        {formData.isScheduled && (
+         <div className="form-group">
+          <label>Scheduled Date & Time*</label>
+          <input 
+            type="datetime-local" 
+            name="scheduledPublishTime" 
+            value={formData.scheduledPublishTime} 
+            onChange={handleChange} 
+            required={formData.isScheduled}
+          />
+         </div>
+        )}
       </div>
 
       <div className="form-group">
