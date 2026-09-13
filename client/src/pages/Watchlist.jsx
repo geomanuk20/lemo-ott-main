@@ -13,6 +13,8 @@ const Watchlist = () => {
 
  const fetchWatchlist = async () => {
   if (!user.id) {
+   const localWl = JSON.parse(localStorage.getItem('watchlist') || '[]');
+   setWatchlist(Array.isArray(localWl) ? localWl : []);
    setLoading(false);
    return;
   }
@@ -23,7 +25,8 @@ const Watchlist = () => {
    setWatchlist(Array.isArray(data) ? data : (data.items || data.watchlist || []));
   } catch (err) {
    console.error('Error fetching watchlist:', err);
-   setWatchlist([]);
+   const localWl = JSON.parse(localStorage.getItem('watchlist') || '[]');
+   setWatchlist(Array.isArray(localWl) ? localWl : []);
   } finally {
    setLoading(false);
   }
@@ -34,6 +37,15 @@ const Watchlist = () => {
  }, []);
 
  const removeFromWatchlist = async (contentId, contentType) => {
+  if (!user.id) {
+   const localWl = JSON.parse(localStorage.getItem('watchlist') || '[]');
+   const updated = localWl.filter(item => (item._id !== contentId && item.id !== contentId));
+   localStorage.setItem('watchlist', JSON.stringify(updated));
+   setWatchlist(updated);
+   showNotification('Removed from watchlist');
+   return;
+  }
+
   try {
    const response = await fetch('/api/watchlist/toggle', {
     method: 'POST',
@@ -101,33 +113,39 @@ const Watchlist = () => {
      </div>
     ) : (
      <div className="watchlist-grid-v">
-      {watchlist.map((item) => (
-       <div key={item._id} className="watchlist-card-v">
-        <div className="card-image-v">
-         <img 
-          src={formatImageUrl(item) || 'https://via.placeholder.com/400x225?text=No+Preview'} 
-          alt={item.title} 
-         />
-         <div className="card-overlay-v">
-          <button className="play-overlay-btn-v" onClick={() => navigate(`/details/${item.contentType.toLowerCase()}/${item._id}`)}>
-           <Play size={24} fill="currentColor" />
-          </button>
-          <button className="remove-btn-v" onClick={() => removeFromWatchlist(item._id, item.contentType)}>
-           <Trash2 size={18} />
-          </button>
+      {watchlist.map((item) => {
+        const isPocket = item.contentType === 'pocket-reel-series' || item.dbContentType === 'Pocket Reel Series' || item.dbContentType === 'Pocket Reel' || item.contentType === 'Pocket Reel Series';
+        const detailType = isPocket ? 'pocket-reel-series' : (item.contentType ? item.contentType.toLowerCase() : 'movie');
+        const badgeText = isPocket ? 'POCKET REEL' : (item.contentType ? item.contentType.toUpperCase() : 'MEDIA');
+
+        return (
+         <div key={item._id || item.id} className="watchlist-card-v">
+          <div className="card-image-v">
+           <img 
+            src={formatImageUrl(item, 'poster') || formatImageUrl(item, 'thumbnail') || 'https://via.placeholder.com/400x225?text=No+Preview'} 
+            alt={item.title} 
+           />
+           <div className="card-overlay-v">
+            <button className="play-overlay-btn-v" onClick={() => navigate(`/details/${detailType}/${item._id || item.id}`)}>
+             <Play size={24} fill="currentColor" />
+            </button>
+            <button className="remove-btn-v" onClick={() => removeFromWatchlist(item._id || item.id, item.contentType)}>
+             <Trash2 size={18} />
+            </button>
+           </div>
+           <div className="card-type-badge-v">{badgeText}</div>
+          </div>
+          <div className="card-info-v" onClick={() => navigate(`/details/${detailType}/${item._id || item.id}`)} style={{ cursor: 'pointer' }}>
+           <h3>{item.title}</h3>
+           <div className="card-meta-v">
+            <span>{item.year || (item.releaseDate ? new Date(item.releaseDate).getFullYear() : '2026')}</span>
+            <span className="dot-v">•</span>
+            <span>{item.duration || (item.totalSeasons ? `${item.totalSeasons} Seasons` : (isPocket ? 'Pocket Series' : '2h 15m'))}</span>
+           </div>
+          </div>
          </div>
-         <div className="card-type-badge-v">{item.contentType.toUpperCase()}</div>
-        </div>
-        <div className="card-info-v">
-         <h3>{item.title}</h3>
-         <div className="card-meta-v">
-          <span>{item.year || '2026'}</span>
-          <span className="dot-v">•</span>
-          <span>{item.duration || item.totalSeasons + ' Seasons' || '2h 15m'}</span>
-         </div>
-        </div>
-       </div>
-      ))}
+        );
+      })}
      </div>
     )}
    </div>
@@ -136,10 +154,10 @@ const Watchlist = () => {
     .fe-watchlist-page-v { min-height: 100vh; background: #050505; padding: 120px 5% 60px; color: #fff; }
     
     .fe-watchlist-header-v { margin-bottom: 40px; }
-    .header-left-v { display: flex; align-items: center; gap: 20px; }
-    .back-btn-v { background: rgba(255,255,255,0.05); border: 1px solid #222; color: #fff; width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; }
-    .back-btn-v:hover { background: #b3d332; border-color: #b3d332; transform: translateX(-5px); }
-    .header-title-v h1 { font-size: 2.5rem; font-weight: 800; margin: 0; }
+    .header-left-v { display: flex; align-items: center; gap: 16px; }
+    .back-btn-v { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: #fff; width: 40px; height: 40px; min-width: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
+    .back-btn-v:hover { background: #b3d332; border-color: #b3d332; color: #000; transform: translateX(-3px); box-shadow: 0 4px 16px rgba(179, 211, 50, 0.4); }
+    .header-title-v h1 { font-size: 2.2rem; font-weight: 800; margin: 0; }
     .header-title-v p { color: #888; font-weight: 700; font-size: 1rem; margin: 5px 0 0 0; }
 
     .watchlist-grid-v { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 30px; }

@@ -1388,26 +1388,54 @@ app.get('/api/watchlist/:userId', async (req, res) => {
     const user = await User.findById(req.params.userId);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
+    if (!user.watchlist || !Array.isArray(user.watchlist)) {
+      return res.json([]);
+    }
+
     // Populate content details from respective collections
     const watchlistDetails = await Promise.all(user.watchlist.map(async (item) => {
       let detail = null;
-      if (item.contentType === 'movie') {
+      const type = (item.contentType || '').toLowerCase().trim();
+
+      if (type === 'movie' || type === 'movies' || type === 'short-film' || type === 'short-films') {
         detail = await Movie.findById(item.contentId);
         if (!detail) detail = await NewRelease.findById(item.contentId);
       }
-      else if (item.contentType === 'new-releases') {
+      else if (type === 'new-releases' || type === 'new-release') {
         detail = await NewRelease.findById(item.contentId);
         if (!detail) detail = await Movie.findById(item.contentId);
       }
-      else if (item.contentType === 'show') detail = await Show.findById(item.contentId);
-      else if (item.contentType === 'sports') detail = await SportsVideo.findById(item.contentId);
-      else if (item.contentType === 'live') detail = await TVChannel.findById(item.contentId);
+      else if (type === 'show' || type === 'shows' || type === 'series' || type === 'short-web-series' || type === 'pocket-reel-series' || type === 'pocket-reels' || type === 'pocket reel series') {
+        detail = await Show.findById(item.contentId);
+      }
+      else if (type === 'sports' || type === 'sport') {
+        detail = await SportsVideo.findById(item.contentId);
+      }
+      else if (type === 'live' || type === 'channel' || type === 'channels') {
+        detail = await TVChannel.findById(item.contentId);
+      }
+
+      // Fallback query across all collections if not matched by specific type
+      if (!detail) {
+        detail = await Show.findById(item.contentId) ||
+                 await Movie.findById(item.contentId) ||
+                 await NewRelease.findById(item.contentId) ||
+                 await SportsVideo.findById(item.contentId) ||
+                 await TVChannel.findById(item.contentId);
+      }
       
       if (detail) {
+        const isPocket = detail.contentType === 'Pocket Reel Series' || detail.contentType === 'Pocket Reel';
+        const isShortWeb = detail.contentType === 'Short Web Series' || detail.contentType === 'Short Web-Series' || detail.contentType === 'web-series';
+        let resolvedContentType = item.contentType || 'show';
+        if (isPocket) resolvedContentType = 'pocket-reel-series';
+        else if (isShortWeb) resolvedContentType = 'short-web-series';
+        else if (detail.contentType === 'show' || detail.contentType === 'Show') resolvedContentType = 'show';
+
         return { 
           ...detail.toObject(), 
           dbContentType: detail.contentType, // Preserve original contentType
-          contentType: item.contentType 
+          contentType: resolvedContentType 
         };
       }
       return null;
@@ -1423,23 +1451,24 @@ app.get('/api/watchlist/:userId', async (req, res) => {
       const webSeriesOff = menuSettings.webSeries?.toUpperCase() === 'OFF';
       const sportsOff = menuSettings.sports?.toUpperCase() === 'OFF';
       const liveTvOff = menuSettings.liveTv?.toUpperCase() === 'OFF';
+      const pocketReelOff = menuSettings.pocketReelSeries?.toUpperCase() === 'OFF';
 
       filteredDetails = filteredDetails.filter(item => {
-        if (item.contentType === 'movie') {
-          const isShortFilm = item.dbContentType === 'Short Film' || item.dbContentType === 'short-film';
-          if (isShortFilm && shortFilmsOff) return false;
-          if (!isShortFilm && moviesOff) return false;
-        }
-        if (item.contentType === 'new-releases') {
-          if (moviesOff) return false;
-        }
-        if (item.contentType === 'show') {
-          const isShortWeb = item.dbContentType === 'Short Web Series' || item.dbContentType === 'Short Web-Series' || item.dbContentType === 'web-series';
-          if (isShortWeb && webSeriesOff) return false;
-          if (!isShortWeb && showsOff) return false;
-        }
-        if (item.contentType === 'sports' && sportsOff) return false;
-        if (item.contentType === 'live' && liveTvOff) return false;
+        const dbType = item.dbContentType || item.contentType;
+        const isPocketReel = dbType === 'Pocket Reel Series' || dbType === 'Pocket Reel' || item.contentType === 'pocket-reel-series';
+        if (isPocketReel) return !pocketReelOff;
+
+        const isShortWeb = dbType === 'Short Web Series' || dbType === 'Short Web-Series' || dbType === 'web-series' || item.contentType === 'short-web-series';
+        if (isShortWeb) return !webSeriesOff;
+
+        const isShortFilm = dbType === 'Short Film' || dbType === 'short-film';
+        if (isShortFilm) return !shortFilmsOff;
+
+        if (item.contentType === 'movie') return !moviesOff;
+        if (item.contentType === 'new-releases') return !moviesOff;
+        if (item.contentType === 'show') return !showsOff;
+        if (item.contentType === 'sports') return !sportsOff;
+        if (item.contentType === 'live') return !liveTvOff;
         return true;
       });
     }
@@ -1456,7 +1485,9 @@ app.post('/api/watchlist/toggle', async (req, res) => {
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    const index = user.watchlist.findIndex(i => i.contentId.toString() === contentId);
+    if (!user.watchlist) user.watchlist = [];
+
+    const index = user.watchlist.findIndex(i => i.contentId && i.contentId.toString() === contentId.toString());
     if (index === -1) {
       user.watchlist.push({ contentId, contentType });
       await user.save();

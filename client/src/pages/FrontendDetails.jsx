@@ -553,11 +553,11 @@ const FrontendDetails = () => {
 
 
     // Check watchlist
-    if (user.id) {
+    if (user && user.id) {
      const wlResponse = await fetch(`/api/watchlist/${user.id}`);
      const wlData = await wlResponse.json();
      if (Array.isArray(wlData)) {
-      setIsWatchlisted(wlData.some(item => item._id === id));
+      setIsWatchlisted(wlData.some(item => (item._id === id || item.id === id)));
      }
      try {
       const rateResponse = await fetch(`/api/ratings/status?userId=${user.id}&contentId=${id}`);
@@ -570,7 +570,7 @@ const FrontendDetails = () => {
      }
     } else {
      const watchlist = JSON.parse(localStorage.getItem('watchlist') || '[]');
-     setIsWatchlisted(watchlist.some(item => item.id === id));
+     setIsWatchlisted(watchlist.some(item => (item.id === id || item._id === id)));
     }
    } catch (err) {
     console.error('Error fetching details:', err);
@@ -599,19 +599,50 @@ const FrontendDetails = () => {
  }, []);
 
  const handleWatchlist = async () => {
-  if (!user || !user.id) {
-   navigate('/login', { state: { from: window.location.pathname } });
-   return;
-  }
-
   const cleanType = type ? type.toLowerCase().trim() : '';
+  const isPocket = Boolean(
+    cleanType === 'pocket-reel-series' ||
+    cleanType === 'pocket-reels' ||
+    data?.contentType === 'Pocket Reel Series' ||
+    data?.contentType === 'Pocket Reel'
+  );
+
   let normalizedWatchlistType = 'movie';
-  if (cleanType === 'show' || cleanType === 'shows' || cleanType === 'series' || cleanType === 'short-web-series' || cleanType === 'pocket-reel-series' || cleanType === 'pocket-reels' || data?.contentType === 'Pocket Reel Series') {
+  if (isPocket) {
+   normalizedWatchlistType = 'pocket-reel-series';
+  } else if (cleanType === 'show' || cleanType === 'shows' || cleanType === 'series' || cleanType === 'short-web-series') {
    normalizedWatchlistType = 'show';
   } else if (cleanType === 'sports' || cleanType === 'sport') {
    normalizedWatchlistType = 'sports';
   } else if (cleanType === 'live' || cleanType === 'channel' || cleanType === 'channels' || cleanType === 'tv-channel' || cleanType === 'tv-channels') {
    normalizedWatchlistType = 'live';
+  }
+
+  if (!user || !user.id) {
+   const localWl = JSON.parse(localStorage.getItem('watchlist') || '[]');
+   const existsIdx = localWl.findIndex(item => (item._id === id || item.id === id));
+   if (existsIdx > -1) {
+    localWl.splice(existsIdx, 1);
+    localStorage.setItem('watchlist', JSON.stringify(localWl));
+    setIsWatchlisted(false);
+    showNotification('Removed from Watchlist');
+   } else {
+    localWl.push({
+     _id: id,
+     id: id,
+     title: data?.title || '',
+     poster: formatImageUrl(data, 'poster') || '',
+     thumbnail: formatImageUrl(data, 'thumbnail') || '',
+     contentType: normalizedWatchlistType,
+     dbContentType: data?.contentType || (isPocket ? 'Pocket Reel Series' : 'Show'),
+     year: data?.releaseYear || (data?.releaseDate ? new Date(data.releaseDate).getFullYear() : '2026'),
+     duration: data?.duration || (episodes?.length > 0 ? `${episodes.length} Episodes` : (isPocket ? 'Pocket Series' : 'Series'))
+    });
+    localStorage.setItem('watchlist', JSON.stringify(localWl));
+    setIsWatchlisted(true);
+    showNotification('Added to Watchlist');
+   }
+   return;
   }
 
   try {
@@ -811,32 +842,30 @@ const FrontendDetails = () => {
 
   const renderVisualStatsAndActions = () => (
     <>
-      {/* Sleek Stats Bar */}
+      {/* Classic Metadata Stats Row */}
       <div className="fe-visual-stats-v">
-        <div className="stat-item-v">
-          <Eye size={15} />
+        <span className="stat-item-v">
+          <Eye size={15} className="stat-icon-v" />
           <span>{formatViews(data.views, data._id)}</span>
-        </div>
-        <div className="stat-sep-dot">•</div>
-        <div className="stat-item-v">
-          <Calendar size={15} />
+        </span>
+        <span className="stat-sep-dot">•</span>
+        <span className="stat-item-v">
+          <Calendar size={15} className="stat-icon-v" />
           <span>{new Date(data.releaseDate || data.createdAt).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}</span>
-        </div>
-        <div className="stat-sep-dot">•</div>
-        <div className="stat-item-v">
-          <Clock size={15} />
+        </span>
+        <span className="stat-sep-dot">•</span>
+        <span className="stat-item-v">
+          <Clock size={15} className="stat-icon-v" />
           <span>{data.duration || '2h 30m'}</span>
-        </div>
-        <div className="stat-sep-dot">•</div>
-        <div className="fe-rating-pill-v">
-          <div className="fe-rating-score-box">
-            <Star size={13} fill="#b3d332" color="#b3d332" />
-            <span className="imdb-val-v">{parseFloat(data.imdbRating || '7.5').toFixed(1)}</span>
-          </div>
+        </span>
+        <span className="stat-sep-dot">•</span>
+        <span className="stat-item-v stat-rating-v">
+          <Star size={14} fill="#ffd700" color="#ffd700" />
+          <strong>{parseFloat(data.imdbRating || '7.5').toFixed(1)}</strong>
           {data.ratingsCount && data.ratingsCount > 0 ? (
             <span className="fe-ratings-count-v">({data.ratingsCount})</span>
           ) : null}
-        </div>
+        </span>
       </div>
 
       {/* Modern Cohesive Action Buttons */}
@@ -1048,30 +1077,50 @@ Cancel
                 <span>{data.upcoming === 'Yes' ? 'COMING SOON' : (data.status === 'Active' ? 'COMPLETED SERIES' : 'ONGOING SERIES')}</span>
               </div>
 
-              {/* Main Title & Gradient Action Button */}
+              {/* Main Title & Action Buttons Row */}
               <div className="fe-pocket-header-action-row">
                 <h1 className="fe-pocket-main-title">{data.title}</h1>
-                <button 
-                  className="fe-pocket-play-ep-btn"
-                  onClick={() => {
-                    const ep = currentPocketEp || episodes[0];
-                    if (ep) {
-                      const url = ep.videoFile || ep.videoUrl || ep.videoFile1080 || ep.videoFile720 || ep.videoFile480 || data.videoFile || data.videoUrl;
-                      if (url) {
-                        setCurrentPocketEp(ep);
-                        handlePlayVideo(url, ep);
-                        window.scrollTo({ top: 100, behavior: 'smooth' });
-                      } else {
-                        alert('Video not available.');
+                <div className="fe-pocket-action-group">
+                  <button 
+                    className="fe-pocket-play-ep-btn"
+                    onClick={() => {
+                      const ep = currentPocketEp || episodes[0];
+                      if (ep) {
+                        const url = ep.videoFile || ep.videoUrl || ep.videoFile1080 || ep.videoFile720 || ep.videoFile480 || data.videoFile || data.videoUrl;
+                        if (url) {
+                          setCurrentPocketEp(ep);
+                          handlePlayVideo(url, ep);
+                          window.scrollTo({ top: 100, behavior: 'smooth' });
+                        } else {
+                          alert('Video not available.');
+                        }
+                      } else if (data.videoFile || data.videoUrl) {
+                        handlePlayVideo(data.videoFile || data.videoUrl);
                       }
-                    } else if (data.videoFile || data.videoUrl) {
-                      handlePlayVideo(data.videoFile || data.videoUrl);
-                    }
-                  }}
-                >
-                  <Play size={18} fill="#000" color="#000" />
-                  <span>Play Ep-{currentPocketEp ? (episodes.findIndex(e => e._id === currentPocketEp._id) + 1) : 1}</span>
-                </button>
+                    }}
+                  >
+                    <Play size={18} fill="#000" color="#000" />
+                    <span>Play Ep-{currentPocketEp ? (episodes.findIndex(e => e._id === currentPocketEp._id) + 1) : 1}</span>
+                  </button>
+
+                  <button 
+                    className={`fe-pocket-action-btn fe-pocket-watchlist-btn ${isWatchlisted ? 'active' : ''}`}
+                    onClick={handleWatchlist}
+                    title={isWatchlisted ? 'In Watchlist' : 'Add to Watchlist'}
+                  >
+                    {isWatchlisted ? <Check size={18} /> : <Plus size={18} />}
+                    <span>{isWatchlisted ? 'Saved' : 'Watchlist'}</span>
+                  </button>
+
+                  <button 
+                    className="fe-pocket-action-btn fe-pocket-share-btn"
+                    onClick={() => setIsShareModalOpen(true)}
+                    title="Share Series"
+                  >
+                    <Share2 size={18} />
+                    <span>Share</span>
+                  </button>
+                </div>
               </div>
 
               {/* Metrics Row */}
@@ -2047,63 +2096,53 @@ Cancel
      100% { transform: scale(2); opacity: 0; }
     }
 
-    /* Sleek Visual Stats Bar */
+    /* Classic Visual Stats Row */
     .fe-visual-stats-v {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 12px;
+      flex-wrap: wrap;
+      gap: 10px;
       margin-top: 14px;
-      padding: 10px 16px;
-      background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.015) 100%);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border-radius: 12px;
+      margin-bottom: 2px;
+      padding: 0;
+      background: transparent !important;
+      border: none !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      box-shadow: none !important;
       color: #94a3b8;
-      font-size: 0.8rem;
+      font-size: 0.88rem;
       font-weight: 600;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
     }
     .stat-item-v {
-      display: flex;
+      display: inline-flex;
       align-items: center;
       gap: 6px;
       color: #cbd5e1;
     }
-    .stat-item-v svg {
-      color: #b3d332;
-      filter: drop-shadow(0 0 4px rgba(179, 211, 50, 0.3));
+    .stat-icon-v {
+      color: #94a3b8;
     }
     .stat-sep-dot {
-      color: rgba(255, 255, 255, 0.15);
-      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.25);
+      font-size: 0.75rem;
       user-select: none;
     }
-    .fe-rating-pill-v {
-      display: flex;
+    .stat-rating-v {
+      color: #fff;
+      display: inline-flex;
       align-items: center;
-      gap: 6px;
-      background: rgba(179, 211, 50, 0.1);
-      border: 1px solid rgba(179, 211, 50, 0.25);
-      padding: 4px 8px;
-      border-radius: 20px;
+      gap: 5px;
     }
-    .fe-rating-score-box {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      color: #b3d332;
-      font-weight: 800;
-      font-size: 0.78rem;
-    }
-    .fe-rating-score-box .imdb-val-v {
-      color: #b3d332;
+    .stat-rating-v strong {
+      color: #fff;
+      font-weight: 750;
     }
     .fe-ratings-count-v {
-      color: #64748b;
-      font-size: 0.68rem;
-      font-weight: 600;
+      color: #94a3b8;
+      font-size: 0.78rem;
+      font-weight: 500;
+      margin-left: 1px;
     }
 
     /* Modern Action Buttons */
@@ -2920,24 +2959,61 @@ Cancel
       line-height: 1.15;
       letter-spacing: -0.5px;
     }
+    .fe-pocket-action-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
     .fe-pocket-play-ep-btn {
       background: linear-gradient(90deg, #b3d332 0%, #9cb82c 100%);
       color: #000;
       border: none;
-      padding: 12px 28px;
+      padding: 11px 24px;
       border-radius: 30px;
       font-weight: 800;
-      font-size: 0.98rem;
+      font-size: 0.95rem;
       display: flex;
       align-items: center;
       gap: 8px;
       cursor: pointer;
       box-shadow: 0 4px 20px rgba(179, 211, 50, 0.4);
       transition: transform 0.2s ease, box-shadow 0.2s ease;
+      white-space: nowrap;
     }
     .fe-pocket-play-ep-btn:hover {
       transform: translateY(-2px);
       box-shadow: 0 6px 25px rgba(179, 211, 50, 0.6);
+    }
+    .fe-pocket-action-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      padding: 10px 18px;
+      border-radius: 30px;
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      color: #e2e8f0;
+      font-size: 0.88rem;
+      font-weight: 700;
+      cursor: pointer;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      white-space: nowrap;
+    }
+    .fe-pocket-action-btn:hover {
+      background: rgba(255, 255, 255, 0.14);
+      border-color: rgba(179, 211, 50, 0.6);
+      color: #b3d332;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    }
+    .fe-pocket-action-btn.active {
+      background: rgba(179, 211, 50, 0.18);
+      border-color: #b3d332;
+      color: #b3d332;
     }
     .fe-pocket-stats-row {
       display: flex;
@@ -3085,10 +3161,20 @@ Cancel
         align-items: flex-start;
         gap: 14px;
       }
-      .fe-pocket-play-ep-btn {
+      .fe-pocket-action-group {
         width: 100%;
+        display: flex;
+        gap: 8px;
+      }
+      .fe-pocket-play-ep-btn {
+        flex: 1 1 100%;
         justify-content: center;
-        padding: 13px 20px;
+        padding: 12px 18px;
+      }
+      .fe-pocket-action-btn {
+        flex: 1;
+        justify-content: center;
+        padding: 10px 12px;
       }
     }
 

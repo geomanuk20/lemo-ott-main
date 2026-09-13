@@ -463,41 +463,47 @@ const FrontendProfile = () => {
                   </div>
                 ) : (
                   <div className="watchlist-grid-v">
-                    {watchlist.map((item) => (
-                      <div key={item._id} className="watchlist-card-v">
-                        <div className="card-image-v">
-                          <img 
-                            src={formatImageUrl(item) || 'https://via.placeholder.com/400x225?text=No+Preview'} 
-                            alt={item.title} 
-                          />
-                          <button 
-                            className="remove-btn-v" 
-                            onClick={() => removeFromWatchlist(item._id, item.contentType)}
-                          >
-                            <XCircle size={16} />
-                          </button>
-                          <div style={{ position: 'absolute', bottom: '10px', left: '10px', background: 'rgba(0,0,0,0.8)', color: '#b3d332', fontSize: '0.6rem', fontWeight: 900, padding: '3px 8px', borderRadius: '4px', border: '1px solid rgba(179,211,50,0.3)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                            {item.contentType?.toUpperCase()}
-                          </div>
-                        </div>
-                        <div style={{ padding: '15px', display: 'flex', flexDirection: 'column', flexGrow: 1, justifyContent: 'space-between' }}>
-                          <h4 style={{ fontSize: '0.95rem', fontWeight: 750, color: '#fff', margin: '0 0 6px 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {item.title}
-                          </h4>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '10px' }}>
-                            <span style={{ fontSize: '0.8rem', color: '#555', fontWeight: 700 }}>
-                              {item.year || '2026'}
-                            </span>
+                    {watchlist.map((item) => {
+                      const isPocket = item.contentType === 'pocket-reel-series' || item.dbContentType === 'Pocket Reel Series' || item.dbContentType === 'Pocket Reel' || item.contentType === 'Pocket Reel Series';
+                      const detailType = isPocket ? 'pocket-reel-series' : (item.contentType ? item.contentType.toLowerCase() : 'movie');
+                      const badgeText = isPocket ? 'POCKET REEL' : (item.contentType ? item.contentType.toUpperCase() : 'MEDIA');
+
+                      return (
+                        <div key={item._id || item.id} className="watchlist-card-v">
+                          <div className="card-image-v">
+                            <img 
+                              src={formatImageUrl(item, 'poster') || formatImageUrl(item, 'thumbnail') || 'https://via.placeholder.com/400x225?text=No+Preview'} 
+                              alt={item.title} 
+                            />
                             <button 
-                              className="watch-btn-v"
-                              onClick={() => navigate(`/details/${item.contentType?.toLowerCase()}/${item._id}`)}
+                              className="remove-btn-v" 
+                              onClick={() => removeFromWatchlist(item._id || item.id, item.contentType)}
                             >
-                              <Play size={10} fill="currentColor" /> Watch
+                              <XCircle size={16} />
                             </button>
+                            <div style={{ position: 'absolute', bottom: '10px', left: '10px', background: 'rgba(0,0,0,0.8)', color: '#b3d332', fontSize: '0.6rem', fontWeight: 900, padding: '3px 8px', borderRadius: '4px', border: '1px solid rgba(179,211,50,0.3)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                              {badgeText}
+                            </div>
+                          </div>
+                          <div style={{ padding: '15px', display: 'flex', flexDirection: 'column', flexGrow: 1, justifyContent: 'space-between' }}>
+                            <h4 style={{ fontSize: '0.95rem', fontWeight: 750, color: '#fff', margin: '0 0 6px 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {item.title}
+                            </h4>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '10px' }}>
+                              <span style={{ fontSize: '0.8rem', color: '#555', fontWeight: 700 }}>
+                                {item.year || (item.releaseDate ? new Date(item.releaseDate).getFullYear() : '2026')}
+                              </span>
+                              <button 
+                                className="watch-btn-v"
+                                onClick={() => navigate(`/details/${detailType}/${item._id || item.id}`)}
+                              >
+                                <Play size={10} fill="currentColor" /> Watch
+                              </button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
