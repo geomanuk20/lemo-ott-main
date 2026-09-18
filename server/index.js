@@ -498,7 +498,13 @@ const diskStorage = multer.diskStorage({
     cb(null, `${Date.now()}_${sanitizedBase}${ext}`);
   }
 });
-const localUpload = multer({ storage: diskStorage });
+const localUpload = multer({ 
+  storage: diskStorage,
+  limits: {
+    fileSize: 10 * 1024 * 1024 * 1024, // 10 GB max upload file size
+    fieldSize: 50 * 1024 * 1024 // 50 MB max field size
+  }
+});
 
 // Redis Cache & Rate Limiting Middleware
 const { cacheMiddleware, createRateLimiter, invalidateCache } = require('./middleware/cacheMiddleware');
@@ -539,8 +545,8 @@ app.use((req, res, next) => {
   res.setHeader('Referrer-Policy', 'origin');
   next();
 });
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(express.json({ limit: '500mb' }));
+app.use(express.urlencoded({ limit: '500mb', extended: true }));
 app.use('/uploads', express.static('uploads'));
 app.use('/upload', express.static('uploads')); // Alias for legacy support
 
