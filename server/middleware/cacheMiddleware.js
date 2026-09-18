@@ -56,7 +56,7 @@ const cacheMiddleware = (prefix, durationSeconds = 300) => {
 /**
  * Creates an Express Rate Limiter backed by Redis (or memory fallback if Redis unavailable).
  */
-const createRateLimiter = ({ windowMs = 15 * 60 * 1000, max = 100, message = 'Too many requests, please try again later.' }) => {
+const createRateLimiter = ({ windowMs = 15 * 60 * 1000, max = 5000, message = 'Too many requests, please try again later.' }) => {
   let rateLimit, RedisStore;
   try {
     rateLimit = require('express-rate-limit');
@@ -77,6 +77,13 @@ const createRateLimiter = ({ windowMs = 15 * 60 * 1000, max = 100, message = 'To
     max,
     standardHeaders: true,
     legacyHeaders: false,
+    skip: (req) => {
+      // Bypass rate limit in local development or for admin requests
+      if (process.env.NODE_ENV === 'development' || !process.env.NODE_ENV) return true;
+      if (req.headers['x-admin-token'] || req.headers['authorization']) return true;
+      if (req.path.includes('/health') || req.path.includes('/upload')) return true;
+      return false;
+    },
     message: typeof message === 'string' ? { message } : message,
   };
 

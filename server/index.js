@@ -510,7 +510,11 @@ const localUpload = multer({
 const { cacheMiddleware, createRateLimiter, invalidateCache } = require('./middleware/cacheMiddleware');
 const { isRedisAvailable } = require('./redisClient');
 const { QUEUE_NAMES, addJob } = require('./queues/queueSystem');
-const apiRateLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 300, message: 'Too many requests, please try again later.' });
+const apiRateLimiter = createRateLimiter({ 
+  windowMs: 15 * 60 * 1000, 
+  max: parseInt(process.env.RATE_LIMIT_MAX, 10) || 5000, 
+  message: 'Too many requests, please try again later.' 
+});
 
 // Health Check Endpoint (For Load Balancers & Target Groups)
 app.get(['/health', '/healthz'], (req, res) => {
