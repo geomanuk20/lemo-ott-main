@@ -108,7 +108,8 @@ server {
     listen [::]:80;
     server_name _;
 
-    client_max_body_size 100M;
+    client_max_body_size 10240M;
+    client_body_timeout 1800s;
 
     # Gzip Compression
     gzip on;
@@ -137,9 +138,9 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
 
-        proxy_connect_timeout 15s;
-        proxy_send_timeout 300s;
-        proxy_read_timeout 300s;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 1800s;
+        proxy_read_timeout 1800s;
     }
 
     # HLS Video Stream Caching
