@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useMemo } from 'react';
 import {
   StyleSheet,
   Text,
@@ -10,9 +10,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, CreditCard, Calendar, ShieldCheck, Receipt } from 'lucide-react-native';
 import { AuthContext } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import client from '../api/client';
 
 export default function TransactionHistoryScreen({ navigation }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
   const { user } = useContext(AuthContext);
   const [loading, setLoading] = useState(true);
   const [transactions, setTransactions] = useState([]);
@@ -64,7 +67,7 @@ export default function TransactionHistoryScreen({ navigation }) {
     return (
       <View style={styles.txCard}>
         <View style={styles.txHeader}>
-          <Receipt color="#b3d332" size={20} />
+          <Receipt color={theme.primary} size={20} />
           <Text style={styles.txPlan}>{item.planName || item.plan || 'Premium Subscription'}</Text>
         </View>
         
@@ -118,18 +121,18 @@ export default function TransactionHistoryScreen({ navigation }) {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <ArrowLeft color="#ffffff" size={24} />
+          <ArrowLeft color={theme.text} size={24} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Billing & Invoices</Text>
       </View>
 
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#b3d332" />
+          <ActivityIndicator size="large" color={theme.primary} />
         </View>
       ) : transactions.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <CreditCard color="#444" size={54} style={{ marginBottom: 16 }} />
+          <CreditCard color={theme.textSecondary} size={54} style={{ marginBottom: 16 }} />
           <Text style={styles.emptyText}>No Transactions Found</Text>
           <Text style={styles.emptySubtext}>Any subscription plan purchase or billing events will appear here.</Text>
         </View>
@@ -146,10 +149,10 @@ export default function TransactionHistoryScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: theme.background,
   },
   header: {
     flexDirection: 'row',
@@ -157,7 +160,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#121212',
+    borderBottomColor: theme.cardBorder,
+    backgroundColor: theme.headerBackground,
   },
   backBtn: {
     marginRight: 16,
@@ -165,21 +169,22 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '900',
-    color: '#ffffff',
+    color: theme.text,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: theme.background,
   },
   listContent: {
     padding: 16,
     gap: 16,
   },
   txCard: {
-    backgroundColor: '#121212',
+    backgroundColor: theme.cardBackground,
     borderWidth: 1,
-    borderColor: '#1f1f1f',
+    borderColor: theme.cardBorder,
     borderRadius: 16,
     padding: 16,
   },
@@ -192,11 +197,11 @@ const styles = StyleSheet.create({
   txPlan: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#ffffff',
+    color: theme.text,
   },
   divider: {
     height: 1,
-    backgroundColor: '#1f1f1f',
+    backgroundColor: theme.cardBorder,
     marginBottom: 12,
   },
   txDetails: {
@@ -209,11 +214,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   detailLabel: {
-    color: '#8e8e93',
+    color: theme.textSecondary,
     fontSize: 12,
   },
   detailValue: {
-    color: '#ffffff',
+    color: theme.text,
     fontSize: 12,
     fontWeight: '600',
     maxWidth: '60%',
@@ -232,11 +237,11 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 10,
     fontWeight: '800',
-    color: '#ffffff',
+    color: theme.text,
     textTransform: 'uppercase',
   },
   amountContainer: {
-    backgroundColor: '#1a1b1e',
+    backgroundColor: theme.cardSecondary,
     borderRadius: 8,
     padding: 12,
     flexDirection: 'row',
@@ -244,12 +249,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   amountLabel: {
-    color: '#8e8e93',
+    color: theme.textSecondary,
     fontSize: 12,
     fontWeight: '700',
   },
   amountValue: {
-    color: '#b3d332',
+    color: theme.primary,
     fontSize: 16,
     fontWeight: '900',
   },
@@ -258,18 +263,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 40,
+    backgroundColor: theme.background,
   },
   emptyText: {
-    color: '#ffffff',
+    color: theme.text,
     fontSize: 18,
     fontWeight: '800',
     textAlign: 'center',
   },
   emptySubtext: {
-    color: '#8e8e93',
+    color: theme.textSecondary,
     fontSize: 13,
     textAlign: 'center',
     marginTop: 6,
     lineHeight: 18,
   },
 });
+

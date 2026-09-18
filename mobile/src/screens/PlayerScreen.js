@@ -396,7 +396,14 @@ export default function PlayerScreen({ route, navigation }) {
   const [muted, setMuted]               = useState(false);
   const [barWidth, setBarWidth]         = useState(1);   // measured progress-bar width
   const [logoUrl, setLogoUrl]           = useState(null);
-  const [resizeMode, setResizeMode]     = useState(ResizeMode.CONTAIN);
+  const isVerticalContent = (contentType || '').toLowerCase().includes('pocket') || 
+                            (contentType || '').toLowerCase().includes('reel') || 
+                            (contentType || '').toLowerCase().includes('short') ||
+                            (videoTitle || '').toLowerCase().includes('pocket') ||
+                            (videoTitle || '').toLowerCase().includes('reel');
+
+  const [resizeMode, setResizeMode]     = useState(isVerticalContent ? ResizeMode.COVER : ResizeMode.CONTAIN);
+  const userOverrodeResizeRef           = useRef(false);
 
   const ratingShownRef = useRef(false);
   const [ratingModalVisible, setRatingModalVisible] = useState(false);
@@ -529,7 +536,7 @@ export default function PlayerScreen({ route, navigation }) {
   const shouldSeekRef = useRef(false);
   const lastRequestedQualityRef = useRef(null);
 
-  // helper to convert hh:mm:ss to seconds
+  // Helper to convert hh:mm:ss to seconds
   const timeToSeconds = (timeStr) => {
     if (!timeStr) return 0;
     const parts = String(timeStr).split(':').map(Number);
@@ -539,6 +546,35 @@ export default function PlayerScreen({ route, navigation }) {
       return parts[0] * 60 + parts[1];
     }
     return Number(timeStr) || 0;
+  };
+
+  // Normalize contentType string to standard key for category matching
+  const normalizeCategory = (cat) => {
+    if (!cat) return '';
+    const c = String(cat).toLowerCase().trim().replace(/[-_]/g, ' ');
+    if (c.includes('pocket') || c.includes('reel')) return 'pocket_reel';
+    if (c.includes('web')) return 'web_series';
+    if (c.includes('short') && c.includes('film')) return 'short_film';
+    if (c.includes('movie') || c.includes('cinema')) return 'movie';
+    if (c.includes('tv') || c.includes('show') || c.includes('season') || c.includes('episode')) return 'tv_show';
+    if (c.includes('live') || c.includes('sport') || c.includes('channel')) return 'live_tv';
+    return c;
+  };
+
+  // Check if an ad slot is targeted to the current video content type
+  const isAdSlotApplicable = (slot, contentCat) => {
+    if (!slot) return false;
+    const cats = slot.categories || slot.targetCategories || [];
+    if (!Array.isArray(cats) || cats.length === 0 || cats.includes('all') || cats.includes('All Categories')) {
+      return true;
+    }
+    if (!contentCat) return false; // Strict check: do not play ad on unselected/unknown category
+
+    const currentNormalized = normalizeCategory(contentCat);
+    return cats.some(c => {
+      const norm = normalizeCategory(c);
+      return norm === 'all' || norm === currentNormalized;
+    });
   };
 
   // helper to check if source is video file
@@ -553,12 +589,14 @@ export default function PlayerScreen({ route, navigation }) {
   const [isAdPlaying, setIsAdPlaying] = useState(false);
   const [adMediaUrl, setAdMediaUrl] = useState('');
   const [adClickUrl, setAdClickUrl] = useState('');
-  const [adSecondsLeft, setAdSecondsLeft] = useState(0);
+  const [adSecondsLeft, setAdSecondsLeft] = useState(5);
   const [userShouldSeeAds, setUserShouldSeeAds] = useState(false);
   const [vastPreRoll, setVastPreRoll] = useState(null);
   const playedAdsRef = useRef(new Set());
   const adTimerRef = useRef(null);
+  const wasPlayingBeforeAdRef = useRef(true);
 
+  // Fetch Ads settings on load
   useEffect(() => {
     const shouldSee = !isPremiumUser();
     setUserShouldSeeAds(shouldSee);
@@ -570,12 +608,12 @@ export default function PlayerScreen({ route, navigation }) {
             setAdsConfig(res.data);
             if (res.data.defaultAds === 'VAST, VMAP and IMA' && res.data.sourceUrl) {
               client.get(`/vast-proxy?url=${encodeURIComponent(res.data.sourceUrl)}`)
-                .then(vastRes => {
-                  if (vastRes.data && vastRes.data.mediaUrl) {
-                    setVastPreRoll(vastRes.data);
+                .then(vRes => {
+                  if (vRes.data?.mediaUrl) {
+                    setVastPreRoll(vRes.data);
                   }
                 })
-                .catch(err => console.warn('Failed to fetch VAST ad for mobile:', err));
+                .catch(err => console.warn('Failed to parse VAST ad for mobile:', err));
             }
           }
         })
@@ -583,26 +621,17 @@ export default function PlayerScreen({ route, navigation }) {
     }
   }, []);
 
-  const triggerAd = async (mediaUrl, clickUrl) => {
-    if (!mediaUrl) return;
+  const triggerAd = async (source, clickUrl, skipSec = 5) => {
+    if (!source) return;
 
-    // Resolve ad URL for mobile (handles localhost, local assets etc.)
-    let resolvedAdUrl = mediaUrl;
+    let resolvedAdUrl = source;
     try {
-      resolvedAdUrl = await resolveVideoUrl(mediaUrl, isVideoUrl(mediaUrl) ? 'HLS' : 'IMAGE', token);
+      resolvedAdUrl = await resolveVideoUrl(source, isVideoUrl(source) ? 'HLS' : 'IMAGE', token);
     } catch (e) {
       console.warn('[PlayerScreen] Failed to resolve ad media URL:', e);
     }
 
-    setAdMediaUrl(resolvedAdUrl);
-    setAdClickUrl(clickUrl || '#');
-    setIsAdPlaying(true);
-    setAdSecondsLeft(5);
-
-    // Pause main video playback and hide main video controls
-    setShouldPlayNextState(false);
-    setShowControls(false);
-
+    wasPlayingBeforeAdRef.current = status.isPlaying;
     if (videoRef.current) {
       try {
         await videoRef.current.pauseAsync();
@@ -611,8 +640,15 @@ export default function PlayerScreen({ route, navigation }) {
       }
     }
 
+    setAdMediaUrl(resolvedAdUrl);
+    setAdClickUrl(clickUrl || '#');
+    setAdSecondsLeft(skipSec);
+    setIsAdPlaying(true);
+    setShouldPlayNextState(false);
+    setShowControls(false);
+
     if (adTimerRef.current) clearInterval(adTimerRef.current);
-    let timeRemaining = 5;
+    let timeRemaining = skipSec;
     adTimerRef.current = setInterval(() => {
       timeRemaining -= 1;
       setAdSecondsLeft(timeRemaining);
@@ -623,11 +659,10 @@ export default function PlayerScreen({ route, navigation }) {
   };
 
   const skipAd = async () => {
+    if (adTimerRef.current) clearInterval(adTimerRef.current);
     setIsAdPlaying(false);
     setAdMediaUrl('');
     setAdClickUrl('');
-    if (adTimerRef.current) clearInterval(adTimerRef.current);
-    // Resume main video playback
     setShouldPlayNextState(true);
 
     if (videoRef.current) {
@@ -651,7 +686,7 @@ export default function PlayerScreen({ route, navigation }) {
     };
   }, []);
 
-  // Handle mobile ad triggers based on current playback position
+  // Handle mobile ad triggers based on current playback position & target category
   useEffect(() => {
     if (isAdPlaying || !userShouldSeeAds || !adsConfig || !status.positionMillis) return;
 
@@ -664,27 +699,51 @@ export default function PlayerScreen({ route, navigation }) {
       return;
     }
 
-    // 2. Handle Built-in Ads
+    // 2. Handle Built-in Ads (Array of slots or legacy fields)
     if (adsConfig.defaultAds === 'Built-in Advertisement') {
-      const checkAd = (num) => {
-        const source = adsConfig[`ad${num}Source`];
-        const timeStr = adsConfig[`ad${num}Timestart`];
-        const targetLink = adsConfig[`ad${num}TargetLink`];
+      if (Array.isArray(adsConfig.builtInAds) && adsConfig.builtInAds.length > 0) {
+        adsConfig.builtInAds.forEach((slot, idx) => {
+          if (!slot || !slot.source) return;
 
-        if (source && timeStr && !playedAdsRef.current.has(String(num))) {
-          const adStart = timeToSeconds(timeStr);
-          if (currentTime >= adStart && currentTime < adStart + 5) {
-            playedAdsRef.current.add(String(num));
-            triggerAd(source, targetLink);
+          // Strict target category check: NEVER play ad on unselected categories!
+          if (!isAdSlotApplicable(slot, contentType)) {
+            return;
           }
-        }
-      };
 
-      checkAd(1);
-      checkAd(2);
-      checkAd(3);
+          // Check all configured timestamps in the timestart schedule
+          const timeStrings = String(slot.timestart || '00:00:10').split(',').map(s => s.trim()).filter(Boolean);
+          timeStrings.forEach((timeStr, tIdx) => {
+            const adStart = timeToSeconds(timeStr);
+            const adKey = `slot_${idx}_${tIdx}_${adStart}`;
+            if (!playedAdsRef.current.has(adKey)) {
+              if (currentTime >= adStart && currentTime < adStart + 5) {
+                playedAdsRef.current.add(adKey);
+                triggerAd(slot.source, slot.targetLink, slot.skipAfter ?? 5);
+              }
+            }
+          });
+        });
+      } else {
+        const checkAd = (num) => {
+          const source = adsConfig[`ad${num}Source`];
+          const timeStr = adsConfig[`ad${num}Timestart`];
+          const targetLink = adsConfig[`ad${num}TargetLink`];
+
+          if (source && timeStr && !playedAdsRef.current.has(String(num))) {
+            const adStart = timeToSeconds(timeStr);
+            if (currentTime >= adStart && currentTime < adStart + 5) {
+              playedAdsRef.current.add(String(num));
+              triggerAd(source, targetLink);
+            }
+          }
+        };
+
+        checkAd(1);
+        checkAd(2);
+        checkAd(3);
+      }
     }
-  }, [status.positionMillis, adsConfig, vastPreRoll, userShouldSeeAds, isAdPlaying]);
+  }, [status.positionMillis, adsConfig, vastPreRoll, userShouldSeeAds, isAdPlaying, contentType]);
 
   const isPremiumUser = () => {
     if (!user) return false;
@@ -746,7 +805,8 @@ export default function PlayerScreen({ route, navigation }) {
   const toggleFullscreen = async () => {
     if (ScreenOrientation) {
       try {
-        const isVertical = (contentType || '').toLowerCase().includes('pocket') || 
+        const isVertical = isVerticalContent || 
+                           (contentType || '').toLowerCase().includes('pocket') || 
                            (contentType || '').toLowerCase().includes('reel') || 
                            (contentType || '').toLowerCase().includes('short') ||
                            (status?.naturalSize && status.naturalSize.height > status.naturalSize.width);
@@ -758,6 +818,7 @@ export default function PlayerScreen({ route, navigation }) {
 
         if (isVertical) {
           await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+          userOverrodeResizeRef.current = true;
           setResizeMode(prev => prev === ResizeMode.CONTAIN ? ResizeMode.COVER : ResizeMode.CONTAIN);
         } else {
           if (isLandscape) {
@@ -1105,6 +1166,11 @@ export default function PlayerScreen({ route, navigation }) {
     setStatus(s);
     if (s && s.didJustFinish) {
       navigation.goBack();
+    }
+    if (s && s.naturalSize && s.naturalSize.height > s.naturalSize.width) {
+      if (!userOverrodeResizeRef.current) {
+        setResizeMode(ResizeMode.COVER);
+      }
     }
   }, [navigation]);
 
@@ -1571,16 +1637,17 @@ export default function PlayerScreen({ route, navigation }) {
             {showControls && !isAdPlaying && (
               <TouchableOpacity 
                 onPress={() => {
+                  userOverrodeResizeRef.current = true;
                   setResizeMode(prev => {
+                    if (prev === ResizeMode.COVER) return ResizeMode.CONTAIN;
                     if (prev === ResizeMode.CONTAIN) return ResizeMode.STRETCH;
-                    if (prev === ResizeMode.STRETCH) return ResizeMode.COVER;
-                    return ResizeMode.CONTAIN;
+                    return ResizeMode.COVER;
                   });
                 }}
                 style={[styles.aspectRatioBtn, { position: 'absolute', top: pt + 55, left: ph, zIndex: 30 }]}
               >
                 <Text style={styles.aspectRatioText}>
-                  {resizeMode === ResizeMode.CONTAIN ? 'FIT' : resizeMode === ResizeMode.STRETCH ? 'STRETCH' : 'ZOOM'}
+                  {resizeMode === ResizeMode.COVER ? 'ZOOM' : resizeMode === ResizeMode.CONTAIN ? 'FIT' : 'STRETCH'}
                 </Text>
               </TouchableOpacity>
             )}
@@ -1994,7 +2061,7 @@ export default function PlayerScreen({ route, navigation }) {
                     await videoRef.current.playAsync().catch(() => null);
                   }
                 }}
-                disabled={ratingSubmitting}
+                disabled={Boolean(ratingSubmitting)}
               >
                 <Text style={styles.modalCancelBtnText}>Cancel</Text>
               </TouchableOpacity>
@@ -2002,7 +2069,7 @@ export default function PlayerScreen({ route, navigation }) {
               <TouchableOpacity
                 style={styles.modalSubmitBtn}
                 onPress={handleRateSubmit}
-                disabled={ratingSubmitting}
+                disabled={Boolean(ratingSubmitting)}
               >
                 {ratingSubmitting ? (
                   <ActivityIndicator size="small" color="#000000" />

@@ -2,7 +2,7 @@
   "expo": {
     "name": "Lemo OTT",
     "slug": "lemo-ott-mobile",
-    "version": "1.0.1",
+    "version": "1.0.9",
     "scheme": "lemoott",
     "icon": "./assets/icon.png",
     "orientation": "default",

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useMemo } from 'react';
 import {
   StyleSheet,
   Text,
@@ -12,11 +12,19 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import { ArrowLeft, Ticket, Check, CreditCard, ShieldCheck } from 'lucide-react-native';
 import { AuthContext } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import client from '../api/client';
 import CustomAlert from '../components/CustomAlert';
 
 export default function CheckoutScreen({ route, navigation }) {
-  const { planId, planName, price, duration } = route.params;
+  const { theme } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
+  const rawParams = route.params || {};
+  const plan = rawParams.plan || rawParams;
+  const planId = plan.planId || plan._id || plan.id || rawParams.planId;
+  const planName = plan.planName || plan.name || rawParams.planName || 'Subscription Plan';
+  const price = plan.price !== undefined ? plan.price : rawParams.price;
+  const duration = plan.duration || rawParams.duration || 'Month';
   const { user, setUser, logout, updateUser } = useContext(AuthContext);
 
   const numericPrice = parseFloat(price ? price.toString().replace(/[^\d.]/g, '') : '0') || 0;
@@ -302,7 +310,7 @@ export default function CheckoutScreen({ route, navigation }) {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#b3d332" />
+        <ActivityIndicator size="large" color={theme.primary} />
       </View>
     );
   }
@@ -311,7 +319,7 @@ export default function CheckoutScreen({ route, navigation }) {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <ArrowLeft color="#ffffff" size={24} />
+          <ArrowLeft color={theme.text} size={24} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Checkout</Text>
       </View>
@@ -339,7 +347,7 @@ export default function CheckoutScreen({ route, navigation }) {
                 appliedCoupon ? styles.disabledCouponInput : null
               ]}
               placeholder="Enter coupon code"
-              placeholderTextColor="#666"
+              placeholderTextColor={theme.textSecondary}
               autoCapitalize="characters"
               autoCorrect={false}
               value={couponCode}
@@ -357,7 +365,7 @@ export default function CheckoutScreen({ route, navigation }) {
               <TouchableOpacity 
                 style={styles.applyBtn} 
                 onPress={handleApplyCoupon}
-                disabled={couponLoading}
+                disabled={Boolean(couponLoading)}
               >
                 {couponLoading ? (
                   <ActivityIndicator color="#000" size="small" />
@@ -370,7 +378,7 @@ export default function CheckoutScreen({ route, navigation }) {
           
           {appliedCoupon ? (
             <Text style={styles.couponSuccessText}>
-              Success! {appliedCouponPercentage}% discount applied.
+              ✓ Coupon applied successfully! {appliedCoupon.discountPercentage ? `${appliedCoupon.discountPercentage}% off` : `₹${appliedCoupon.discountAmount} off`}
             </Text>
           ) : null}
           
@@ -402,8 +410,8 @@ export default function CheckoutScreen({ route, navigation }) {
           <Text style={styles.cardLabel}>Select Payment Option</Text>
           {gateways.length === 0 ? (
             <View style={styles.mockGatewayOption}>
-              <CreditCard color="#8e8e93" size={24} />
-              <Text style={{ color: '#fff', marginLeft: 12 }}>Mock payment enabled (No gateways configured)</Text>
+              <CreditCard color={theme.textSecondary} size={24} />
+              <Text style={{ color: theme.text, marginLeft: 12 }}>Mock payment enabled (No gateways configured)</Text>
             </View>
           ) : (
             gateways.map((gw) => (
@@ -433,8 +441,8 @@ export default function CheckoutScreen({ route, navigation }) {
           </View>
           {appliedCoupon ? (
             <View style={styles.billRow}>
-              <Text style={[styles.billText, { color: '#b3d332' }]}>Discount ({appliedCouponPercentage}%)</Text>
-              <Text style={[styles.billValue, { color: '#b3d332', fontWeight: '800' }]}>- ₹ {discountAmount.toFixed(2)}</Text>
+              <Text style={[styles.billText, { color: theme.primary }]}>Discount ({appliedCouponPercentage}%)</Text>
+              <Text style={[styles.billValue, { color: theme.primary, fontWeight: '800' }]}>- ₹ {discountAmount.toFixed(2)}</Text>
             </View>
           ) : null}
           <View style={styles.billRow}>
@@ -450,7 +458,7 @@ export default function CheckoutScreen({ route, navigation }) {
 
         {/* Secure badge */}
         <View style={styles.secureBadge}>
-          <ShieldCheck color="#b3d332" size={16} />
+          <ShieldCheck color={theme.primary} size={16} />
           <Text style={styles.secureText}>256-bit Secure SSL Encrypted Payments</Text>
         </View>
 
@@ -458,7 +466,7 @@ export default function CheckoutScreen({ route, navigation }) {
         <TouchableOpacity 
           style={styles.payBtn} 
           onPress={handleCheckout}
-          disabled={paymentProcessing}
+          disabled={Boolean(paymentProcessing)}
         >
           {paymentProcessing ? (
             <ActivityIndicator color="#000000" size="small" />
@@ -480,14 +488,14 @@ export default function CheckoutScreen({ route, navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: theme.background,
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: theme.background,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -496,6 +504,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
+    backgroundColor: theme.headerBackground,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.cardBorder,
   },
   backBtn: {
     marginRight: 16,
@@ -503,20 +514,20 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '900',
-    color: '#ffffff',
+    color: theme.text,
   },
   webHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#121212',
+    backgroundColor: theme.headerBackground,
     borderBottomWidth: 1,
-    borderBottomColor: '#1f1f1f',
+    borderBottomColor: theme.cardBorder,
     gap: 16,
   },
   webHeaderTitle: {
-    color: '#ffffff',
+    color: theme.text,
     fontSize: 16,
     fontWeight: '800',
   },
@@ -524,17 +535,20 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   card: {
-    backgroundColor: '#121212',
-    borderColor: '#1f1f1f',
+    backgroundColor: theme.cardBackground,
+    borderColor: theme.cardBorder,
     borderWidth: 1,
     borderRadius: 16,
     padding: 20,
     marginBottom: 20,
+    width: '100%',
+    maxWidth: 500,
+    alignSelf: 'center',
   },
   cardLabel: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#8e8e93',
+    color: theme.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 14,
@@ -547,17 +561,17 @@ const styles = StyleSheet.create({
   planName: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#ffffff',
+    color: theme.text,
   },
   planDuration: {
     fontSize: 13,
-    color: '#8e8e93',
+    color: theme.textSecondary,
     marginTop: 2,
   },
   originalPrice: {
     fontSize: 22,
     fontWeight: '900',
-    color: '#b3d332',
+    color: theme.primary,
   },
   couponInputRow: {
     flexDirection: 'row',
@@ -565,17 +579,17 @@ const styles = StyleSheet.create({
   },
   couponInput: {
     flex: 1,
-    backgroundColor: '#1a1b1e',
-    borderColor: '#2a2c31',
+    backgroundColor: theme.cardSecondary,
+    borderColor: theme.cardBorder,
     borderWidth: 1,
     borderRadius: 8,
-    color: '#ffffff',
+    color: theme.text,
     paddingHorizontal: 12,
     fontSize: 14,
     height: 44,
   },
   applyBtn: {
-    backgroundColor: '#b3d332',
+    backgroundColor: theme.primary,
     borderRadius: 8,
     paddingHorizontal: 16,
     height: 44,
@@ -588,9 +602,9 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   disabledCouponInput: {
-    backgroundColor: '#0a0a0c',
-    color: '#8e8e93',
-    borderColor: '#1f1f23',
+    backgroundColor: theme.cardSecondary,
+    color: theme.textSecondary,
+    borderColor: theme.cardBorder,
   },
   removeBtn: {
     backgroundColor: '#ff453a',
@@ -606,7 +620,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   couponSuccessText: {
-    color: '#b3d332',
+    color: theme.primary,
     fontSize: 13,
     fontWeight: '600',
     marginTop: 8,
@@ -620,7 +634,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   availableCouponsTitle: {
-    color: '#8e8e93',
+    color: theme.textSecondary,
     fontSize: 11,
     fontWeight: '800',
     textTransform: 'uppercase',
@@ -632,13 +646,13 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   couponCard: {
-    backgroundColor: '#1a1b1e',
+    backgroundColor: theme.cardSecondary,
     borderRadius: 8,
     overflow: 'hidden',
   },
   couponDottedBorder: {
     borderWidth: 1.5,
-    borderColor: '#b3d332',
+    borderColor: theme.primary,
     borderStyle: 'dashed',
     borderRadius: 8,
     paddingHorizontal: 14,
@@ -647,13 +661,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   couponCodeText: {
-    color: '#ffffff',
+    color: theme.text,
     fontSize: 14,
     fontWeight: '900',
     letterSpacing: 0.5,
   },
   couponDiscountPercent: {
-    color: '#b3d332',
+    color: theme.primary,
     fontSize: 11,
     fontWeight: '800',
     marginTop: 2,
@@ -666,23 +680,23 @@ const styles = StyleSheet.create({
   gatewayOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1a1b1e',
-    borderColor: '#2a2c31',
+    backgroundColor: theme.cardSecondary,
+    borderColor: theme.cardBorder,
     borderWidth: 1,
     borderRadius: 8,
     padding: 14,
     marginBottom: 10,
   },
   activeGatewayOption: {
-    borderColor: '#b3d332',
-    backgroundColor: 'rgba(179, 211, 50, 0.05)',
+    borderColor: theme.primary,
+    backgroundColor: theme.cardSecondary,
   },
   radioOuter: {
     width: 20,
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: '#8e8e93',
+    borderColor: theme.textSecondary,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -691,10 +705,10 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#b3d332',
+    backgroundColor: theme.primary,
   },
   gatewayName: {
-    color: '#ffffff',
+    color: theme.text,
     fontSize: 14,
     fontWeight: '700',
   },
@@ -704,26 +718,26 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   billText: {
-    color: '#8e8e93',
+    color: theme.textSecondary,
     fontSize: 14,
   },
   billValue: {
-    color: '#ffffff',
+    color: theme.text,
     fontSize: 14,
     fontWeight: '600',
   },
   billDivider: {
     height: 1,
-    backgroundColor: '#1f1f1f',
+    backgroundColor: theme.cardBorder,
     marginVertical: 10,
   },
   totalLabel: {
-    color: '#ffffff',
+    color: theme.text,
     fontSize: 15,
     fontWeight: '800',
   },
   totalValue: {
-    color: '#b3d332',
+    color: theme.primary,
     fontSize: 18,
     fontWeight: '900',
   },
@@ -735,20 +749,23 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   secureText: {
-    color: '#8e8e93',
+    color: theme.textSecondary,
     fontSize: 11,
     fontWeight: '600',
   },
   payBtn: {
-    backgroundColor: '#b3d332',
+    backgroundColor: theme.primary,
     borderRadius: 8,
     paddingVertical: 14,
     alignItems: 'center',
-    shadowColor: '#b3d332',
+    shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 5,
     elevation: 3,
+    width: '100%',
+    maxWidth: 500,
+    alignSelf: 'center',
   },
   payBtnText: {
     color: '#000000',
@@ -756,3 +773,4 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
 });
+

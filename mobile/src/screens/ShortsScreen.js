@@ -11,16 +11,19 @@ import {
   Platform
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Clapperboard, Heart, Eye, Clock, Play, Pause } from 'lucide-react-native';
 import { useIsFocused } from '@react-navigation/native';
 import client from '../api/client';
+import OfflineView from '../components/OfflineView';
 
 export default function ShortsScreen({ navigation, route }) {
   const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
   const [shorts, setShorts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isOffline, setIsOffline] = useState(false);
   const [screenHeight, setScreenHeight] = useState(0);
   const [activeVideoIndex, setActiveVideoIndex] = useState(0);
   const [playbackStatus, setPlaybackStatus] = useState({ positionMillis: 0, durationMillis: 0 });
@@ -33,22 +36,26 @@ export default function ShortsScreen({ navigation, route }) {
   const currentHeight = screenHeight || height;
   const aspectRatio = width / currentHeight;
   const isTablet = aspectRatio > 0.65;
+  const bottomClearance = Math.max(insets.bottom, Platform.OS === 'ios' ? 16 : 10) + 78;
+
+  const fetchShorts = async () => {
+    try {
+      const res = await client.get('/shorts');
+      if (res && res.data) {
+        // Only show active status shorts
+        const activeShorts = res.data.filter(s => !s.status || s.status.toLowerCase() === 'active');
+        setShorts(activeShorts);
+        setIsOffline(false);
+      }
+    } catch (err) {
+      console.error('Error fetching shorts:', err);
+      setIsOffline(true);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchShorts = async () => {
-      try {
-        const res = await client.get('/shorts');
-        if (res && res.data) {
-          // Only show active status shorts
-          const activeShorts = res.data.filter(s => !s.status || s.status.toLowerCase() === 'active');
-          setShorts(activeShorts);
-        }
-      } catch (err) {
-        console.error('Error fetching shorts:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchShorts();
   }, []);
 
@@ -179,6 +186,17 @@ export default function ShortsScreen({ navigation, route }) {
     );
   }
 
+  if (isOffline && shorts.length === 0) {
+    return (
+      <OfflineView
+        onRetry={async () => {
+          setLoading(true);
+          await fetchShorts();
+        }}
+      />
+    );
+  }
+
   if (shorts.length === 0) {
     return (
       <View style={styles.darkContainer}>
@@ -238,7 +256,7 @@ export default function ShortsScreen({ navigation, route }) {
                   )}
 
                   {/* Right Interaction Actions Sidebar */}
-                  <View style={styles.rightActionsContainer}>
+                  <View style={[styles.rightActionsContainer, { bottom: bottomClearance }]}>
                     <View style={{ alignItems: 'center' }}>
                       <TouchableOpacity style={styles.actionButton} onPress={() => handleLike(item)}>
                         <Heart 
@@ -259,7 +277,7 @@ export default function ShortsScreen({ navigation, route }) {
                   </View>
 
                   {/* Title, Description & Real-Time Playback Time Overlay */}
-                  <View style={styles.overlayTextContainer}>
+                  <View style={[styles.overlayTextContainer, { bottom: bottomClearance }]}>
                     <Text style={styles.shortTitle}>@{item.title || 'Short'}</Text>
                     {item.description ? <Text style={styles.shortDesc}>{item.description}</Text> : null}
                     
@@ -322,9 +340,9 @@ const styles = StyleSheet.create({
   },
   overlayTextContainer: {
     position: 'absolute',
-    bottom: 35,
-    left: 20,
-    right: 80,
+    bottom: 95,
+    left: 16,
+    right: 75,
     zIndex: 10,
   },
   shortTitle: {
@@ -379,10 +397,10 @@ const styles = StyleSheet.create({
   },
   rightActionsContainer: {
     position: 'absolute',
-    bottom: 50,
-    right: 16,
+    bottom: 95,
+    right: 12,
     alignItems: 'center',
-    gap: 20,
+    gap: 16,
     zIndex: 20,
   },
   actionButton: {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useMemo } from 'react';
 import {
   StyleSheet,
   Text,
@@ -15,8 +15,12 @@ import { ArrowLeft, Tv, Crown } from 'lucide-react-native';
 import client from '../api/client';
 import { formatImageUrl } from '../config/api';
 import { AuthContext } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
+import OfflineView from '../components/OfflineView';
 
 export default function LiveTVScreen({ navigation }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
   const { user } = useContext(AuthContext);
 
   const isPremiumUser = () => {
@@ -39,6 +43,7 @@ export default function LiveTVScreen({ navigation }) {
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
   const [channels, setChannels] = useState([]);
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -52,8 +57,10 @@ export default function LiveTVScreen({ navigation }) {
       const activeChannels = (channelsRes.data || []).filter(c => c && c.status === 'Active');
       setChannels(activeChannels);
       setCategories(categoriesRes.data || []);
+      setIsOffline(false);
     } catch (error) {
       console.error('Error fetching Live TV data:', error);
+      setIsOffline(true);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -80,6 +87,7 @@ export default function LiveTVScreen({ navigation }) {
     return (
       <TouchableOpacity
         style={styles.channelRow}
+        activeOpacity={0.8}
         onPress={() => navigation.navigate('Details', { id: item._id, type: 'live' })}
       >
         <View style={{ position: 'relative' }}>
@@ -118,11 +126,22 @@ export default function LiveTVScreen({ navigation }) {
     );
   };
 
-  if (loading) {
+  if (loading && !refreshing) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#b3d332" />
+        <ActivityIndicator size="large" color={theme.primary} />
       </View>
+    );
+  }
+
+  if (isOffline && channels.length === 0) {
+    return (
+      <OfflineView
+        onRetry={async () => {
+          setLoading(true);
+          await fetchData();
+        }}
+      />
     );
   }
 
@@ -131,7 +150,7 @@ export default function LiveTVScreen({ navigation }) {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <ArrowLeft color="#ffffff" size={24} />
+          <ArrowLeft color={theme.text} size={24} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Live TV Channels</Text>
       </View>
@@ -163,7 +182,7 @@ export default function LiveTVScreen({ navigation }) {
         renderItem={renderChannelItem}
         keyExtractor={(item) => item._id}
         contentContainerStyle={styles.listContent}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#b3d332" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>No channels available in this category.</Text>
@@ -174,14 +193,14 @@ export default function LiveTVScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: theme.background,
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: theme.background,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -190,6 +209,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
+    backgroundColor: theme.headerBackground,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.cardBorder,
   },
   backBtn: {
     marginRight: 16,
@@ -197,31 +219,32 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '900',
-    color: '#ffffff',
+    color: theme.text,
   },
   categoriesWrapper: {
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#1a1a1a',
+    borderBottomColor: theme.cardBorder,
+    backgroundColor: theme.background,
   },
   categoriesScroll: {
     paddingHorizontal: 12,
   },
   categoryBtn: {
-    backgroundColor: '#1c1c1e',
+    backgroundColor: theme.cardBackground,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
     marginRight: 8,
     borderWidth: 1,
-    borderColor: '#2a2c31',
+    borderColor: theme.cardBorder,
   },
   activeCategoryBtn: {
-    backgroundColor: '#b3d332',
-    borderColor: '#b3d332',
+    backgroundColor: theme.primary,
+    borderColor: theme.primary,
   },
   categoryText: {
-    color: '#8e8e93',
+    color: theme.textSecondary,
     fontSize: 13,
     fontWeight: '700',
   },
@@ -233,8 +256,8 @@ const styles = StyleSheet.create({
   },
   channelRow: {
     flexDirection: 'row',
-    backgroundColor: '#121212',
-    borderColor: '#1f1f1f',
+    backgroundColor: theme.cardBackground,
+    borderColor: theme.cardBorder,
     borderWidth: 1,
     borderRadius: 12,
     padding: 10,
@@ -245,7 +268,7 @@ const styles = StyleSheet.create({
     width: 90,
     height: 54,
     borderRadius: 6,
-    backgroundColor: '#1c1c1e',
+    backgroundColor: theme.cardSecondary,
   },
   channelInfo: {
     flex: 1,
@@ -254,12 +277,12 @@ const styles = StyleSheet.create({
   channelName: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#ffffff',
+    color: theme.text,
     marginBottom: 4,
   },
   categoryName: {
     fontSize: 12,
-    color: '#8e8e93',
+    color: theme.textSecondary,
   },
   liveIndicator: {
     flexDirection: 'row',
@@ -283,7 +306,7 @@ const styles = StyleSheet.create({
     paddingVertical: 80,
   },
   emptyText: {
-    color: '#8e8e93',
+    color: theme.textSecondary,
     fontSize: 14,
     textAlign: 'center',
   },
@@ -307,3 +330,4 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
 });
+

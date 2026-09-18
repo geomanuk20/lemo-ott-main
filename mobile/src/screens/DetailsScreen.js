@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useRef } from 'react';
+import React, { useState, useEffect, useContext, useRef, useMemo } from 'react';
 import {
   StyleSheet,
   Text,
@@ -16,12 +16,14 @@ import {
   Easing
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Play, Bookmark, BookmarkCheck, ArrowLeft, Clock, Calendar, Globe, Crown, Eye, Share2, Star } from 'lucide-react-native';
+import { Play, Bookmark, BookmarkCheck, ArrowLeft, Clock, Calendar, Globe, Crown, Eye, Share2, Star, Lock } from 'lucide-react-native';
 import Svg, { Circle } from 'react-native-svg';
 import CustomAlert from '../components/CustomAlert';
 import { AuthContext } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import client from '../api/client';
 import { formatImageUrl, PRODUCTION_URL } from '../config/api';
+import OfflineView from '../components/OfflineView';
 
 const stripHtml = (html) => {
   if (!html) return '';
@@ -37,7 +39,27 @@ const stripHtml = (html) => {
     .trim();
 };
 
+const timeAgo = (dateStr) => {
+  if (!dateStr) return '2M AGO';
+  try {
+    const now = new Date();
+    const past = new Date(dateStr);
+    const diffMs = Math.max(0, now - past);
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    if (diffDays < 1) return 'TODAY';
+    if (diffDays < 30) return `${diffDays}D AGO`;
+    const diffMonths = Math.floor(diffDays / 30);
+    if (diffMonths < 12) return `${diffMonths}M AGO`;
+    const diffYears = Math.floor(diffMonths / 12);
+    return `${diffYears}Y AGO`;
+  } catch (e) {
+    return '2M AGO';
+  }
+};
+
 const AvatarImage = ({ item, style }) => {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
   const name = typeof item === 'object' ? item.name : (item || '');
   const imageUrl = typeof item === 'object' && item.image ? formatImageUrl(item.image) : null;
   const [hasError, setHasError] = useState(!imageUrl || imageUrl.includes('placehold.co'));
@@ -109,6 +131,8 @@ const formatReleaseDate = (dateString) => {
 };
 
 const IMDBRatingCircle = ({ rating }) => {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
   const ratingVal = parseFloat(rating || '7.5');
   const normalizedRating = Math.min(Math.max(ratingVal, 0), 10);
   const size = 44;
@@ -125,7 +149,7 @@ const IMDBRatingCircle = ({ rating }) => {
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke="rgba(255, 255, 255, 0.1)"
+          stroke={theme.isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)"}
           strokeWidth={strokeWidth}
           fill="transparent"
         />
@@ -134,7 +158,7 @@ const IMDBRatingCircle = ({ rating }) => {
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke="#b3d332"
+          stroke={theme.primary}
           strokeWidth={strokeWidth}
           fill="transparent"
           strokeDasharray={circumference}
@@ -177,12 +201,15 @@ const getNormalizedType = (rawType) => {
 };
 
 export default function DetailsScreen({ route, navigation }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
   const { id } = route.params;
   const type = getNormalizedType(route.params.type);
   const { user } = useContext(AuthContext);
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const isLandscape = windowWidth > windowHeight;
   const heroHeight = isLandscape ? windowHeight * 0.75 : windowWidth * 0.5625;
+
 
   const isPremiumUser = () => {
     if (!user) return false;
@@ -221,6 +248,8 @@ export default function DetailsScreen({ route, navigation }) {
   const [episodes, setEpisodes] = useState([]);
   const [selectedSeason, setSelectedSeason] = useState(null);
   const [related, setRelated] = useState([]);
+  const [selectedEpisodeId, setSelectedEpisodeId] = useState(route.params?.selectedEpisodeId || null);
+  const [savedEpisodeIds, setSavedEpisodeIds] = useState([]);
   const [inWatchlist, setInWatchlist] = useState(false);
   const [watchlistLoading, setWatchlistLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('Failed to load content details.');
@@ -300,12 +329,39 @@ export default function DetailsScreen({ route, navigation }) {
 
         if (relatedEndpoint) {
           try {
-            const relatedRes = await client.get(relatedEndpoint);
+            const [relatedRes, menuRes] = await Promise.all([
+              client.get(relatedEndpoint),
+              client.get('/menu-settings').catch(() => ({ data: null }))
+            ]);
             if (relatedRes && relatedRes.data) {
               const relatedResult = Array.isArray(relatedRes.data) ? relatedRes.data : [];
               const parentId = detailData?.showId ? (typeof detailData.showId === 'object' ? (detailData.showId._id || detailData.showId.id) : detailData.showId) : '';
+              const mSettings = menuRes?.data;
+
+              const isItemActive = (item) => {
+                if (!item) return false;
+                if (item.status && item.status.toLowerCase() !== 'active') return false;
+                if (!mSettings) return true;
+
+                const ct = (item.contentType || '').toLowerCase().trim();
+                const isShortFilm = ct === 'short film' || ct === 'short-film';
+                const isShortWeb = ct === 'short web series' || ct === 'short-web-series' || ct === 'web-series';
+                const isPocketReel = ct === 'pocket reel series' || ct === 'pocket-reel-series' || ct === 'pocket reels' || ct === 'pocket-reels' || ct === 'pocket reel';
+                const isMovie = !isShortFilm && (ct === 'movie' || (item.duration && !item.seasons));
+                const isTvShow = !isShortWeb && !isPocketReel && !isMovie && (ct === 'tv show' || ct === 'show' || ct === '' || !item.contentType);
+
+                if (isShortFilm && mSettings.shortFilms?.toUpperCase() === 'OFF') return false;
+                if (isMovie && mSettings.movies?.toUpperCase() === 'OFF') return false;
+                if (isTvShow && mSettings.shows?.toUpperCase() === 'OFF') return false;
+                if (isShortWeb && mSettings.webSeries?.toUpperCase() === 'OFF') return false;
+                if (isPocketReel && mSettings.pocketReelSeries?.toUpperCase() === 'OFF') return false;
+                if (ct === 'sports' && mSettings.sports?.toUpperCase() === 'OFF') return false;
+                if (ct === 'live tv' && mSettings.liveTv?.toUpperCase() === 'OFF') return false;
+                return true;
+              };
+
               const finalRelated = relatedResult
-                .filter(item => item._id !== id && item._id !== parentId && item.status === 'Active')
+                .filter(item => item._id !== id && item._id !== parentId && isItemActive(item))
                 .slice(0, 6);
               setRelated(finalRelated);
             }
@@ -338,8 +394,28 @@ export default function DetailsScreen({ route, navigation }) {
             client.get(`/ratings/status?userId=${user.id}&contentId=${id}`).catch(() => null)
           ]);
           if (wlRes && wlRes.data) {
-            const isMatch = wlRes.data.some(item => item._id === id);
-            setInWatchlist(isMatch);
+            const wlItems = Array.isArray(wlRes.data) ? wlRes.data : [];
+            const isEntireSeriesSaved = wlItems.some(item => 
+              ((item.contentId && item.contentId.toString() === id.toString()) ||
+               (item.showId && item.showId.toString() === id.toString()) ||
+               (item._id && item._id.toString() === id.toString())) &&
+              !item.selectedEpisodeId
+            );
+            setInWatchlist(isEntireSeriesSaved);
+            
+            const epIds = wlItems
+              .filter(item => 
+                ((item.contentId && item.contentId.toString() === id.toString()) ||
+                 (item.showId && item.showId.toString() === id.toString()) ||
+                 (item._id && item._id.toString().startsWith(id.toString()))) &&
+                item.selectedEpisodeId
+              )
+              .map(item => item.selectedEpisodeId.toString());
+            setSavedEpisodeIds(epIds);
+
+            if (epIds.length > 0 && !selectedEpisodeId) {
+              setSelectedEpisodeId(epIds[0]);
+            }
           }
           if (rateRes && rateRes.data && rateRes.data.rated) {
             setUserRating(rateRes.data.rating);
@@ -372,14 +448,49 @@ export default function DetailsScreen({ route, navigation }) {
       const response = await client.post('/watchlist/toggle', {
         userId: user.id,
         contentId: id,
-        contentType: type
+        contentType: type,
+        selectedEpisodeId: null
       });
+
       setInWatchlist(response.data.status === 'added');
-      showNotification(response.data.message);
     } catch (error) {
       console.error('Error toggling watchlist:', error);
     } finally {
       setWatchlistLoading(false);
+    }
+  };
+
+  const handleToggleEpisodeWatchlist = async (episode, idx) => {
+    if (!user || !user.id) {
+      navigation.navigate('Login');
+      return;
+    }
+    const epNum = idx + 1;
+    const epIdStr = episode._id.toString();
+
+    try {
+      const response = await client.post('/watchlist/toggle', {
+        userId: user.id,
+        contentId: id,
+        contentType: type,
+        selectedEpisodeId: episode._id,
+        selectedEpisodeNumber: epNum,
+        selectedEpisodeTitle: episode.title || ''
+      });
+
+      if (response.data.status === 'added') {
+        setSavedEpisodeIds(prev => [...prev.filter(x => x !== epIdStr), epIdStr]);
+        setInWatchlist(true);
+        setSelectedEpisodeId(episode._id);
+      } else {
+        const nextSaved = savedEpisodeIds.filter(x => x !== epIdStr);
+        setSavedEpisodeIds(nextSaved);
+        if (nextSaved.length === 0) {
+          setInWatchlist(false);
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling episode watchlist:', error);
     }
   };
 
@@ -495,13 +606,13 @@ export default function DetailsScreen({ route, navigation }) {
                        (detail?.contentType || '').toLowerCase().includes('series');
 
     if (isShowType && currentEpisodes.length > 0) {
-      handlePlayEpisode(currentEpisodes[0]);
+      const targetEp = (selectedEpisodeId && currentEpisodes.find(e => e._id === selectedEpisodeId)) || currentEpisodes[0];
+      handlePlayEpisode(targetEp);
       return;
     }
 
     // Gating check for Paid content
-    const isPaidContent = checkIsPaid(detail, type);
-    if (isPaidContent && !isPremiumUser()) {
+    if (checkIsPaid(detail, type) && !isPremiumUser()) {
       showAlert(
         'Premium Content',
         'This content is only available to Premium subscribers. Upgrade your plan to watch!',
@@ -540,7 +651,7 @@ export default function DetailsScreen({ route, navigation }) {
       videoFile1080: detail.videoFile1080 || '',
       videoFile720: detail.videoFile720 || '',
       videoFile480: detail.videoFile480 || '',
-      contentType: type,
+      contentType: detail?.contentType || type,
       subtitles: detail.subtitles || [],
       subtitlesActive: detail.subtitlesActive || 'Inactive'
     });
@@ -548,6 +659,19 @@ export default function DetailsScreen({ route, navigation }) {
 
   const handlePlayEpisode = (episode) => {
     console.log('[DetailsScreen] Playing Episode:', episode);
+    if (episode && episode._id) {
+      setSelectedEpisodeId(episode._id);
+      if (user && user.id) {
+        const epIdx = currentEpisodes.findIndex(e => e._id === episode._id);
+        client.post('/watchlist/update-episode', {
+          userId: user.id,
+          contentId: id,
+          selectedEpisodeId: episode._id,
+          selectedEpisodeNumber: epIdx >= 0 ? epIdx + 1 : 1,
+          selectedEpisodeTitle: episode.title || ''
+        }).catch(() => {});
+      }
+    }
 
     const isScheduled = episode.isScheduled && episode.scheduledPublishTime && new Date(episode.scheduledPublishTime) > new Date();
     if (isScheduled) {
@@ -618,6 +742,7 @@ export default function DetailsScreen({ route, navigation }) {
       videoFile1080: episode.videoFile1080 || '',
       videoFile720: episode.videoFile720 || '',
       videoFile480: episode.videoFile480 || '',
+      contentType: detail?.contentType || type,
       subtitles: episode.subtitles || [],
       subtitlesActive: episode.subtitlesActive || 'Inactive'
     });
@@ -634,13 +759,26 @@ export default function DetailsScreen({ route, navigation }) {
   if (!detail) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>{errorMsg}</Text>
-          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-            <ArrowLeft color="#ffffff" size={20} />
-            <Text style={{ color: '#fff', marginLeft: 8 }}>Go Back</Text>
-          </TouchableOpacity>
-        </View>
+        <OfflineView
+          title="Content Unavailable"
+          message={errorMsg || "Please connect to the internet and try again."}
+          onRetry={async () => {
+            setLoading(true);
+            const endpoint = type === 'movie' ? `/movies/${id}` :
+                             type === 'show' ? `/shows/${id}` :
+                             type === 'sports' ? `/sports-videos/${id}` :
+                             type === 'live' ? `/tv-channels/${id}` :
+                             type === 'new-release' ? `/new-releases/${id}` : `/shows/${id}`;
+            try {
+              const res = await client.get(endpoint);
+              setDetail(res.data);
+            } catch (err) {
+              console.error('Retry error:', err);
+            } finally {
+              setLoading(false);
+            }
+          }}
+        />
       </SafeAreaView>
     );
   }
@@ -651,9 +789,19 @@ export default function DetailsScreen({ route, navigation }) {
     : '';
 
   // Filter episodes for the currently selected season
-  const isPocketOrShort = detail?.contentType?.toLowerCase().includes('short') || 
-                          detail?.contentType?.toLowerCase().includes('pocket') || 
-                          !seasons || seasons.length === 0;
+  const rawContentType = (detail?.contentType || type || '').toLowerCase().trim();
+  const isShortFilm = rawContentType === 'short film' || rawContentType === 'short-film' || rawContentType === 'short_film';
+  const isMovie = !isShortFilm && (rawContentType === 'movie' || rawContentType === 'movies' || (type === 'movie' && episodes.length === 0));
+  const isPocketOrWebSeries = !isShortFilm && (rawContentType.includes('pocket') || rawContentType.includes('web-series') || rawContentType === 'short web series');
+  const isSeriesOrShow = !isShortFilm && !isMovie && (
+    type === 'show' || 
+    episodes.length > 0 || 
+    rawContentType.includes('series') || 
+    rawContentType.includes('show') || 
+    rawContentType.includes('pocket')
+  );
+
+  const isPocketOrShort = isPocketOrWebSeries || (!seasons || seasons.length === 0);
 
   const currentEpisodes = episodes.filter(ep => {
     if (ep.isScheduled && ep.scheduledPublishTime && new Date(ep.scheduledPublishTime) > new Date()) {
@@ -750,9 +898,20 @@ export default function DetailsScreen({ route, navigation }) {
             <TouchableOpacity style={styles.mainPlayBtn} onPress={handlePlayMainVideo} activeOpacity={0.85}>
               <Play color="#000000" size={18} fill="#000000" />
               <Text style={styles.mainPlayBtnText}>
-                {type === 'show' || detail?.contentType?.toLowerCase().includes('pocket') || detail?.contentType?.toLowerCase().includes('series')
-                  ? (currentEpisodes.length > 0 ? (isPocketOrShort ? 'Play Ep-1' : 'Play S1 E1') : 'Play Ep-1')
-                  : 'Play'}
+                {(() => {
+                  if (type === 'show' || detail?.contentType?.toLowerCase().includes('pocket') || detail?.contentType?.toLowerCase().includes('series')) {
+                    if (currentEpisodes.length > 0) {
+                      const targetEp = currentEpisodes.find(e => e._id === selectedEpisodeId);
+                      if (targetEp) {
+                        const idx = currentEpisodes.findIndex(e => e._id === selectedEpisodeId);
+                        return isPocketOrShort ? `Play Ep-${idx + 1}` : `Play Ep-${idx + 1}`;
+                      }
+                      return isPocketOrShort ? 'Play Ep-1' : 'Play S1 E1';
+                    }
+                    return 'Play Ep-1';
+                  }
+                  return 'Play';
+                })()}
               </Text>
             </TouchableOpacity>
           )}
@@ -804,17 +963,17 @@ export default function DetailsScreen({ route, navigation }) {
               <TouchableOpacity 
                 style={styles.watchlistBtn} 
                 onPress={handleWatchlistToggle}
-                disabled={watchlistLoading}
+                disabled={Boolean(watchlistLoading)}
               >
                 {inWatchlist ? (
                   <>
-                    <BookmarkCheck color="#b3d332" size={18} />
-                    <Text style={[styles.watchlistBtnText, { color: '#b3d332' }]}>In Watchlist</Text>
+                    <BookmarkCheck color={theme.primary} size={18} />
+                    <Text style={[styles.watchlistBtnText, { color: theme.primary }]}>In Watchlist</Text>
                   </>
                 ) : (
                   <>
-                    <Bookmark color="#ffffff" size={18} />
-                    <Text style={styles.watchlistBtnText}>Add Watchlist</Text>
+                    <Bookmark color={theme.text} size={18} />
+                    <Text style={styles.watchlistBtnText}>Watchlist</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -825,8 +984,12 @@ export default function DetailsScreen({ route, navigation }) {
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.rateBtn} onPress={() => setRatingModalVisible(true)}>
-                <Star color={userRating > 0 ? '#b3d332' : '#ffffff'} size={18} fill={userRating > 0 ? '#b3d332' : 'transparent'} />
-                <Text style={[styles.rateBtnText, userRating > 0 && { color: '#b3d332' }]}>
+                <Star 
+                  color={userRating > 0 ? theme.primary : theme.text} 
+                  size={18} 
+                  fill={userRating > 0 ? theme.primary : 'transparent'} 
+                />
+                <Text style={[styles.rateBtnText, userRating > 0 && { color: theme.primary }]}>
                   {userRating > 0 ? `Rated ${userRating}★` : 'Rate'}
                 </Text>
               </TouchableOpacity>
@@ -889,15 +1052,16 @@ export default function DetailsScreen({ route, navigation }) {
             );
           })()}
 
-          {/* Season and Episode browser (For Shows / Web Series / Pocket Reel) */}
-          {detail.upcoming?.toLowerCase() === 'yes' ? (
-            <View style={styles.upcomingEpisodesWrapper}>
-              <Text style={styles.upcomingEpisodesTitle}>Episodes Coming Soon</Text>
-              <Text style={styles.upcomingEpisodesSubtitle}>Stay tuned! Episodes will be available soon.</Text>
-            </View>
-          ) : (type === 'show' || episodes.length > 0 || (detail?.contentType || '').toLowerCase().includes('pocket') || (detail?.contentType || '').toLowerCase().includes('series')) && (
-            <View style={styles.seasonsWrapper}>
-              <Text style={styles.infoLabel}>Episodes {currentEpisodes.length > 0 ? `(${currentEpisodes.length})` : ''}</Text>
+          {/* Season and Episode browser (ONLY For Shows / Web Series / Pocket Reel - NEVER for Short Films or Movies) */}
+          {isSeriesOrShow && !isShortFilm && !isMovie && (
+            detail.upcoming?.toLowerCase() === 'yes' ? (
+              <View style={styles.upcomingEpisodesWrapper}>
+                <Text style={styles.upcomingEpisodesTitle}>Episodes Coming Soon</Text>
+                <Text style={styles.upcomingEpisodesSubtitle}>Stay tuned! Episodes will be available soon.</Text>
+              </View>
+            ) : (
+              <View style={styles.seasonsWrapper}>
+                <Text style={styles.infoLabel}>Episodes {currentEpisodes.length > 0 ? `(${currentEpisodes.length})` : ''}</Text>
               
               {/* Season Tabs Selector */}
               {seasons.length > 0 && !isPocketOrShort && (
@@ -920,63 +1084,107 @@ export default function DetailsScreen({ route, navigation }) {
               {currentEpisodes.length === 0 ? (
                 <Text style={styles.emptyEpisodes}>No episodes uploaded for this series.</Text>
               ) : (
-                currentEpisodes.map((episode) => {
+                currentEpisodes.map((episode, idx) => {
                   const epThumb = formatImageUrl(episode.poster || episode.thumbnail || detail.poster || detail.thumbnail || detail.landscapePoster);
+                  const isScheduled = episode.isScheduled && episode.scheduledPublishTime && new Date(episode.scheduledPublishTime) > new Date();
+                  const isUpcoming = episode.upcoming?.toLowerCase() === 'yes';
+                  const dateDisplay = isScheduled 
+                    ? `Release ${new Date(episode.scheduledPublishTime).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`
+                    : timeAgo(episode.createdAt || episode.releaseDate);
+                  const hasDuration = !!(episode.duration && episode.duration.trim() !== '' && episode.duration.trim().toLowerCase() !== 'n/a');
+                  
+                  const isCurrentActive = episode._id === selectedEpisodeId;
+                  
                   return (
                     <TouchableOpacity
                       key={episode._id}
-                      style={styles.episodeRow}
+                      style={[
+                        styles.episodeRow,
+                        isCurrentActive && { borderColor: '#b3d332', backgroundColor: 'rgba(179, 211, 50, 0.08)' }
+                      ]}
                       onPress={() => handlePlayEpisode(episode)}
                     >
                       <Image source={{ uri: epThumb }} style={styles.episodeThumb} resizeMode="cover" />
                       <View style={styles.episodeDetails}>
                         <View style={styles.episodeTitleRow}>
-                          <Text style={styles.episodeTitle} numberOfLines={1}>{episode.title}</Text>
-                          {episode.isScheduled && episode.scheduledPublishTime && new Date(episode.scheduledPublishTime) > new Date() ? (
+                          <Text style={[styles.episodeTitle, isCurrentActive && { color: '#b3d332' }]} numberOfLines={1}>
+                            {isPocketOrShort ? (
+                              <Text style={[styles.episodeNumber, isCurrentActive && { color: '#b3d332' }]}>E{idx + 1}. </Text>
+                            ) : null}
+                            {episode.title}
+                          </Text>
+                          {isScheduled ? (
                             <View style={[styles.episodeUpcomingBadge, { backgroundColor: '#0088ff' }]}>
                               <Text style={[styles.episodeUpcomingBadgeText, { color: '#ffffff' }]}>SCHEDULED</Text>
                             </View>
-                          ) : episode.upcoming?.toLowerCase() === 'yes' ? (
+                          ) : isUpcoming ? (
                             <View style={styles.episodeUpcomingBadge}>
                               <Text style={styles.episodeUpcomingBadgeText}>COMING SOON</Text>
                             </View>
                           ) : null}
-                          {(((detail?.seriesAccess || '').toLowerCase() === 'paid' && (episode.access || '').toLowerCase() === 'paid')) && (() => {
-                             const isSubscribed = isPremiumUser();
-                             return (
-                               <View style={[
-                                 styles.episodePremiumBadge,
-                                 isSubscribed && { backgroundColor: '#ffffff', borderColor: '#ffffff' }
-                               ]}>
-                                 <Crown 
-                                   color={isSubscribed ? '#000000' : '#ffd700'} 
-                                   size={9} 
-                                   fill={isSubscribed ? '#000000' : '#ffd700'} 
-                                 />
-                                 <Text style={[
-                                   styles.episodePremiumText,
-                                   isSubscribed && { color: '#000000' }
-                                 ]}>PRO</Text>
-                               </View>
-                             );
-                           })()}
                         </View>
                         <Text style={styles.episodeDesc} numberOfLines={2}>
                           {stripHtml(episode.description) || 'Watch now.'}
                         </Text>
                         <View style={styles.episodeDurationRow}>
                           <Clock color="#8e8e93" size={12} />
-                          <Text style={styles.episodeDurationText}>{episode.duration || 'N/A'}</Text>
+                          {hasDuration ? (
+                            <>
+                              <Text style={styles.episodeDurationText}>{episode.duration.trim()}</Text>
+                              <Text style={[styles.episodeDurationText, { marginHorizontal: 2 }]}>•</Text>
+                            </>
+                          ) : null}
+                          <Text style={styles.episodeDurationText}>{dateDisplay}</Text>
                         </View>
                       </View>
-                      <TouchableOpacity style={styles.episodePlayBtn} onPress={() => handlePlayEpisode(episode)}>
-                        <Play color="#000000" size={12} fill="#000000" />
-                      </TouchableOpacity>
+                      {(() => {
+                        const isEpSaved = savedEpisodeIds.includes(episode._id.toString());
+                        return (
+                          <View style={styles.episodeActionButtons}>
+                            <TouchableOpacity
+                              style={[
+                                styles.episodeBookmarkBtn,
+                                isEpSaved && styles.episodeBookmarkBtnActive
+                              ]}
+                              onPress={() => handleToggleEpisodeWatchlist(episode, idx)}
+                              activeOpacity={0.7}
+                            >
+                              {isEpSaved ? (
+                                <BookmarkCheck color="#b3d332" size={15} />
+                              ) : (
+                                <Bookmark color="#888888" size={15} />
+                              )}
+                            </TouchableOpacity>
+
+                            {(() => {
+                              const isEpPaid = (detail?.seriesAccess || '').toLowerCase() === 'paid' || (episode.access || '').toLowerCase() === 'paid';
+                              const isSubscribed = isPremiumUser();
+                              const isLocked = isEpPaid && !isSubscribed;
+                              return (
+                                <TouchableOpacity 
+                                  style={[
+                                    styles.episodePlayBtn,
+                                    isLocked && styles.episodeLockedBtn
+                                  ]} 
+                                  onPress={() => handlePlayEpisode(episode)}
+                                >
+                                  {isLocked ? (
+                                    <Lock color="#ffffff" size={12} />
+                                  ) : (
+                                    <Play color="#000000" size={12} fill="#000000" />
+                                  )}
+                                </TouchableOpacity>
+                              );
+                            })()}
+                          </View>
+                        );
+                      })()}
                     </TouchableOpacity>
                   );
                 })
               )}
-            </View>
+              </View>
+            )
           )}
 
           {/* You May Also Like Section */}
@@ -1056,7 +1264,7 @@ export default function DetailsScreen({ route, navigation }) {
               <TouchableOpacity
                 style={styles.modalCancelBtn}
                 onPress={() => setRatingModalVisible(false)}
-                disabled={ratingSubmitting}
+                disabled={Boolean(ratingSubmitting)}
               >
                 <Text style={styles.modalCancelBtnText}>Cancel</Text>
               </TouchableOpacity>
@@ -1064,7 +1272,7 @@ export default function DetailsScreen({ route, navigation }) {
               <TouchableOpacity
                 style={styles.modalSubmitBtn}
                 onPress={handleRateSubmit}
-                disabled={ratingSubmitting}
+                disabled={Boolean(ratingSubmitting)}
               >
                 {ratingSubmitting ? (
                   <ActivityIndicator size="small" color="#000000" />
@@ -1088,20 +1296,20 @@ export default function DetailsScreen({ route, navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: theme.background,
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: theme.background,
     justifyContent: 'center',
     alignItems: 'center',
   },
   errorContainer: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: theme.background,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
@@ -1115,7 +1323,7 @@ const styles = StyleSheet.create({
   backBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1c1c1e',
+    backgroundColor: theme.cardBackground,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
@@ -1154,10 +1362,10 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#b3d332',
+    backgroundColor: theme.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#b3d332',
+    shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
     shadowRadius: 10,
@@ -1169,7 +1377,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: '900',
-    color: '#ffffff',
+    color: theme.text,
     marginBottom: 8,
   },
   visualStatsRow: {
@@ -1179,7 +1387,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: theme.cardBorder,
     marginVertical: 16,
   },
   statsList: {
@@ -1195,7 +1403,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   statText: {
-    color: '#8e8e93',
+    color: theme.textSecondary,
     fontSize: 13,
     fontWeight: '600',
   },
@@ -1217,12 +1425,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   ratingCircleText: {
-    color: '#b3d332',
+    color: theme.primary,
     fontSize: 11,
     fontWeight: '900',
   },
   ratingsCountText: {
-    color: '#8e8e93',
+    color: theme.textSecondary,
     fontSize: 9,
     fontWeight: '800',
     marginTop: 4,
@@ -1235,7 +1443,7 @@ const styles = StyleSheet.create({
   mainPlayBtn: {
     width: '100%',
     flexDirection: 'row',
-    backgroundColor: '#b3d332',
+    backgroundColor: theme.primary,
     borderRadius: 26,
     paddingVertical: 14,
     justifyContent: 'center',
@@ -1243,7 +1451,7 @@ const styles = StyleSheet.create({
     gap: 10,
     marginTop: 12,
     marginBottom: 14,
-    shadowColor: '#b3d332',
+    shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
@@ -1262,12 +1470,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   metaSubText: {
-    color: '#a1a1aa',
+    color: theme.textSecondary,
     fontSize: 13,
     fontWeight: '700',
   },
   metaDot: {
-    color: '#71717a',
+    color: theme.cardBorder,
     fontSize: 14,
   },
   metaRatingBox: {
@@ -1276,17 +1484,17 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   metaRatingVal: {
-    color: '#ffffff',
+    color: theme.text,
     fontSize: 13,
     fontWeight: '800',
   },
   metaRatingCount: {
-    color: '#a1a1aa',
+    color: theme.textSecondary,
     fontSize: 12,
     fontWeight: '600',
   },
   metaSubGenre: {
-    color: '#a1a1aa',
+    color: theme.textSecondary,
     fontSize: 13,
     fontWeight: '700',
     letterSpacing: 0.5,
@@ -1295,13 +1503,13 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   descriptionText: {
-    color: '#d4d4d8',
+    color: theme.textSecondary,
     fontSize: 14,
     lineHeight: 22,
     fontWeight: '400',
   },
   moreText: {
-    color: '#b3d332',
+    color: theme.primary,
     fontSize: 14,
     fontWeight: '800',
     marginTop: 4,
@@ -1330,8 +1538,8 @@ const styles = StyleSheet.create({
   watchlistBtn: {
     flex: 1,
     flexDirection: 'row',
-    backgroundColor: '#1c1c1e',
-    borderColor: '#2a2c31',
+    backgroundColor: theme.cardBackground,
+    borderColor: theme.cardBorder,
     borderWidth: 1,
     borderRadius: 8,
     paddingVertical: 12,
@@ -1340,7 +1548,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   watchlistBtnText: {
-    color: '#ffffff',
+    color: theme.text,
     fontSize: 15,
     fontWeight: '700',
   },
@@ -1362,8 +1570,8 @@ const styles = StyleSheet.create({
   rateBtn: {
     flex: 1,
     flexDirection: 'row',
-    backgroundColor: '#1c1c1e',
-    borderColor: '#2a2c31',
+    backgroundColor: theme.cardBackground,
+    borderColor: theme.cardBorder,
     borderWidth: 1,
     borderRadius: 8,
     paddingVertical: 12,
@@ -1372,7 +1580,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   rateBtnText: {
-    color: '#ffffff',
+    color: theme.text,
     fontSize: 15,
     fontWeight: '700',
   },
@@ -1386,21 +1594,21 @@ const styles = StyleSheet.create({
   ratingModalContent: {
     width: '100%',
     maxWidth: 320,
-    backgroundColor: '#1c1c1e',
-    borderColor: '#2a2c31',
+    backgroundColor: theme.cardBackground,
+    borderColor: theme.cardBorder,
     borderWidth: 1,
     borderRadius: 16,
     padding: 24,
     alignItems: 'center',
   },
   ratingModalTitle: {
-    color: '#ffffff',
+    color: theme.text,
     fontSize: 18,
     fontWeight: '800',
     marginBottom: 4,
   },
   ratingModalSubtitle: {
-    color: '#8e8e93',
+    color: theme.textSecondary,
     fontSize: 14,
     fontWeight: '600',
     marginBottom: 20,
@@ -1421,20 +1629,20 @@ const styles = StyleSheet.create({
   },
   modalCancelBtn: {
     flex: 1,
-    backgroundColor: '#2a2c31',
+    backgroundColor: theme.cardSecondary,
     borderRadius: 8,
     paddingVertical: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   modalCancelBtnText: {
-    color: '#ffffff',
+    color: theme.text,
     fontSize: 14,
     fontWeight: '700',
   },
   modalSubmitBtn: {
     flex: 1,
-    backgroundColor: '#b3d332',
+    backgroundColor: theme.primary,
     borderRadius: 8,
     paddingVertical: 12,
     alignItems: 'center',
@@ -1448,20 +1656,15 @@ const styles = StyleSheet.create({
   infoLabel: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#8e8e93',
+    color: theme.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 6,
   },
   infoValue: {
     fontSize: 14,
-    color: '#ffffff',
+    color: theme.text,
     lineHeight: 20,
-  },
-  descriptionText: {
-    fontSize: 14,
-    color: '#e5e5ea',
-    lineHeight: 22,
   },
   castContainer: {
     marginBottom: 20,
@@ -1475,23 +1678,23 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#1c1c1e',
+    backgroundColor: theme.cardSecondary,
     marginBottom: 6,
   },
   initialsAvatar: {
-    backgroundColor: '#2a2c31',
+    backgroundColor: theme.cardSecondary,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: theme.cardBorder,
   },
   initialsText: {
-    color: '#b3d332',
+    color: theme.primary,
     fontSize: 18,
     fontWeight: '900',
   },
   castName: {
-    color: '#ffffff',
+    color: theme.text,
     fontSize: 10,
     fontWeight: '600',
     textAlign: 'center',
@@ -1506,17 +1709,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 16,
-    backgroundColor: '#1c1c1e',
+    backgroundColor: theme.cardBackground,
     marginRight: 8,
     borderWidth: 1,
-    borderColor: '#2a2c31',
+    borderColor: theme.cardBorder,
   },
   activeSeasonTab: {
-    backgroundColor: '#b3d332',
-    borderColor: '#b3d332',
+    backgroundColor: theme.primary,
+    borderColor: theme.primary,
   },
   seasonTabBtnText: {
-    color: '#8e8e93',
+    color: theme.textSecondary,
     fontSize: 12,
     fontWeight: '700',
   },
@@ -1524,15 +1727,15 @@ const styles = StyleSheet.create({
     color: '#000000',
   },
   emptyEpisodes: {
-    color: '#8e8e93',
+    color: theme.textSecondary,
     fontStyle: 'italic',
     fontSize: 13,
     paddingVertical: 10,
   },
   episodeRow: {
     flexDirection: 'row',
-    backgroundColor: '#121212',
-    borderColor: '#1f1f1f',
+    backgroundColor: theme.cardBackground,
+    borderColor: theme.cardBorder,
     borderWidth: 1,
     borderRadius: 8,
     padding: 10,
@@ -1543,7 +1746,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 60,
     borderRadius: 6,
-    backgroundColor: '#1c1c1e',
+    backgroundColor: theme.cardSecondary,
   },
   episodeDetails: {
     flex: 1,
@@ -1551,13 +1754,18 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   episodeTitle: {
-    color: '#ffffff',
+    color: theme.text,
     fontSize: 13,
     fontWeight: '700',
     marginBottom: 2,
   },
+  episodeNumber: {
+    color: theme.primary,
+    fontWeight: '800',
+    fontSize: 13,
+  },
   episodeDesc: {
-    color: '#8e8e93',
+    color: theme.textSecondary,
     fontSize: 11,
     lineHeight: 14,
     marginBottom: 4,
@@ -1568,17 +1776,41 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   episodeDurationText: {
-    color: '#8e8e93',
+    color: theme.textSecondary,
     fontSize: 10,
     fontWeight: '600',
+  },
+  episodeActionButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  episodeBookmarkBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: theme.cardSecondary,
+    borderWidth: 1,
+    borderColor: theme.cardBorder,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  episodeBookmarkBtnActive: {
+    backgroundColor: 'rgba(179, 211, 50, 0.2)',
+    borderColor: '#b3d332',
   },
   episodePlayBtn: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#b3d332',
+    backgroundColor: theme.primary,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  episodeLockedBtn: {
+    backgroundColor: 'rgba(255, 77, 77, 0.25)',
+    borderWidth: 1,
+    borderColor: '#ff4d4d',
   },
   titleRow: {
     flexDirection: 'row',
@@ -1644,7 +1876,7 @@ const styles = StyleSheet.create({
   relatedHeader: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#8e8e93',
+    color: theme.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 10,
@@ -1663,7 +1895,7 @@ const styles = StyleSheet.create({
     height: 160,
     borderRadius: 8,
     overflow: 'hidden',
-    backgroundColor: '#1a1a1a',
+    backgroundColor: theme.cardSecondary,
     position: 'relative',
   },
   relatedPoster: {
@@ -1682,14 +1914,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   relatedCardTitle: {
-    color: '#ffffff',
+    color: theme.text,
     fontSize: 11,
     fontWeight: '600',
     marginTop: 6,
     textAlign: 'center',
   },
   mobileUpcomingBadgeOverlay: {
-    backgroundColor: '#b3d332',
+    backgroundColor: theme.primary,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 4,
@@ -1710,17 +1942,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.05)',
+    borderTopColor: theme.cardBorder,
     marginTop: 20,
   },
   upcomingEpisodesTitle: {
-    color: '#ffffff',
+    color: theme.text,
     fontSize: 16,
     fontWeight: '800',
     marginBottom: 6,
   },
   upcomingEpisodesSubtitle: {
-    color: '#8e8e93',
+    color: theme.textSecondary,
     fontSize: 13,
     textAlign: 'center',
   },
@@ -1754,13 +1986,14 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#b3d332',
+    backgroundColor: theme.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#b3d332',
+    shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 8,
     elevation: 4,
   },
 });
+

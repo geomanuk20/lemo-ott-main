@@ -30,7 +30,6 @@ const EditPocketReelSeries = () => {
   thumbnail: '',
   status: 'Active',
   releaseYear: '',
-  videoQuality: 'None',
   seoTitle: '',
   metaDescription: '',
   keywords: '',
@@ -85,7 +84,6 @@ const EditPocketReelSeries = () => {
       thumbnail: showData.thumbnail || '',
       status: showData.status || 'Active',
       releaseYear: showData.releaseYear || '',
-      videoQuality: (showData.videoQuality !== undefined && showData.videoQuality !== '') ? showData.videoQuality : 'None',
       seoTitle: showData.seoTitle || '',
       metaDescription: showData.metaDescription || '',
       keywords: showData.keywords || '',
@@ -270,20 +268,6 @@ const EditPocketReelSeries = () => {
      <div className="form-group">
       <label>Release Year</label>
       <input type="number" name="releaseYear" value={formData.releaseYear} onChange={handleChange} placeholder="e.g. 2026" />
-     </div>
-
-     <div className="form-group">
-      <label>Video Quality</label>
-      <select name="videoQuality" value={formData.videoQuality || 'None'} onChange={handleChange}>
-       <option value="None">None</option>
-       <option value="8K Ultra HD">8K Ultra HD</option>
-       <option value="4K Ultra HD">4K Ultra HD</option>
-       <option value="Ultra HD">Ultra HD</option>
-       <option value="HDR">HDR</option>
-       <option value="Full HD">Full HD</option>
-       <option value="HD">HD</option>
-       <option value="SD">SD</option>
-      </select>
      </div>
 
      {/* Genres Dropdown */}

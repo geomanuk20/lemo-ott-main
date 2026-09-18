@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useContext, useEffect, useMemo } from 'react';
 import {
   StyleSheet,
   Text,
@@ -19,6 +19,7 @@ import { WebView } from 'react-native-webview';
 import { Shield } from 'lucide-react-native';
 import Svg, { Path } from 'react-native-svg';
 import { AuthContext } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import client from '../api/client';
 import { formatImageUrl } from '../config/api';
 
@@ -40,6 +41,8 @@ const FacebookIcon = () => (
 );
 
 export default function RegisterScreen({ navigation }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
   const { register, socialLoginMobile, socialLoginReal } = useContext(AuthContext);
   const insets = useSafeAreaInsets();
   const [name, setName] = useState('');
@@ -243,9 +246,9 @@ export default function RegisterScreen({ navigation }) {
             ) : (
               <>
                 <View style={styles.badge}>
-                  <Shield color="#b3d332" size={32} strokeWidth={2.5} />
+                  <Shield color={theme.primary} size={32} strokeWidth={2.5} />
                 </View>
-                <Text style={styles.logoText}>LEMO <Text style={{ color: '#b3d332' }}>OTT</Text></Text>
+                <Text style={styles.logoText}>LEMO <Text style={{ color: theme.primary }}>OTT</Text></Text>
               </>
             )}
             <Text style={styles.tagline}>Create a new account</Text>
@@ -262,7 +265,7 @@ export default function RegisterScreen({ navigation }) {
               <TextInput
                 style={styles.input}
                 placeholder="Enter your name"
-                placeholderTextColor="#666"
+                placeholderTextColor={theme.textMuted}
                 autoCapitalize="words"
                 value={name}
                 onChangeText={setName}
@@ -274,7 +277,7 @@ export default function RegisterScreen({ navigation }) {
               <TextInput
                 style={styles.input}
                 placeholder="Enter your email"
-                placeholderTextColor="#666"
+                placeholderTextColor={theme.textMuted}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -288,7 +291,7 @@ export default function RegisterScreen({ navigation }) {
               <TextInput
                 style={styles.input}
                 placeholder="Choose a secure password"
-                placeholderTextColor="#666"
+                placeholderTextColor={theme.textMuted}
                 secureTextEntry={true}
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -297,9 +300,9 @@ export default function RegisterScreen({ navigation }) {
               />
             </View>
 
-            <TouchableOpacity style={styles.registerBtn} onPress={handleRegister} disabled={loading}>
+            <TouchableOpacity style={styles.registerBtn} onPress={handleRegister} disabled={Boolean(loading)}>
               {loading ? (
-                <ActivityIndicator color="#000000" size="small" />
+                <ActivityIndicator color={theme.isDark ? '#000000' : '#ffffff'} size="small" />
               ) : (
                 <Text style={styles.registerBtnText}>Create Account</Text>
               )}
@@ -358,7 +361,7 @@ export default function RegisterScreen({ navigation }) {
         animationType="slide"
         onRequestClose={() => setShowSocialWebView(false)}
       >
-        <View style={{ flex: 1, backgroundColor: '#121212', paddingTop: insets.top || (Platform.OS === 'android' ? StatusBar.currentHeight : 0) }}>
+        <View style={{ flex: 1, backgroundColor: theme.cardBackground, paddingTop: insets.top || (Platform.OS === 'android' ? StatusBar.currentHeight : 0) }}>
           {/* Header Row to Close */}
           <View style={{
             height: 50,
@@ -367,10 +370,10 @@ export default function RegisterScreen({ navigation }) {
             justifyContent: 'space-between',
             paddingHorizontal: 16,
             borderBottomWidth: 1,
-            borderBottomColor: '#1f1f1f',
-            backgroundColor: '#121212'
+            borderBottomColor: theme.cardBorder,
+            backgroundColor: theme.headerBackground
           }}>
-            <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>
+            <Text style={{ color: theme.text, fontSize: 16, fontWeight: '700' }}>
               Sign In with {socialProvider}
             </Text>
             <TouchableOpacity 
@@ -397,7 +400,7 @@ export default function RegisterScreen({ navigation }) {
             }
             renderLoading={() => (
               <ActivityIndicator 
-                color="#b3d332" 
+                color={theme.primary} 
                 size="large" 
                 style={{
                   position: 'absolute',
@@ -415,10 +418,10 @@ export default function RegisterScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: theme.background,
   },
   scrollContainer: {
     flexGrow: 1,
@@ -434,7 +437,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: 'rgba(179, 211, 50, 0.15)',
+    backgroundColor: theme.isDark ? 'rgba(179, 211, 50, 0.15)' : 'rgba(132, 166, 0, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 10,
@@ -442,7 +445,7 @@ const styles = StyleSheet.create({
   logoText: {
     fontSize: 26,
     fontWeight: '900',
-    color: '#ffffff',
+    color: theme.text,
     letterSpacing: 2,
   },
   logoImage: {
@@ -458,10 +461,10 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#1f1f1f',
+    backgroundColor: theme.cardBorder,
   },
   dividerText: {
-    color: '#444446',
+    color: theme.textMuted,
     fontSize: 9,
     fontWeight: '800',
     letterSpacing: 1.5,
@@ -478,37 +481,40 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#1a1b1e',
-    borderColor: '#2a2c31',
+    backgroundColor: theme.cardSecondary,
+    borderColor: theme.cardBorder,
     borderWidth: 1,
     borderRadius: 8,
     paddingVertical: 9,
   },
   socialBtnText: {
-    color: '#ffffff',
+    color: theme.text,
     fontSize: 13,
     fontWeight: '700',
   },
   tagline: {
-    color: '#8e8e93',
+    color: theme.textSecondary,
     fontSize: 12,
     marginTop: 2,
   },
   formContainer: {
-    backgroundColor: '#121212',
+    backgroundColor: theme.cardBackground,
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#1f1f1f',
+    borderColor: theme.cardBorder,
+    width: '100%',
+    maxWidth: 440,
+    alignSelf: 'center',
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#ffffff',
+    color: theme.text,
   },
   headerSubtitle: {
     fontSize: 12,
-    color: '#8e8e93',
+    color: theme.textSecondary,
     marginTop: 2,
     marginBottom: 12,
   },
@@ -528,7 +534,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   label: {
-    color: '#8e8e93',
+    color: theme.textSecondary,
     fontSize: 11,
     fontWeight: '700',
     textTransform: 'uppercase',
@@ -536,29 +542,29 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   input: {
-    backgroundColor: '#1a1b1e',
-    borderColor: '#2a2c31',
+    backgroundColor: theme.inputBackground || theme.cardSecondary,
+    borderColor: theme.cardBorder,
     borderWidth: 1,
     borderRadius: 8,
-    color: '#ffffff',
+    color: theme.text,
     paddingHorizontal: 12,
     height: 42,
     fontSize: 14,
   },
   registerBtn: {
-    backgroundColor: '#b3d332',
+    backgroundColor: theme.primary,
     borderRadius: 8,
     paddingVertical: 11,
     alignItems: 'center',
     marginTop: 6,
-    shadowColor: '#b3d332',
+    shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 3,
     elevation: 2,
   },
   registerBtnText: {
-    color: '#000000',
+    color: theme.isDark ? '#000000' : '#ffffff',
     fontSize: 15,
     fontWeight: '800',
   },
@@ -568,11 +574,11 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   footerText: {
-    color: '#8e8e93',
+    color: theme.textSecondary,
     fontSize: 13,
   },
   footerLink: {
-    color: '#b3d332',
+    color: theme.primary,
     fontSize: 13,
     fontWeight: '700',
   },

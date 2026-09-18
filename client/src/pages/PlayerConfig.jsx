@@ -22,7 +22,7 @@ const PlayerConfig = () => {
   watermark: 'YES',
   watermarkLogo: 'upload/player_logo.png',
   watermarkPosition: 'Top Right',
-  watermarkUrl: '#',
+  watermarkUrl: '#'
  });
 
  useEffect(() => {

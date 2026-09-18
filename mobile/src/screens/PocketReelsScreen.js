@@ -13,7 +13,7 @@ import {
   useWindowDimensions
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Crown, Play, Search, X, Film, Star, Clapperboard, Filter } from 'lucide-react-native';
+import { ArrowLeft, Play, Flame, Search, X, Clapperboard, Crown, Filter } from 'lucide-react-native';
 import client from '../api/client';
 import { formatImageUrl } from '../config/api';
 import { useFocusEffect } from '@react-navigation/native';
@@ -21,15 +21,9 @@ import { AuthContext } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import OfflineView from '../components/OfflineView';
 
-const isValidQuality = (quality) => {
-  if (!quality) return false;
-  const q = quality.trim().toLowerCase();
-  return q !== '' && q !== 'active' && q !== 'inactive' && q !== 'on' && q !== 'off';
-};
-
-export default function MoviesScreen({ navigation }) {
+export default function PocketReelsScreen({ navigation }) {
+  const { theme } = useTheme();
   const { user } = useContext(AuthContext);
-  const { theme, isDark } = useTheme();
   const { width: screenWidth } = useWindowDimensions();
 
   const numColumns = screenWidth > 768 ? 4 : screenWidth > 520 ? 3 : 2;
@@ -59,31 +53,38 @@ export default function MoviesScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
-  const [movies, setMovies] = useState([]);
+  const [pocketReels, setPocketReels] = useState([]);
   const [genres, setGenres] = useState([]);
-  const [languages, setLanguages] = useState([]);
-  const [menuSettings, setMenuSettings] = useState(null);
   const [selectedGenre, setSelectedGenre] = useState('All');
-  const [selectedLanguage, setSelectedLanguage] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
-      const [moviesRes, genresRes, languagesRes, menuRes] = await Promise.all([
-        client.get('/movies'),
-        client.get('/genres'),
-        client.get('/languages'),
-        client.get('/menu-settings')
+      const [showsRes, genresRes] = await Promise.all([
+        client.get('/shows'),
+        client.get('/genres')
       ]);
 
-      setMovies(Array.isArray(moviesRes.data) ? moviesRes.data : []);
+      const allShows = Array.isArray(showsRes.data) ? showsRes.data : [];
+      // Filter specifically for Pocket Reel Series / Pocket Dramas
+      const reelsOnly = allShows.filter(show => {
+        if (!show || (show.status && show.status.toLowerCase() !== 'active')) return false;
+        const ct = (show.contentType || '').toLowerCase().trim();
+        return (
+          ct === 'pocket reel series' ||
+          ct === 'pocket-reel-series' ||
+          ct === 'pocket reels' ||
+          ct === 'pocket-reels' ||
+          ct === 'pocket reel'
+        );
+      });
+
+      setPocketReels(reelsOnly);
       setGenres(Array.isArray(genresRes.data) ? genresRes.data : []);
-      setLanguages(Array.isArray(languagesRes.data) ? languagesRes.data : []);
-      setMenuSettings(menuRes.data || null);
       setIsOffline(false);
     } catch (error) {
-      console.error('Error fetching short films screen data:', error);
+      console.error('Error fetching pocket reels:', error);
       setIsOffline(true);
     } finally {
       setLoading(false);
@@ -102,69 +103,48 @@ export default function MoviesScreen({ navigation }) {
     fetchData();
   };
 
-  // Comprehensive filter logic (Status + MenuSettings + Genre + Language + Search)
-  const filteredMovies = useMemo(() => {
-    return movies.filter(movie => {
-      // 0. Status check
-      if (movie.status && movie.status.toLowerCase() !== 'active') return false;
+  // Filtered reels based on search query & selected genre
+  const filteredReels = useMemo(() => {
+    return pocketReels.filter(reel => {
+      // 1. Genre filter
+      const matchesGenre = selectedGenre === 'All' || (reel.genres && reel.genres.some(g => {
+        const name = typeof g === 'object' ? g.name : g;
+        return name === selectedGenre;
+      }));
 
-      // 1. Menu Settings content types
-      if (menuSettings) {
-        const isShortFilm = (movie.contentType || '').toLowerCase() === 'short film' || (movie.contentType || '').toLowerCase() === 'short-film';
-        const isMovie = !isShortFilm;
-        
-        const moviesOff = menuSettings.movies?.toUpperCase() === 'OFF';
-        const shortFilmsOff = menuSettings.shortFilms?.toUpperCase() === 'OFF';
+      // 2. Search query filter
+      const matchesQuery = !searchQuery.trim() || 
+        (reel.title && reel.title.toLowerCase().includes(searchQuery.toLowerCase().trim())) ||
+        (reel.description && reel.description.toLowerCase().includes(searchQuery.toLowerCase().trim()));
 
-        if (isMovie && moviesOff) return false;
-        if (isShortFilm && shortFilmsOff) return false;
-      }
-
-      // 2. Genre Filter
-      const matchesGenre = selectedGenre === 'All' || 
-        (movie.genres && movie.genres.some(g => {
-          const genreName = typeof g === 'object' ? g.name : g;
-          return genreName === selectedGenre;
-        }));
-        
-      // 3. Language Filter
-      const matchesLanguage = selectedLanguage === 'All' || 
-        (movie.language && (typeof movie.language === 'object' ? movie.language.name : movie.language) === selectedLanguage);
-
-      // 4. Search query
-      const matchesSearch = !searchQuery.trim() ||
-        (movie.title && movie.title.toLowerCase().includes(searchQuery.toLowerCase().trim())) ||
-        (movie.description && movie.description.toLowerCase().includes(searchQuery.toLowerCase().trim()));
-
-      return matchesGenre && matchesLanguage && matchesSearch;
+      return matchesGenre && matchesQuery;
     });
-  }, [movies, menuSettings, selectedGenre, selectedLanguage, searchQuery]);
+  }, [pocketReels, selectedGenre, searchQuery]);
 
-  const getHeaderTitle = () => {
-    if (!menuSettings) return 'Short Films';
-    const moviesOn = menuSettings.movies?.toUpperCase() !== 'OFF';
-    const shortFilmsOn = menuSettings.shortFilms?.toUpperCase() !== 'OFF';
-    if (moviesOn && shortFilmsOn) return 'Movies & Short Films';
-    if (shortFilmsOn) return 'Short Films';
-    return 'Movies';
-  };
+  const featuredReel = pocketReels.length > 0 ? pocketReels[0] : null;
 
-  const featuredFilm = filteredMovies.length > 0 ? filteredMovies[0] : null;
-
-  const renderMovieItem = ({ item }) => {
+  const renderReelCard = ({ item, index }) => {
     const posterUrl = formatImageUrl(item, 'poster') || formatImageUrl(item, 'thumbnail');
-    const isPaid = (item.access || '').toLowerCase() === 'paid';
+    const isPaid = (item.seriesAccess || item.access || '').toLowerCase() === 'paid';
     const isSubscribed = isPremiumUser();
+
+    // Calculate total episodes count
+    let totalEpisodes = 0;
+    if (Array.isArray(item.seasons)) {
+      totalEpisodes = item.seasons.reduce((acc, s) => acc + (s.episodes ? s.episodes.length : 0), 0);
+    } else if (Array.isArray(item.episodes)) {
+      totalEpisodes = item.episodes.length;
+    }
 
     return (
       <TouchableOpacity
-        style={styles.movieCard}
+        style={styles.reelCard}
         activeOpacity={0.88}
-        onPress={() => navigation.navigate('Details', { id: item._id, type: 'movie' })}
+        onPress={() => navigation.navigate('Details', { id: item._id, type: 'show' })}
       >
         <View style={styles.posterContainer}>
           <Image source={{ uri: posterUrl }} style={styles.posterImage} resizeMode="cover" />
-
+          
           {/* Top Badges */}
           <View style={styles.cardTopBadgeRow}>
             {isPaid ? (
@@ -174,42 +154,30 @@ export default function MoviesScreen({ navigation }) {
               </View>
             ) : null}
 
-            {item.duration ? (
-              <View style={styles.durationBadge}>
-                <Text style={styles.durationBadgeText}>{item.duration}</Text>
+            {totalEpisodes > 0 && (
+              <View style={styles.episodesBadge}>
+                <Text style={styles.episodesBadgeText}>{totalEpisodes} Eps</Text>
               </View>
-            ) : isValidQuality(item.videoQuality) ? (
-              <View style={styles.durationBadge}>
-                <Text style={styles.durationBadgeText}>{item.videoQuality}</Text>
-              </View>
-            ) : null}
+            )}
           </View>
 
-          {/* Quick Play Icon Overlay */}
+          {/* Quick Play Button Overlay */}
           <View style={styles.playOverlay}>
             <View style={styles.playCircle}>
               <Play color="#000000" size={13} fill="#000000" style={{ marginLeft: 2 }} />
             </View>
           </View>
 
-          {/* Bottom Scrim with Title & Meta */}
+          {/* Bottom Scrim with Title & Genre */}
           <View style={styles.cardBottomOverlay}>
             <Text style={styles.cardTitle} numberOfLines={2}>
               {item.title}
             </Text>
-            <View style={styles.cardMetaRow}>
-              {item.language ? (
-                <Text style={styles.cardLangText} numberOfLines={1}>
-                  {typeof item.language === 'object' ? item.language.name : item.language}
-                </Text>
-              ) : null}
-              {item.imdbRating ? (
-                <View style={styles.cardRatingContainer}>
-                  <Star size={10} color="#ffd700" fill="#ffd700" />
-                  <Text style={styles.cardRatingText}>{item.imdbRating}</Text>
-                </View>
-              ) : null}
-            </View>
+            {item.genres && item.genres.length > 0 && (
+              <Text style={styles.cardGenre} numberOfLines={1}>
+                {typeof item.genres[0] === 'object' ? item.genres[0].name : item.genres[0]}
+              </Text>
+            )}
           </View>
         </View>
       </TouchableOpacity>
@@ -220,17 +188,22 @@ export default function MoviesScreen({ navigation }) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>{getHeaderTitle()}</Text>
+          {navigation?.canGoBack && navigation.canGoBack() ? (
+            <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+              <ArrowLeft color={theme.text} size={24} />
+            </TouchableOpacity>
+          ) : null}
+          <Text style={styles.headerTitle}>Pocket Reels</Text>
         </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.primary} />
-          <Text style={styles.loadingText}>Loading Short Films...</Text>
+          <Text style={styles.loadingText}>Loading Pocket Reels...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  if (isOffline && movies.length === 0) {
+  if (isOffline && pocketReels.length === 0) {
     return <OfflineView onRetry={fetchData} />;
   }
 
@@ -238,8 +211,13 @@ export default function MoviesScreen({ navigation }) {
     <SafeAreaView style={styles.container}>
       {/* Header Bar */}
       <View style={styles.header}>
+        {navigation?.canGoBack && navigation.canGoBack() ? (
+          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+            <ArrowLeft color={theme.text} size={24} />
+          </TouchableOpacity>
+        ) : null}
         <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>{getHeaderTitle()}</Text>
+          <Text style={styles.headerTitle}>Pocket Reels</Text>
         </View>
         <TouchableOpacity 
           style={styles.searchToggleBtn} 
@@ -255,7 +233,7 @@ export default function MoviesScreen({ navigation }) {
           <Search color={theme.textSecondary} size={16} style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search short films by title, genre..."
+            placeholder="Search pocket drama series..."
             placeholderTextColor={theme.textSecondary}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -269,87 +247,65 @@ export default function MoviesScreen({ navigation }) {
         </View>
       )}
 
-      {/* Genre & Language Filter Row */}
-      <View style={styles.filtersWrapper}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScrollContent}>
+      {/* Genre Filter Scroll Row */}
+      <View style={styles.genreBarContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.genreScrollContent}>
           <TouchableOpacity
-            style={[styles.filterPill, selectedGenre === 'All' && selectedLanguage === 'All' && styles.filterPillActive]}
-            onPress={() => { setSelectedGenre('All'); setSelectedLanguage('All'); }}
+            style={[styles.genrePill, selectedGenre === 'All' && styles.genrePillActive]}
+            onPress={() => setSelectedGenre('All')}
           >
-            <Text style={[styles.filterPillText, selectedGenre === 'All' && selectedLanguage === 'All' && styles.filterPillTextActive]}>
-              All
+            <Text style={[styles.genrePillText, selectedGenre === 'All' && styles.genrePillTextActive]}>
+              All Dramas
             </Text>
           </TouchableOpacity>
-
-          {genres.map(genre => (
+          {genres.map(g => (
             <TouchableOpacity
-              key={genre._id || genre.name}
-              style={[styles.filterPill, selectedGenre === genre.name && styles.filterPillActive]}
-              onPress={() => setSelectedGenre(selectedGenre === genre.name ? 'All' : genre.name)}
+              key={g._id || g.name}
+              style={[styles.genrePill, selectedGenre === g.name && styles.genrePillActive]}
+              onPress={() => setSelectedGenre(g.name)}
             >
-              <Text style={[styles.filterPillText, selectedGenre === genre.name && styles.filterPillTextActive]}>
-                {genre.name}
+              <Text style={[styles.genrePillText, selectedGenre === g.name && styles.genrePillTextActive]}>
+                {g.name}
               </Text>
             </TouchableOpacity>
           ))}
-
-          {languages.length > 0 && (
-            <>
-              <View style={styles.filterDivider} />
-              {languages.map(lang => (
-                <TouchableOpacity
-                  key={lang._id || lang.name}
-                  style={[styles.filterPill, selectedLanguage === lang.name && styles.filterPillActive]}
-                  onPress={() => setSelectedLanguage(selectedLanguage === lang.name ? 'All' : lang.name)}
-                >
-                  <Text style={[styles.filterPillText, selectedLanguage === lang.name && styles.filterPillTextActive]}>
-                    {lang.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </>
-          )}
         </ScrollView>
       </View>
 
-      {/* Responsive Discovery Grid */}
       <FlatList
-        key={`grid-${numColumns}`}
-        data={filteredMovies}
-        renderItem={renderMovieItem}
-        keyExtractor={(item) => item._id}
+        key={`reels-grid-${numColumns}`}
+        data={filteredReels}
+        renderItem={renderReelCard}
+        keyExtractor={item => item._id}
         numColumns={numColumns}
         columnWrapperStyle={styles.columnWrapper}
-        contentContainerStyle={styles.gridContent}
+        contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} colors={[theme.primary]} />
         }
         ListHeaderComponent={
-          featuredFilm && !searchQuery && selectedGenre === 'All' && selectedLanguage === 'All' ? (
+          featuredReel && !searchQuery ? (
             <TouchableOpacity 
               style={styles.heroBannerCard}
               activeOpacity={0.9}
-              onPress={() => navigation.navigate('Details', { id: featuredFilm._id, type: 'movie' })}
+              onPress={() => navigation.navigate('Details', { id: featuredReel._id, type: 'show' })}
             >
               <Image 
-                source={{ uri: formatImageUrl(featuredFilm, 'landscape') || formatImageUrl(featuredFilm, 'poster') }} 
+                source={{ uri: formatImageUrl(featuredReel, 'landscape') || formatImageUrl(featuredReel, 'poster') }} 
                 style={styles.heroBannerImage} 
                 resizeMode="cover" 
               />
               <View style={styles.heroBannerOverlay}>
-                <Text style={styles.heroTitle} numberOfLines={1}>{featuredFilm.title}</Text>
+                <Text style={styles.heroTitle} numberOfLines={1}>{featuredReel.title}</Text>
                 <Text style={styles.heroSubtitle} numberOfLines={2}>
-                  {featuredFilm.description || 'Critically acclaimed short film streaming in crystal-clear quality on LEMO OTT.'}
+                  {featuredReel.description || 'Watch full binge-worthy vertical episodes now on LEMO OTT.'}
                 </Text>
                 <View style={styles.heroCtaRow}>
                   <View style={styles.heroPlayBtn}>
                     <Play size={14} color="#000000" fill="#000000" />
-                    <Text style={styles.heroPlayBtnText}>Watch Now</Text>
+                    <Text style={styles.heroPlayBtnText}>Start Episode 1</Text>
                   </View>
-                  {featuredFilm.duration ? (
-                    <Text style={styles.heroDurationText}>⏱️ {featuredFilm.duration}</Text>
-                  ) : null}
                 </View>
               </View>
             </TouchableOpacity>
@@ -357,17 +313,14 @@ export default function MoviesScreen({ navigation }) {
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Film color={theme.textSecondary} size={50} style={{ marginBottom: 12 }} />
-            <Text style={styles.emptyTitle}>No Short Films Found</Text>
+            <Clapperboard color={theme.textSecondary} size={50} style={{ marginBottom: 12 }} />
+            <Text style={styles.emptyTitle}>No Pocket Reels Found</Text>
             <Text style={styles.emptySubtitle}>
-              {searchQuery ? `No short films match "${searchQuery}"` : 'No titles available matching the selected filters.'}
+              {searchQuery ? `No results match "${searchQuery}"` : 'New pocket reel drama series are coming soon.'}
             </Text>
-            {(searchQuery || selectedGenre !== 'All' || selectedLanguage !== 'All') ? (
-              <TouchableOpacity 
-                style={styles.resetFilterBtn} 
-                onPress={() => { setSearchQuery(''); setSelectedGenre('All'); setSelectedLanguage('All'); }}
-              >
-                <Text style={styles.resetFilterBtnText}>Reset All Filters</Text>
+            {searchQuery ? (
+              <TouchableOpacity style={styles.resetFilterBtn} onPress={() => { setSearchQuery(''); setSelectedGenre('All'); }}>
+                <Text style={styles.resetFilterBtnText}>Clear Filters</Text>
               </TouchableOpacity>
             ) : null}
           </View>
@@ -388,9 +341,13 @@ const getStyles = (theme, cardWidth = 160) => StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: theme.headerBackground,
     borderBottomWidth: 1,
-    borderBottomColor: theme.headerBorder,
+    borderBottomColor: theme.cardBorder,
+    backgroundColor: theme.headerBackground,
+  },
+  backBtn: {
+    padding: 4,
+    marginRight: 8,
   },
   headerTitleContainer: {
     flex: 1,
@@ -404,20 +361,18 @@ const getStyles = (theme, cardWidth = 160) => StyleSheet.create({
     color: theme.text,
     letterSpacing: -0.3,
   },
-  headerBadge: {
+  headerFlameBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(179, 211, 50, 0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(179, 211, 50, 0.3)',
+    backgroundColor: 'rgba(255, 107, 0, 0.15)',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
     gap: 3,
   },
-  headerBadgeText: {
-    color: theme.primary,
-    fontSize: 9.5,
+  headerFlameText: {
+    color: '#ff6b00',
+    fontSize: 10,
     fontWeight: '800',
     textTransform: 'uppercase',
   },
@@ -447,45 +402,37 @@ const getStyles = (theme, cardWidth = 160) => StyleSheet.create({
     fontSize: 13,
     paddingVertical: 0,
   },
-  filtersWrapper: {
-    paddingVertical: 8,
+  genreBarContainer: {
     borderBottomWidth: 1,
-    borderBottomColor: theme.divider,
-    backgroundColor: theme.headerBackground,
+    borderBottomColor: theme.cardBorder,
+    paddingVertical: 8,
   },
-  filterScrollContent: {
+  genreScrollContent: {
     paddingHorizontal: 16,
     gap: 8,
-    alignItems: 'center',
   },
-  filterPill: {
-    backgroundColor: theme.cardSecondary,
-    paddingHorizontal: 13,
+  genrePill: {
+    paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 20,
+    backgroundColor: theme.cardSecondary,
     borderWidth: 1,
     borderColor: theme.cardBorder,
   },
-  filterPillActive: {
+  genrePillActive: {
     backgroundColor: theme.primary,
     borderColor: theme.primary,
   },
-  filterPillText: {
+  genrePillText: {
     color: theme.textSecondary,
     fontSize: 12,
     fontWeight: '700',
   },
-  filterPillTextActive: {
+  genrePillTextActive: {
     color: theme.primaryText,
     fontWeight: '800',
   },
-  filterDivider: {
-    width: 1,
-    height: 18,
-    backgroundColor: theme.divider,
-    marginHorizontal: 4,
-  },
-  gridContent: {
+  listContent: {
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 85,
@@ -495,7 +442,7 @@ const getStyles = (theme, cardWidth = 160) => StyleSheet.create({
     marginBottom: 14,
   },
   heroBannerCard: {
-    height: 165,
+    height: 160,
     borderRadius: 16,
     overflow: 'hidden',
     marginBottom: 16,
@@ -519,7 +466,7 @@ const getStyles = (theme, cardWidth = 160) => StyleSheet.create({
     top: 12,
     left: 14,
   },
-  heroSpotlightBadge: {
+  heroTrendingBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: theme.primary,
@@ -528,7 +475,7 @@ const getStyles = (theme, cardWidth = 160) => StyleSheet.create({
     borderRadius: 6,
     gap: 4,
   },
-  heroSpotlightText: {
+  heroTrendingText: {
     color: '#000000',
     fontSize: 9,
     fontWeight: '900',
@@ -548,7 +495,6 @@ const getStyles = (theme, cardWidth = 160) => StyleSheet.create({
   heroCtaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
   },
   heroPlayBtn: {
     flexDirection: 'row',
@@ -564,12 +510,7 @@ const getStyles = (theme, cardWidth = 160) => StyleSheet.create({
     fontSize: 11,
     fontWeight: '800',
   },
-  heroDurationText: {
-    color: '#d1d5db',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  movieCard: {
+  reelCard: {
     width: cardWidth,
     borderRadius: 14,
     overflow: 'hidden',
@@ -623,13 +564,13 @@ const getStyles = (theme, cardWidth = 160) => StyleSheet.create({
     fontSize: 8,
     fontWeight: '800',
   },
-  durationBadge: {
+  episodesBadge: {
     backgroundColor: 'rgba(0, 0, 0, 0.75)',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
   },
-  durationBadgeText: {
+  episodesBadgeText: {
     color: '#ffffff',
     fontSize: 8.5,
     fontWeight: '800',
@@ -670,27 +611,11 @@ const getStyles = (theme, cardWidth = 160) => StyleSheet.create({
     fontWeight: '800',
     lineHeight: 15,
   },
-  cardMetaRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 2,
-  },
-  cardLangText: {
+  cardGenre: {
     color: theme.primary,
     fontSize: 9.5,
     fontWeight: '700',
-    flex: 1,
-  },
-  cardRatingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  cardRatingText: {
-    color: '#ffd700',
-    fontSize: 9.5,
-    fontWeight: '800',
+    marginTop: 2,
   },
   loadingContainer: {
     flex: 1,

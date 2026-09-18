@@ -91,10 +91,6 @@ const FrontendPocketReelSeries = () => {
         const ratingVal = parseFloat(show.imdbRating || show.rating || '8.5');
         const percentage = (ratingVal / 10) * 100;
         const year = show.releaseYear || (show.releaseDate ? new Date(show.releaseDate).getFullYear() : '2026');
-        const quality = show.videoQuality;
-        const parts = (quality || '').split(' ');
-        const prefix = parts[0] || '';
-        const suffix = parts.slice(1).join(' ') || '';
 
         return (
          <Link to={`/details/show/${show._id}`} key={show._id} className="fe-movie-card-new">
@@ -111,12 +107,6 @@ const FrontendPocketReelSeries = () => {
              </div>
            ) : (
              <div className="card-overlay-hover">
-              {quality && quality !== 'None' && (
-               <div className="fe-premium-badge-v">
-                <span className="badge-prefix-v">{prefix}</span>
-                <span className="badge-suffix-v">{suffix}</span>
-               </div>
-              )}
               <div 
                className="fe-badge-rating-v" 
                style={{ background: `conic-gradient(#b3d332 ${percentage}%, rgba(255,255,255,0.1) ${percentage}%)` }}

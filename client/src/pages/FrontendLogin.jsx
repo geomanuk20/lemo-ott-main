@@ -276,10 +276,9 @@ const FrontendLogin = () => {
     return;
    }
 
-   const isAdminDomain = trimmedEmail.endsWith('@video.com') || trimmedEmail === 'admin@video.com';
-   const isGmailDomain = trimmedEmail.endsWith('@gmail.com');
-
    if (view === 'register') {
+    const isGmailDomain = trimmedEmail.endsWith('@gmail.com');
+    const isAdminDomain = trimmedEmail.endsWith('@video.com') || trimmedEmail.endsWith('@admin.com') || trimmedEmail.endsWith('@lemoott.com');
     if (isAdminDomain) {
      setError('Registration is not permitted for admin email accounts.');
      setLoading(false);
@@ -293,13 +292,6 @@ const FrontendLogin = () => {
     // Password Validation
     if (formData.password.length < 6) {
      setError('Password must be at least 6 characters long');
-     setLoading(false);
-     return;
-    }
-   } else {
-    // For login or forgot-password
-    if (!isAdminDomain && !isGmailDomain) {
-     setError('Only @gmail.com email addresses are allowed for users, and admin@video.com for admin login.');
      setLoading(false);
      return;
     }

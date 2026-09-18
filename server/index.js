@@ -855,15 +855,10 @@ async function recordActiveSession(user, token, deviceId) {
 app.post('/api/login', async (req, res) => {
   try {
     const { email, password, deviceId } = req.body;
-    const normalizedEmail = email.trim().toLowerCase();
-
-    // Enforce email domain checks for login
-    const isAdminDomain = normalizedEmail.endsWith('@video.com') || normalizedEmail.endsWith('@admin.com') || normalizedEmail.endsWith('@lemoott.com') || normalizedEmail === 'admin@video.com' || normalizedEmail === 'admin@lemoott.com';
-    const isGmailDomain = normalizedEmail.endsWith('@gmail.com');
-
-    if (!isAdminDomain && !isGmailDomain) {
-      return res.status(400).json({ message: 'Only @gmail.com email addresses are allowed for users, and admin domains (@lemoott.com, @admin.com, @video.com) for admin login.' });
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email and password are required' });
     }
+    const normalizedEmail = email.trim().toLowerCase();
 
     const user = await User.findOne({ email: normalizedEmail });
     
@@ -873,11 +868,6 @@ app.post('/api/login', async (req, res) => {
 
     if ((user.status || 'Active') !== 'Active') {
       return res.status(403).json({ message: 'User account is inactive/suspended' });
-    }
-
-    // If logging in with admin format, ensure the user is actually an admin/sub-admin
-    if (isAdminDomain && user.role !== 'admin' && user.role !== 'sub-admin') {
-      return res.status(403).json({ message: 'Access denied. This format is reserved for admin login.' });
     }
 
     const isMatch = await user.comparePassword(password);
@@ -1328,15 +1318,11 @@ app.post('/api/auth/facebook', async (req, res) => {
 app.post('/api/forgot-password', async (req, res) => {
   try {
     const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
     const normalizedEmail = email.trim().toLowerCase();
     console.log('Searching for user to reset:', normalizedEmail);
-    
-    // Enforce email domain checks for password reset
-    const isAdminDomain = normalizedEmail.endsWith('@video.com') || normalizedEmail === 'admin@video.com';
-    const isGmailDomain = normalizedEmail.endsWith('@gmail.com');
-    if (!isAdminDomain && !isGmailDomain) {
-      return res.status(400).json({ message: 'Only @gmail.com email addresses are permitted.' });
-    }
 
     const user = await User.findOne({ email: normalizedEmail });
     console.log('User found:', user ? 'YES' : 'NO');
@@ -1432,10 +1418,38 @@ app.get('/api/watchlist/:userId', async (req, res) => {
         else if (isShortWeb) resolvedContentType = 'short-web-series';
         else if (detail.contentType === 'show' || detail.contentType === 'Show') resolvedContentType = 'show';
 
+        let episodeDetail = null;
+        if (item.selectedEpisodeId) {
+          try {
+            episodeDetail = await Episode.findById(item.selectedEpisodeId).lean();
+          } catch (e) {}
+        }
+
+        const epTitle = episodeDetail ? episodeDetail.title : (item.selectedEpisodeTitle || '');
+        const epPoster = episodeDetail ? (episodeDetail.poster || episodeDetail.thumbnail) : null;
+        const epNumber = item.selectedEpisodeNumber || 1;
+        const uniqueKey = item.selectedEpisodeId 
+          ? `${item.contentId}_${item.selectedEpisodeId}` 
+          : (item._id ? item._id.toString() : item.contentId.toString());
+
         return { 
           ...detail.toObject(), 
+          _id: uniqueKey,
+          contentId: item.contentId,
+          showId: item.contentId,
           dbContentType: detail.contentType, // Preserve original contentType
-          contentType: resolvedContentType 
+          contentType: resolvedContentType,
+          selectedEpisodeId: item.selectedEpisodeId || null,
+          selectedEpisodeNumber: epNumber,
+          selectedEpisodeTitle: epTitle,
+          episodePoster: epPoster,
+          episodeDuration: episodeDetail ? episodeDetail.duration : null,
+          displayTitle: item.selectedEpisodeId && epTitle 
+            ? `${detail.title || detail.name} (E${epNumber})` 
+            : (detail.title || detail.name),
+          subtitleText: item.selectedEpisodeId && epTitle
+            ? `E${epNumber}: ${epTitle}`
+            : (detail.totalSeasons ? `${detail.totalSeasons} Seasons` : (isPocket ? 'Pocket Reel Series' : 'Series'))
         };
       }
       return null;
@@ -1481,22 +1495,66 @@ app.get('/api/watchlist/:userId', async (req, res) => {
 
 app.post('/api/watchlist/toggle', async (req, res) => {
   try {
-    const { userId, contentId, contentType } = req.body;
+    const { userId, contentId, contentType, selectedEpisodeId, selectedEpisodeNumber, selectedEpisodeTitle } = req.body;
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
     if (!user.watchlist) user.watchlist = [];
 
-    const index = user.watchlist.findIndex(i => i.contentId && i.contentId.toString() === contentId.toString());
+    let index = -1;
+    if (selectedEpisodeId) {
+      index = user.watchlist.findIndex(i => 
+        i.contentId && i.contentId.toString() === contentId.toString() &&
+        i.selectedEpisodeId && i.selectedEpisodeId.toString() === selectedEpisodeId.toString()
+      );
+    } else {
+      index = user.watchlist.findIndex(i => 
+        i.contentId && i.contentId.toString() === contentId.toString() &&
+        !i.selectedEpisodeId
+      );
+    }
+
     if (index === -1) {
-      user.watchlist.push({ contentId, contentType });
+      user.watchlist.push({ 
+        contentId, 
+        contentType: contentType || 'show',
+        selectedEpisodeId: selectedEpisodeId || null,
+        selectedEpisodeNumber: selectedEpisodeNumber || 1,
+        selectedEpisodeTitle: selectedEpisodeTitle || '',
+        updatedAt: new Date()
+      });
       await user.save();
-      res.json({ message: 'Added to watchlist', status: 'added' });
+      res.json({ message: 'Added to watchlist', status: 'added', selectedEpisodeId });
     } else {
       user.watchlist.splice(index, 1);
       await user.save();
-      res.json({ message: 'Removed from watchlist', status: 'removed' });
+      res.json({ message: 'Removed from watchlist', status: 'removed', selectedEpisodeId });
     }
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Update the selected episode in an existing watchlist item
+app.post('/api/watchlist/update-episode', async (req, res) => {
+  try {
+    const { userId, contentId, selectedEpisodeId, selectedEpisodeNumber, selectedEpisodeTitle } = req.body;
+    if (!userId || !contentId) return res.status(400).json({ message: 'Missing userId or contentId' });
+
+    const user = await User.findById(userId);
+    if (!user || !user.watchlist) return res.status(404).json({ message: 'User not found' });
+
+    const item = user.watchlist.find(i => i.contentId && i.contentId.toString() === contentId.toString());
+    if (item) {
+      if (selectedEpisodeId) item.selectedEpisodeId = selectedEpisodeId;
+      if (selectedEpisodeNumber) item.selectedEpisodeNumber = selectedEpisodeNumber;
+      if (selectedEpisodeTitle) item.selectedEpisodeTitle = selectedEpisodeTitle;
+      item.updatedAt = new Date();
+      await user.save();
+      return res.json({ success: true, message: 'Watchlist episode updated' });
+    }
+
+    res.json({ success: false, message: 'Item not in watchlist' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -4728,20 +4786,6 @@ app.post('/api/payment/mock-success', async (req, res) => {
     const plan = await SubscriptionPlan.findById(req.body.planId);
     if (!plan) return res.status(404).json({ message: 'Plan not found' });
     
-    // Safety check: ensure they are not trying to purchase another plan while already subscribed
-    const todayStr = new Date().toISOString().split('T')[0];
-    const isExpired = user.expiryDate && user.expiryDate < todayStr;
-    if (user.subscriptionPlan && !isExpired && user.subscriptionPlan !== plan.planName) {
-      const activePlanObj = await SubscriptionPlan.findOne({ planName: user.subscriptionPlan });
-      if (activePlanObj) {
-        const activePriceStr = activePlanObj.price ? activePlanObj.price.toString().trim().toLowerCase().replace(/[^\d.]/g, '') : '';
-        const isActiveFree = activePriceStr === '0' || activePriceStr === '0.00' || activePriceStr === '' || activePriceStr === 'free' || parseFloat(activePriceStr) === 0;
-        if (!isActiveFree) {
-          return res.status(400).json({ message: 'You already have an active subscription plan.' });
-        }
-      }
-    }
-    
     // Update user subscription
     user.subscriptionPlan = plan.planName;
     user.role = 'subscriber';
@@ -4856,20 +4900,6 @@ app.post('/api/payment/free-success', async (req, res) => {
     const plan = await SubscriptionPlan.findById(req.body.planId);
     if (!plan) return res.status(404).json({ message: 'Plan not found' });
     
-    // Safety check: ensure they are not trying to purchase another plan while already subscribed
-    const todayStr = new Date().toISOString().split('T')[0];
-    const isExpired = user.expiryDate && user.expiryDate < todayStr;
-    if (user.subscriptionPlan && !isExpired && user.subscriptionPlan !== plan.planName) {
-      const activePlanObj = await SubscriptionPlan.findOne({ planName: user.subscriptionPlan });
-      if (activePlanObj) {
-        const activePriceStr = activePlanObj.price ? activePlanObj.price.toString().trim().toLowerCase().replace(/[^\d.]/g, '') : '';
-        const isActiveFree = activePriceStr === '0' || activePriceStr === '0.00' || activePriceStr === '' || activePriceStr === 'free' || parseFloat(activePriceStr) === 0;
-        if (!isActiveFree) {
-          return res.status(400).json({ message: 'You already have an active subscription plan.' });
-        }
-      }
-    }
-    
     // Safety check: ensure the plan price is actually zero/free
     const priceStr = plan.price ? plan.price.toString().trim().toLowerCase().replace(/[^\d.]/g, '') : '';
     const isFree = priceStr === '0' || priceStr === '0.00' || priceStr === '' || priceStr === 'free' || parseFloat(priceStr) === 0;
@@ -4978,20 +5008,6 @@ app.post('/api/payment/phonepe/initiate', async (req, res) => {
     
     const plan = await SubscriptionPlan.findById(req.body.planId);
     if (!plan) return res.status(404).json({ message: 'Plan not found' });
-    
-    // Safety check: ensure they are not trying to purchase another plan while already subscribed
-    const todayStr = new Date().toISOString().split('T')[0];
-    const isExpired = user.expiryDate && user.expiryDate < todayStr;
-    if (user.subscriptionPlan && !isExpired && user.subscriptionPlan !== plan.planName) {
-      const activePlanObj = await SubscriptionPlan.findOne({ planName: user.subscriptionPlan });
-      if (activePlanObj) {
-        const activePriceStr = activePlanObj.price ? activePlanObj.price.toString().trim().toLowerCase().replace(/[^\d.]/g, '') : '';
-        const isActiveFree = activePriceStr === '0' || activePriceStr === '0.00' || activePriceStr === '' || activePriceStr === 'free' || parseFloat(activePriceStr) === 0;
-        if (!isActiveFree) {
-          return res.status(400).json({ message: 'You already have an active subscription plan.' });
-        }
-      }
-    }
 
     const PaymentGateway = require('./models/PaymentGateway');
     const gw = await PaymentGateway.findOne({ name: 'PhonePe' });
@@ -5281,21 +5297,37 @@ app.get('/api/shows', async (req, res) => {
         const webSeriesOff = menuSettings.webSeries?.toUpperCase() === 'OFF';
         const pocketReelOff = menuSettings.pocketReelSeries?.toUpperCase() === 'OFF';
 
-        if (req.query.contentType === 'Pocket Reel Series' && pocketReelOff) {
+        if (showsOff && webSeriesOff && pocketReelOff) {
           return res.json([]);
         }
-        if ((req.query.contentType === 'Short Web Series' || req.query.contentType === 'web-series') && webSeriesOff) {
-          return res.json([]);
-        }
-        if ((req.query.contentType === 'TV Show' || !req.query.contentType) && showsOff && webSeriesOff && pocketReelOff) {
-          return res.json([]);
+
+        if (req.query.contentType) {
+          const ct = req.query.contentType;
+          if (ct === 'Pocket Reel Series' && pocketReelOff) return res.json([]);
+          if ((ct === 'Short Web Series' || ct === 'web-series') && webSeriesOff) return res.json([]);
+          if ((ct === 'TV Show' || ct === 'show') && showsOff) return res.json([]);
+          query.contentType = ct;
+        } else {
+          const allowedOr = [];
+          if (!showsOff) {
+            allowedOr.push({ contentType: 'TV Show' }, { contentType: 'tv-show' }, { contentType: { $in: [null, ''] } }, { contentType: { $exists: false } });
+          }
+          if (!webSeriesOff) {
+            allowedOr.push({ contentType: { $in: ['Short Web Series', 'Short Web-Series', 'web-series'] } });
+          }
+          if (!pocketReelOff) {
+            allowedOr.push({ contentType: { $in: ['Pocket Reel Series', 'Pocket Reel', 'pocket-reel-series', 'pocket-reels'] } });
+          }
+          if (allowedOr.length === 0) {
+            return res.json([]);
+          }
+          query.$or = allowedOr;
         }
       }
-    }
-
-    if (req.query.contentType) {
+    } else if (req.query.contentType) {
       query.contentType = req.query.contentType;
     }
+
     const shows = await Show.find(query).sort({ createdAt: -1 });
     res.json(shows);
   } catch (err) {
@@ -5958,23 +5990,28 @@ app.get('/api/search', async (req, res) => {
       const shortFilmsOff = menuSettings.shortFilms?.toUpperCase() === 'OFF';
       const showsOff = menuSettings.shows?.toUpperCase() === 'OFF';
       const webSeriesOff = menuSettings.webSeries?.toUpperCase() === 'OFF';
+      const pocketReelsOff = menuSettings.pocketReelSeries?.toUpperCase() === 'OFF';
       const sportsOff = menuSettings.sports?.toUpperCase() === 'OFF';
 
-      if (moviesOff && shortFilmsOff) {
-        filteredMovies = [];
-      } else if (moviesOff) {
-        filteredMovies = movies.filter(m => m.contentType === 'Short Film' || m.contentType === 'short-film');
-      } else if (shortFilmsOff) {
-        filteredMovies = movies.filter(m => m.contentType !== 'Short Film' && m.contentType !== 'short-film');
-      }
+      filteredMovies = movies.filter(m => {
+        const ct = (m.contentType || '').toLowerCase().trim();
+        const isShortFilm = ct === 'short film' || ct === 'short-film';
+        if (isShortFilm && shortFilmsOff) return false;
+        if (!isShortFilm && moviesOff) return false;
+        return true;
+      });
 
-      if (showsOff && webSeriesOff) {
-        filteredShows = [];
-      } else if (showsOff) {
-        filteredShows = shows.filter(s => s.contentType === 'Short Web Series' || s.contentType === 'Short Web-Series');
-      } else if (webSeriesOff) {
-        filteredShows = shows.filter(s => s.contentType !== 'Short Web Series' && s.contentType !== 'Short Web-Series');
-      }
+      filteredShows = shows.filter(s => {
+        const ct = (s.contentType || '').toLowerCase().trim();
+        const isPocket = ct === 'pocket reel series' || ct === 'pocket-reel-series' || ct === 'pocket reels' || ct === 'pocket-reels' || ct === 'pocket reel';
+        const isShortWeb = ct === 'short web series' || ct === 'short-web-series' || ct === 'web-series' || ct === 'web series';
+        const isTvShow = !isPocket && !isShortWeb;
+
+        if (isPocket && pocketReelsOff) return false;
+        if (isShortWeb && webSeriesOff) return false;
+        if (isTvShow && showsOff) return false;
+        return true;
+      });
 
       if (sportsOff) {
         filteredSports = [];
@@ -5986,10 +6023,28 @@ app.get('/api/search', async (req, res) => {
     }
 
     const results = [
-      ...filteredMovies.map(m => ({ ...m, contentType: 'movie' })),
-      ...filteredShows.map(s => ({ ...s, contentType: 'show' })),
-      ...filteredNewReleases.map(n => ({ ...n, contentType: 'new-release' })),
-      ...filteredSports.map(sp => ({ ...sp, contentType: 'sports' })),
+      ...filteredMovies.map(m => {
+        const isShortFilm = (m.contentType || '').toLowerCase().includes('short');
+        return {
+          ...m,
+          contentType: isShortFilm ? 'short-film' : 'movie',
+          displayType: isShortFilm ? 'Short Film' : 'Movie'
+        };
+      }),
+      ...filteredShows.map(s => {
+        const ct = (s.contentType || '').toLowerCase().trim();
+        const isPocket = ct.includes('pocket') || ct.includes('reel');
+        const isShortWeb = ct.includes('short') && ct.includes('web');
+        const contentType = isPocket ? 'pocket-reel-series' : isShortWeb ? 'short-web-series' : 'show';
+        const displayType = isPocket ? 'Pocket Reel Series' : isShortWeb ? 'Short Web Series' : 'TV Show';
+        return {
+          ...s,
+          contentType,
+          displayType
+        };
+      }),
+      ...filteredNewReleases.map(n => ({ ...n, contentType: 'new-release', displayType: 'New Release' })),
+      ...filteredSports.map(sp => ({ ...sp, contentType: 'sports', displayType: 'Sports' })),
     ];
 
     res.json(results);
@@ -6017,7 +6072,7 @@ app.get('/api/home-aggregated', async (req, res) => {
       TVChannel.find(pubFilter).sort({ createdAt: -1 }).limit(50).lean().maxTimeMS(5000),
       SportsCategory.find().lean().maxTimeMS(5000),
       GeneralSettings.findOne().lean().maxTimeMS(5000),
-      HomeSection.find({ status: 'Active' }).sort({ order: 1 }).lean().maxTimeMS(5000),
+      HomeSection.find({ status: { $regex: /^active$/i } }).sort({ order: 1 }).lean().maxTimeMS(5000),
       MenuSettings.findOne().lean().maxTimeMS(5000),
       Short.find(pubFilter).sort({ createdAt: -1 }).limit(20).lean().maxTimeMS(5000)
     ]);
@@ -6033,6 +6088,7 @@ app.get('/api/home-aggregated', async (req, res) => {
     let filteredSports = sports;
     let filteredChannels = channels;
     let filteredShorts = shorts;
+    let filteredHomeSections = (homeSections || []).filter(hs => hs && (!hs.status || hs.status.toLowerCase() === 'active'));
 
     if (menuSettings) {
       const moviesOff = menuSettings.movies?.toUpperCase() === 'OFF';
@@ -6070,16 +6126,21 @@ app.get('/api/home-aggregated', async (req, res) => {
       if (moviesOff && shortFilmsOff) {
         filteredMovies = [];
       } else if (moviesOff) {
-        filteredMovies = movies.filter(m => m.contentType === 'Short Film' || m.contentType === 'short-film');
+        filteredMovies = movies.filter(m => (m.contentType || '').toLowerCase() === 'short film' || (m.contentType || '').toLowerCase() === 'short-film');
       } else if (shortFilmsOff) {
-        filteredMovies = movies.filter(m => m.contentType !== 'Short Film' && m.contentType !== 'short-film');
+        filteredMovies = movies.filter(m => (m.contentType || '').toLowerCase() !== 'short film' && (m.contentType || '').toLowerCase() !== 'short-film');
       }
 
       // Filter shows
       filteredShows = shows.filter(s => {
-        if (s.contentType === 'Pocket Reel Series' && pocketReelOff) return false;
-        if ((s.contentType === 'Short Web Series' || s.contentType === 'Short Web-Series' || s.contentType === 'web-series') && webSeriesOff) return false;
-        if ((s.contentType === 'TV Show' || !s.contentType) && showsOff) return false;
+        const ct = (s.contentType || '').toLowerCase().trim();
+        const isPocket = ct === 'pocket reel series' || ct === 'pocket-reel-series' || ct === 'pocket reels' || ct === 'pocket-reels' || ct === 'pocket reel';
+        const isShortWeb = ct === 'short web series' || ct === 'short-web-series' || ct === 'web-series';
+        const isTvShow = !isPocket && !isShortWeb;
+
+        if (isPocket && pocketReelOff) return false;
+        if (isShortWeb && webSeriesOff) return false;
+        if (isTvShow && showsOff) return false;
         return true;
       });
 
@@ -6102,6 +6163,21 @@ app.get('/api/home-aggregated', async (req, res) => {
       if (shortsOff) {
         filteredShorts = [];
       }
+
+      // Filter dynamic home sections
+      filteredHomeSections = filteredHomeSections.filter(hs => {
+        const type = (hs.sectionType || '').trim();
+        const lowerTitle = (hs.title || '').toLowerCase().trim();
+        if ((type === 'Movie' || lowerTitle === 'movie' || lowerTitle === 'movies') && moviesOff) return false;
+        if ((type === 'Short Film' || lowerTitle === 'short film' || lowerTitle === 'short films') && shortFilmsOff) return false;
+        if ((type === 'Shows' || lowerTitle === 'shows' || lowerTitle === 'tv shows') && showsOff) return false;
+        if ((type === 'Short Web Series' || lowerTitle === 'web series' || lowerTitle === 'short web series') && webSeriesOff) return false;
+        if ((type === 'Pocket Reel Series' || lowerTitle === 'pocket reel' || lowerTitle === 'pocket reels' || lowerTitle === 'short pocket series') && pocketReelOff) return false;
+        if ((type === 'Live TV' || lowerTitle === 'live tv') && liveTvOff) return false;
+        if ((type === 'Sports' || lowerTitle === 'sports') && sportsOff) return false;
+        if ((type === 'Shorts' || lowerTitle === 'shorts') && shortsOff) return false;
+        return true;
+      });
     }
 
     // Populate hasLiked property for vertical shorts if user is authenticated
@@ -6132,7 +6208,7 @@ app.get('/api/home-aggregated', async (req, res) => {
       channels: filteredChannels,
       sportsCategories,
       settings,
-      homeSections,
+      homeSections: filteredHomeSections,
       menuSettings,
       shorts: processedShorts
     });
@@ -6267,11 +6343,22 @@ app.get('/api/users/:id', async (req, res) => {
 // Admin routes to terminate active user session(s)
 app.post('/api/users/:id/sessions/terminate', async (req, res) => {
   try {
-    const { sessionId } = req.body;
+    const { sessionId, deviceId, token } = req.body;
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    user.activeSessions = (user.activeSessions || []).filter(s => s._id.toString() !== sessionId);
+    const target = sessionId ? String(sessionId).trim() : (deviceId ? String(deviceId).trim() : (token ? String(token).trim() : ''));
+    user.activeSessions = (user.activeSessions || []).filter(s => {
+      const sIdStr = s._id ? String(s._id) : '';
+      const sDevStr = s.deviceId ? String(s.deviceId) : '';
+      const sTokenStr = s.token ? String(s.token) : '';
+
+      const matchId = target && sIdStr === target;
+      const matchDev = (target && sDevStr === target) || (deviceId && sDevStr === String(deviceId));
+      const matchToken = (target && sTokenStr === target) || (token && sTokenStr === String(token));
+
+      return !matchId && !matchDev && !matchToken;
+    });
     await user.save();
 
     res.json({ message: 'Session terminated successfully', activeSessions: user.activeSessions });

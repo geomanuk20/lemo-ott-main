@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>LEMO OTT - Mobile App UI/UX Design & Architecture Specification</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap');
+
+    @page {
+      size: A4 portrait;
+      margin: 14mm 12mm 16mm 12mm;
+      @bottom-right {
+        content: counter(page);
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-size: 9pt;
+        color: #6b7280;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #000000;
+      color: #f3f4f6;
+      line-height: 1.5;
+      font-size: 9.5pt;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .page-break {
+      page-break-before: always;
+      break-before: page;
+    }
+
+    .avoid-break {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+
+    /* Cover Page */
+    .cover-container {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 40px 20px;
+      position: relative;
+      border: 1px solid #1f242d;
+      border-radius: 20px;
+      background: radial-gradient(circle at 80% 20%, rgba(179, 211, 50, 0.12) 0%, rgba(0,0,0,0) 60%),
+                  linear-gradient(180deg, #08080a 0%, #000000 100%);
+    }
+
+    .cover-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(179, 211, 50, 0.12);
+      border: 1px solid rgba(179, 211, 50, 0.35);
+      color: #b3d332;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 8.5pt;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      width: fit-content;
+    }
+
+    .cover-logo-title {
+      font-size: 34pt;
+      font-weight: 900;
+      letter-spacing: -1px;
+      color: #ffffff;
+      margin-top: 24px;
+      line-height: 1.1;
+    }
+
+    .cover-logo-title span {
+      color: #b3d332;
+    }
+
+    .cover-subtitle {
+      font-size: 13pt;
+      color: #9ca3af;
+      font-weight: 500;
+      margin-top: 14px;
+      max-width: 580px;
+      line-height: 1.4;
+    }
+
+    .cover-meta-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      margin-top: 36px;
+      background: #08080a;
+      border: 1px solid #1c1c22;
+      border-radius: 14px;
+      padding: 18px 22px;
+    }
+
+    .meta-item {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .meta-label {
+      font-size: 7.5pt;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #6b7280;
+      font-weight: 700;
+      margin-bottom: 3px;
+    }
+
+    .meta-value {
+      font-size: 10pt;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .meta-value.accent {
+      color: #b3d332;
+    }
+
+    .cover-footer {
+      border-top: 1px solid #1c1c22;
+      padding-top: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #6b7280;
+      font-size: 8pt;
+    }
+
+    /* Section Headers */
+    .section-header {
+      margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #1c1c22;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+
+    .section-num {
+      color: #b3d332;
+      font-size: 8.5pt;
+      font-weight: 800;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+
+    .section-title {
+      font-size: 17pt;
+      font-weight: 900;
+      color: #ffffff;
+      letter-spacing: -0.5px;
+    }
+
+    .section-desc {
+      color: #9ca3af;
+      font-size: 8.5pt;
+      margin-top: 4px;
+    }
+
+    /* Cards & Containers */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .card {
+      background: #08080a;
+      border: 1px solid #1c1c22;
+      border-radius: 12px;
+      padding: 14px 16px;
+    }
+
+    .card-title {
+      font-size: 10pt;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .card-subtitle {
+      font-size: 8pt;
+      color: #9ca3af;
+      margin-bottom: 10px;
+    }
+
+    /* Palette Swatches */
+    .swatch-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+      background: #111114;
+      padding: 6px 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .swatch-color {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      flex-shrink: 0;
+    }
+
+    .swatch-info {
+      flex: 1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .swatch-name {
+      font-size: 8pt;
+      font-weight: 700;
+      color: #e5e7eb;
+    }
+
+    .swatch-hex {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 7.5pt;
+      color: #b3d332;
+      font-weight: 600;
+    }
+
+    /* Phone Mockup UI Representation */
+    .phone-wireframe {
+      background: #000000;
+      border: 2px solid #1f242d;
+      border-radius: 24px;
+      padding: 12px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+      position: relative;
+    }
+
+    .phone-notch {
+      width: 60px;
+      height: 5px;
+      background: #1f242d;
+      border-radius: 999px;
+      margin: 0 auto 10px auto;
+    }
+
+    .phone-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #161619;
+      margin-bottom: 10px;
+    }
+
+    .phone-logo {
+      font-weight: 900;
+      font-size: 11pt;
+      color: #b3d332;
+      letter-spacing: -0.5px;
+    }
+
+    .phone-carousel {
+      height: 95px;
+      background: linear-gradient(135deg, #1c2409 0%, #0c0e12 100%);
+      border: 1px solid rgba(179, 211, 50, 0.25);
+      border-radius: 12px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .phone-pill-row {
+      display: flex;
+      gap: 6px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+
+    .phone-pill {
+      background: #111114;
+      border: 1px solid #1c1c22;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 6.5pt;
+      font-weight: 700;
+      color: #9ca3af;
+      white-space: nowrap;
+    }
+
+    .phone-pill.active {
+      background: rgba(179, 211, 50, 0.15);
+      border-color: #b3d332;
+      color: #b3d332;
+    }
+
+    .phone-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .phone-poster {
+      height: 75px;
+      background: #111114;
+      border: 1px solid #1c1c22;
+      border-radius: 6px;
+      position: relative;
+      display: flex;
+      align-items: flex-end;
+      padding: 4px;
+    }
+
+    .poster-badge {
+      background: #b3d332;
+      color: #000;
+      font-size: 5pt;
+      font-weight: 900;
+      padding: 1px 3px;
+      border-radius: 2px;
+    }
+
+    .phone-tabbar {
+      display: flex;
+      justify-content: space-around;
+      border-top: 1px solid #161619;
+      padding-top: 8px;
+      margin-top: 4px;
+    }
+
+    .tab-icon {
+      font-size: 6pt;
+      font-weight: 700;
+      color: #6b7280;
+      text-align: center;
+    }
+
+    .tab-icon.active {
+      color: #b3d332;
+    }
+
+    /* Flow / Specs Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 8pt;
+      margin-bottom: 14px;
+    }
+
+    th {
+      background: #111114;
+      color: #b3d332;
+      font-weight: 800;
+      text-align: left;
+      padding: 8px 10px;
+      border: 1px solid #1c1c22;
+      text-transform: uppercase;
+      font-size: 7pt;
+      letter-spacing: 0.5px;
+    }
+
+    td {
+      padding: 7px 10px;
+      border: 1px solid #161619;
+      color: #d1d5db;
+    }
+
+    tr:nth-child(even) td {
+      background: #060608;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 6.5pt;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .tag-green { background: rgba(179, 211, 50, 0.15); color: #b3d332; border: 1px solid rgba(179, 211, 50, 0.3); }
+    .tag-blue { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+    .tag-amber { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .tag-red { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .tag-purple { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+
+    /* Highlights & Architecture blocks */
+    .arch-box {
+      background: linear-gradient(180deg, #0a0a0d 0%, #050507 100%);
+      border: 1px solid #1c1c22;
+      border-left: 3px solid #b3d332;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 12px;
+    }
+
+    .arch-title {
+      font-size: 8.5pt;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 3px;
+    }
+
+    .arch-text {
+      font-size: 7.8pt;
+      color: #9ca3af;
+      line-height: 1.4;
+    }
+
+    .pill-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 7pt;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 999px;
+    }
+
+    ul.spec-list {
+      list-style-type: none;
+      padding-left: 0;
+    }
+
+    ul.spec-list li {
+      position: relative;
+      padding-left: 14px;
+      margin-bottom: 5px;
+      font-size: 8pt;
+      color: #9ca3af;
+    }
+
+    ul.spec-list li strong {
+      color: #e5e7eb;
+    }
+
+    ul.spec-list li::before {
+      content: "•";
+      position: absolute;
+      left: 0;
+      color: #b3d332;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ================= PAGE 1: COVER ================= -->
+  <div class="cover-container">
+    <div>
+      <div class="cover-badge">⚡ Production UI/UX Architecture & Design System</div>
+      <h1 class="cover-logo-title">LEMO <span>OTT</span><br/>Mobile App UI Design</h1>
+      <p class="cover-subtitle">
+        Official UI/UX design specifications, component guidelines, color engineering, information architecture, navigation graph, and interaction flows for the LEMO OTT Android & iOS mobile application.
+      </p>
+
+      <div class="cover-meta-grid">
+        <div class="meta-item">
+          <span class="meta-label">Application Version</span>
+          <span class="meta-value accent">v1.0.5 (Build 6)</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Theme Engine</span>
+          <span class="meta-value">Dual-Engine (Midnight Black & Pure Light)</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Framework & Runtime</span>
+          <span class="meta-value">React Native 0.76.7 / Expo SDK 54 / Hermes</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Target Formats</span>
+          <span class="meta-value">Smartphones (ARM64, x86_64, Universal APK)</span>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="arch-box" style="margin-bottom: 18px;">
+        <div class="arch-title">✨ Key Engineering Highlights Included in this Document</div>
+        <div class="arch-text">
+          Complete component breakdowns for Home Hero Slider, Vertical TikTok-style Shorts Engine, Dynamic HLS Video Player with Ad Integration, Adaptive Movie & Episodic Series Details UX, Tiered Subscription Billing, and 0-Crash Strict Native Type casting.
+        </div>
+      </div>
+
+      <div class="cover-footer">
+        <span>&copy; 2026 LEMO OTT Global Digital Entertainment Inc.</span>
+        <span>Confidential UI Specification Document</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-break"></div>
+
+  <!-- ================= PAGE 2: DESIGN SYSTEM & VISUAL IDENTITY ================= -->
+  <div class="section-header">
+    <div>
+      <div class="section-num">Section 01</div>
+      <div class="section-title">Design System & Color Engineering</div>
+    </div>
+    <div class="section-desc">Unified Midnight Black & Pure Light Palettes</div>
+  </div>
+
+  <div class="grid-2">
+    <!-- Midnight Black Palette -->
+    <div class="card avoid-break">
+      <div class="card-title">
+        <span style="color:#b3d332;">●</span> Midnight Black Design Palette (Default)
+      </div>
+      <div class="card-subtitle">Engineered for OLED battery efficiency and cinematic immersion with 0% blue/slate wash.</div>
+
+      <div class="swatch-box">
+        <div class="swatch-color" style="background: #000000;"></div>
+        <div class="swatch-info">
+          <span class="swatch-name">Canvas & Header Base</span>
+          <span class="swatch-hex">#000000</span>
+        </div>
+      </div>
+      <div class="swatch-box">
+        <div class="swatch-color" style="background: #08080a;"></div>
+        <div class="swatch-info">
+          <span class="swatch-name">Card Surface Layer</span>
+          <span class="swatch-hex">#08080a</span>
+        </div>
+      </div>
+      <div class="swatch-box">
+        <div class="swatch-color" style="background: #111114;"></div>
+        <div class="swatch-info">
+          <span class="swatch-name">Track & Inner Containers</span>
+          <span class="swatch-hex">#111114</span>
+        </div>
+      </div>
+      <div class="swatch-box">
+        <div class="swatch-color" style="background: #b3d332;"></div>
+        <div class="swatch-info">
+          <span class="swatch-name">Electric Lime Accent</span>
+          <span class="swatch-hex">#b3d332</span>
+        </div>
+      </div>
+      <div class="swatch-box">
+        <div class="swatch-color" style="background: #1c1c22;"></div>
+        <div class="swatch-info">
+          <span class="swatch-name">Subtle Razor Border</span>
+          <span class="swatch-hex">#1c1c22</span>
+        </div>
+      </div>
+      <div class="swatch-box">
+        <div class="swatch-color" style="background: #ffffff;"></div>
+        <div class="swatch-info">
+          <span class="swatch-name">High-Contrast Text</span>
+          <span class="swatch-hex">#ffffff</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pure Light Palette -->
+    <div class="card avoid-break">
+      <div class="card-title">
+        <span style="color:#84a600;">●</span> Pure Light Design Palette
+      </div>
+      <div class="card-subtitle">Sleek, high-legibility daytime theme with soft slate depth and refined shadows.</div>
+
+      <div class="swatch-box" style="background:#f8fafc;">
+        <div class="swatch-color" style="background: #f4f6fa;"></div>
+        <div class="swatch-info">
+          <span class="swatch-name" style="color:#0f172a;">Canvas Background</span>
+          <span class="swatch-hex" style="color:#84a600;">#f4f6fa</span>
+        </div>
+      </div>
+      <div class="swatch-box" style="background:#f8fafc;">
+        <div class="swatch-color" style="background: #ffffff;"></div>
+        <div class="swatch-info">
+          <span class="swatch-name" style="color:#0f172a;">Elevated Card Surface</span>
+          <span class="swatch-hex" style="color:#84a600;">#ffffff</span>
+        </div>
+      </div>
+      <div class="swatch-box" style="background:#f8fafc;">
+        <div class="swatch-color" style="background: #f0f3f8;"></div>
+        <div class="swatch-info">
+          <span class="swatch-name" style="color:#0f172a;">Inner Pill Container</span>
+          <span class="swatch-hex" style="color:#84a600;">#f0f3f8</span>
+        </div>
+      </div>
+      <div class="swatch-box" style="background:#f8fafc;">
+        <div class="swatch-color" style="background: #84a600;"></div>
+        <div class="swatch-info">
+          <span class="swatch-name" style="color:#0f172a;">Forest Lime Accent</span>
+          <span class="swatch-hex" style="color:#84a600;">#84a600</span>
+        </div>
+      </div>
+      <div class="swatch-box" style="background:#f8fafc;">
+        <div class="swatch-color" style="background: #e2e8f0;"></div>
+        <div class="swatch-info">
+          <span class="swatch-name" style="color:#0f172a;">Border & Divider</span>
+          <span class="swatch-hex" style="color:#84a600;">#e2e8f0</span>
+        </div>
+      </div>
+      <div class="swatch-box" style="background:#f8fafc;">
+        <div class="swatch-color" style="background: #0f172a;"></div>
+        <div class="swatch-info">
+          <span class="swatch-name" style="color:#0f172a;">Slate Primary Text</span>
+          <span class="swatch-hex" style="color:#84a600;">#0f172a</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card avoid-break" style="margin-bottom: 16px;">
+    <div class="card-title">Typography & Layout Tokens</div>
+    <table style="margin-bottom: 0;">
+      <thead>
+        <tr>
+          <th>Token Name</th>
+          <th>Size / Weight</th>
+          <th>Line Height</th>
+          <th>Usage Across Mobile App</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="tag tag-green">Header 1 (Hero Title)</span></td>
+          <td>20px / ExtraBold 900</td>
+          <td>26px</td>
+          <td>Screen headers, Hero carousel titles, Modal main titles</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-blue">Section Header</span></td>
+          <td>15px / Bold 800</td>
+          <td>20px</td>
+          <td>Dynamic row headers (New Releases, Shorts, Short Films, Plans)</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-purple">Card Body / Input</span></td>
+          <td>13px - 14px / Regular 400 & 600</td>
+          <td>18px</td>
+          <td>Search input, Descriptions, Form text fields, List rows</td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-amber">Metadata & Badges</span></td>
+          <td>10px - 11px / Bold 700</td>
+          <td>14px</td>
+          <td>IMDb rating circle, Quality badge (HD/4K), Tab labels, Status tags</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="grid-3 avoid-break">
+    <div class="card">
+      <div class="card-title">Border Radii</div>
+      <ul class="spec-list">
+        <li><strong>Outer Cards:</strong> 16px border radius</li>
+        <li><strong>Interactive Pills:</strong> 24px full-round pill</li>
+        <li><strong>Inputs & Controls:</strong> 12px ergonomic curve</li>
+        <li><strong>Badges & Tags:</strong> 4px-6px compact tag</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title">Touch Interaction</div>
+      <ul class="spec-list">
+        <li><strong>Active Opacity:</strong> 0.82 to 0.85 touch feedback</li>
+        <li><strong>Minimum Hit Box:</strong> 44px &times; 44px WCAG touch target</li>
+        <li><strong>Haptic Response:</strong> Seamless native click responses</li>
+        <li><strong>Transitions:</strong> 250ms ease-out animations</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title">Accessibility Rules</div>
+      <ul class="spec-list">
+        <li><strong>Strict Boolean:</strong> All <code>disabled={Boolean(...)}</code></li>
+        <li><strong>Contrast Ratio:</strong> &ge; 7:1 for all critical text</li>
+        <li><strong>Safe Areas:</strong> Edge-to-edge with safe-area insets</li>
+        <li><strong>Offline Safety:</strong> Zero-state fallback graphics</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="page-break"></div>
+
+  <!-- ================= PAGE 3: APP NAVIGATION GRAPH & CORE SCREENS ================= -->
+  <div class="section-header">
+    <div>
+      <div class="section-num">Section 02</div>
+      <div class="section-title">Navigation Graph & Screen Blueprints</div>
+    </div>
+    <div class="section-desc">Tab Routing Architecture & Screen Topology</div>
+  </div>
+
+  <div class="grid-3 avoid-break" style="margin-bottom: 18px;">
+    <!-- Screen Mockup 1: Home -->
+    <div class="phone-wireframe">
+      <div class="phone-notch"></div>
+      <div class="phone-header">
+        <span class="phone-logo">LEMO</span>
+        <span style="font-size:7pt; color:#9ca3af;">🔍 Search</span>
+      </div>
+      <div class="phone-carousel">
+        <span class="poster-badge" style="width:fit-content;">★ 8.9 IMDb</span>
+        <div>
+          <div style="font-size:7.5pt; font-weight:800; color:#fff;">ATHIJEEVITHA</div>
+          <div style="font-size:6pt; color:#b3d332;">▶ Watch Now</div>
+        </div>
+      </div>
+      <div class="phone-pill-row">
+        <span class="phone-pill active">Short Films</span>
+        <span class="phone-pill">Web Series</span>
+        <span class="phone-pill">Shorts</span>
+        <span class="phone-pill">Plans</span>
+      </div>
+      <div style="font-size:7pt; font-weight:800; color:#fff; margin-bottom:4px;">Trending Short Films</div>
+      <div class="phone-grid">
+        <div class="phone-poster"><span class="poster-badge">PRO</span></div>
+        <div class="phone-poster"><span class="poster-badge">FREE</span></div>
+        <div class="phone-poster"><span class="poster-badge">PRO</span></div>
+      </div>
+      <div class="phone-tabbar">
+        <span class="tab-icon active">Home</span>
+        <span class="tab-icon">Short Films</span>
+        <span class="tab-icon">Shorts</span>
+        <span class="tab-icon">Watchlist</span>
+        <span class="tab-icon">Profile</span>
+      </div>
+    </div>
+
+    <!-- Screen Mockup 2: Shorts Feed -->
+    <div class="phone-wireframe">
+      <div class="phone-notch"></div>
+      <div style="height: 250px; background: linear-gradient(180deg, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.9) 100%), #151810; border-radius: 12px; position: relative; padding: 10px; display: flex; flex-direction: column; justify-content: space-between;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="background: rgba(0,0,0,0.6); color: #b3d332; font-size:6pt; font-weight:800; padding:2px 6px; border-radius:4px;">SHORTS</span>
+          <span style="font-size:7pt; color:#fff;">🔊</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+          <div>
+            <div style="font-size:7.5pt; font-weight:800; color:#fff;">Romantic Glimpse #1</div>
+            <div style="font-size:6pt; color:#9ca3af;">#trending #lemo_shorts</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px; align-items: center;">
+            <div style="width:22px; height:22px; border-radius:11px; background:rgba(0,0,0,0.7); display:flex; align-items:center; justify-content:center; font-size:7pt; color:#ef4444;">❤️</div>
+            <div style="width:22px; height:22px; border-radius:11px; background:rgba(0,0,0,0.7); display:flex; align-items:center; justify-content:center; font-size:7pt; color:#fff;">💬</div>
+            <div style="width:22px; height:22px; border-radius:11px; background:rgba(0,0,0,0.7); display:flex; align-items:center; justify-content:center; font-size:7pt; color:#fff;">↗</div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-tabbar">
+        <span class="tab-icon">Home</span>
+        <span class="tab-icon">Short Films</span>
+        <span class="tab-icon active">Shorts</span>
+        <span class="tab-icon">Watchlist</span>
+        <span class="tab-icon">Profile</span>
+      </div>
+    </div>
+
+    <!-- Screen Mockup 3: Details & Subscription -->
+    <div class="phone-wireframe">
+      <div class="phone-notch"></div>
+      <div class="phone-header">
+        <span style="font-size:8pt; color:#fff;">← Details</span>
+        <span style="font-size:8pt; color:#b3d332;">★ Rate</span>
+      </div>
+      <div style="height: 80px; background:#111114; border-radius:8px; display:flex; align-items:center; justify-content:center; margin-bottom:8px;">
+        <span style="color:#b3d332; font-size:14pt;">▶</span>
+      </div>
+      <div style="font-size:8pt; font-weight:800; color:#fff;">KASHI (Short Film)</div>
+      <div style="display:flex; gap:4px; margin:4px 0 8px 0;">
+        <span class="tag tag-green">HD 1080p</span>
+        <span class="tag tag-blue">Drama</span>
+        <span class="tag tag-amber">24 min</span>
+      </div>
+      <div style="background:#08080a; border:1px solid #1c1c22; border-radius:8px; padding:6px; margin-bottom:8px;">
+        <div style="font-size:6.5pt; font-weight:700; color:#b3d332;">PREMIUM VIP PLAN</div>
+        <div style="font-size:6pt; color:#9ca3af;">Ad-Free, 4K Ultra HD Streaming on all devices.</div>
+      </div>
+      <div style="background:#b3d332; color:#000; font-size:7pt; font-weight:800; text-align:center; padding:6px; border-radius:6px; margin-top:6px;">
+        Subscribe ₹149/mo
+      </div>
+    </div>
+  </div>
+
+  <div class="card avoid-break">
+    <div class="card-title">Complete Tab Navigation Architecture</div>
+    <table style="margin-bottom: 0;">
+      <thead>
+        <tr>
+          <th>Tab Key</th>
+          <th>Screen Component</th>
+          <th>Label & Icon</th>
+          <th>Admin Toggle Dependency</th>
+          <th>Screen Purpose</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>HomeTab</code></td>
+          <td><code>HomeScreen.js</code></td>
+          <td>Home (Lucide <code>Home</code>)</td>
+          <td>Always Active</td>
+          <td>Dynamic Hero Banner, Home Sections, Quick Category Row, Shorts Preview</td>
+        </tr>
+        <tr>
+          <td><code>MoviesTab</code></td>
+          <td><code>MoviesScreen.js</code></td>
+          <td>Short Film / Movies (<code>Film</code>)</td>
+          <td><code>menuSettings.shortFilms !== 'OFF' || movies !== 'OFF'</code></td>
+          <td>Filtered grid with Genre, Language chips, and Paid/Free badge labels</td>
+        </tr>
+        <tr>
+          <td><code>ShowsTab</code></td>
+          <td><code>ShowsScreen.js</code></td>
+          <td>Shows / Pocket Reel (<code>Tv</code>)</td>
+          <td><code>menuSettings.shows !== 'OFF' || webSeries !== 'OFF'</code></td>
+          <td>Web Series, Pocket Reel drama lists with season/episode counts</td>
+        </tr>
+        <tr>
+          <td><code>ShortsTab</code></td>
+          <td><code>ShortsScreen.js</code></td>
+          <td>Shorts (<code>Clapperboard</code>)</td>
+          <td><code>menuSettings.shorts !== 'OFF'</code></td>
+          <td>TikTok-style vertical video feed with like, view counters, and auth gates</td>
+        </tr>
+        <tr>
+          <td><code>WatchlistTab</code></td>
+          <td><code>WatchlistScreen.js</code></td>
+          <td>Watchlist (<code>Bookmark</code>)</td>
+          <td>Always Active (Auth Gated)</td>
+          <td>Saved movies, shows, and shorts synced seamlessly with backend database</td>
+        </tr>
+        <tr>
+          <td><code>ProfileTab</code></td>
+          <td><code>ProfileScreen.js</code></td>
+          <td>Profile (<code>User</code>)</td>
+          <td>Always Active</td>
+          <td>User details, Plan Status, Segmented Theme Switcher, Creator Hub, Info</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="page-break"></div>
+
+  <!-- ================= PAGE 4: DETAILED COMPONENT SPECIFICATIONS ================= -->
+  <div class="section-header">
+    <div>
+      <div class="section-num">Section 03</div>
+      <div class="section-title">Component Engineering & Screen Deep Dive</div>
+    </div>
+    <div class="section-desc">Technical implementation of core application screens</div>
+  </div>
+
+  <div class="grid-2 avoid-break">
+    <!-- Component 1: Video Player -->
+    <div class="card">
+      <div class="card-title">🎬 Custom HLS Video Player (<span style="color:#b3d332;">PlayerScreen.js</span>)</div>
+      <div class="card-subtitle">High-performance video streaming with expo-av and HLS master manifest playback.</div>
+      <ul class="spec-list">
+        <li><strong>Adaptive Streaming:</strong> Auto quality selection from 360p up to 4K Ultra HD.</li>
+        <li><strong>Gesture Controls:</strong> Double tap left/right for &plusmn;10s seek with ripple animation.</li>
+        <li><strong>Smart Ad Injection:</strong> Pre-roll and mid-roll advertisement engine with non-skippable countdown timer.</li>
+        <li><strong>Binge-Watch Mode:</strong> 10-second auto next episode countdown with direct cancel/play action.</li>
+        <li><strong>Rating Submission:</strong> Native 5-star interactive rating modal with backend sync.</li>
+      </ul>
+    </div>
+
+    <!-- Component 2: Shorts Engine -->
+    <div class="card">
+      <div class="card-title">📱 Vertical Shorts Engine (<span style="color:#b3d332;">ShortsScreen.js</span>)</div>
+      <div class="card-subtitle">Full-screen vertical paging feed with auto memory management.</div>
+      <ul class="spec-list">
+        <li><strong>Viewability Auto-Play:</strong> Only the active centered short renders video; adjacent items unmount to conserve GPU memory.</li>
+        <li><strong>Engagement Actions:</strong> Double-tap heart burst with optimistic like count increments.</li>
+        <li><strong>Auth Gate Protection:</strong> Unauthenticated users prompted with custom sign-in modal on like/save.</li>
+        <li><strong>Direct Details Bridge:</strong> 'Watch Full Movie/Series' deep-link direct to DetailsScreen.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="grid-3 avoid-break">
+    <!-- Component 3: Adaptive Details Screen -->
+    <div class="card">
+      <div class="card-title">ℹ️ Adaptive Details (<span style="color:#b3d332;">DetailsScreen.js</span>)</div>
+      <div class="card-subtitle">Dynamic UI adapting between Short Films, Movies, and Shows.</div>
+      <ul class="spec-list">
+        <li><strong>Zero Redundancy:</strong> Episode accordions hidden for single-play films.</li>
+        <li><strong>Watchlist Engine:</strong> Instant bookmark state with optimistic UI caching.</li>
+        <li><strong>Premium Gate:</strong> Paid content routes users to Subscription Checkout.</li>
+      </ul>
+    </div>
+
+    <!-- Component 4: Pocket Reels Discovery Grid -->
+    <div class="card">
+      <div class="card-title">🔥 Pocket Reels Grid (<span style="color:#b3d332;">PocketReelsScreen.js</span>)</div>
+      <div class="card-subtitle">2-column micro-drama discovery grid with episode counters.</div>
+      <ul class="spec-list">
+        <li><strong>Hero Spotlight:</strong> Featured trending drama banner with Instant Ep 1 Play CTA.</li>
+        <li><strong>Episode Counters:</strong> Total episodes pill and Free/VIP tier badges.</li>
+        <li><strong>Drama Genre Filters:</strong> Romance, Revenge, Suspense, Comedy pill bar.</li>
+      </ul>
+    </div>
+
+    <!-- Component 5: Subscription & Checkout -->
+    <div class="card">
+      <div class="card-title">💳 Monetization & Billing (<span style="color:#b3d332;">SubscriptionScreen.js</span>)</div>
+      <div class="card-subtitle">Tiered plan cards with multi-gateway checkout.</div>
+      <ul class="spec-list">
+        <li><strong>Active Plan Detection:</strong> Badges active plan & disables duplicate buy.</li>
+        <li><strong>Coupon Engine:</strong> Instant verification with discount math in Checkout.</li>
+        <li><strong>Security:</strong> 256-bit SSL encrypted badges to maximize checkout trust.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card avoid-break">
+    <div class="card-title">🛡️ Robustness, Fault Tolerance & 0-Crash Native Architecture</div>
+    <div class="grid-3" style="margin-bottom: 0; margin-top: 10px;">
+      <div class="arch-box" style="margin-bottom: 0;">
+        <div class="arch-title">Type-Safe Accessibility Props</div>
+        <div class="arch-text">All <code>disabled</code> props wrapped in <code>Boolean(...)</code>. Prevents native RCTView Android casting crashes from falsy empty strings.</div>
+      </div>
+      <div class="arch-box" style="margin-bottom: 0;">
+        <div class="arch-title">Full-Screen Offline Modal</div>
+        <div class="arch-text">Dedicated <code>OfflineView</code> modal isolated from headers and tab bars with automatic network reconnection listener and animated retry.</div>
+      </div>
+      <div class="arch-box" style="margin-bottom: 0;">
+        <div class="arch-title">Dynamic Header Sanitization</div>
+        <div class="arch-text">Content sanitizers automatically strip duplicated headings in Static Pages and deduplicate repeated sections across the home feed.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-break"></div>
+
+  <!-- ================= PAGE 5: THEME COMPARISON & USER FLOWS ================= -->
+  <div class="section-header">
+    <div>
+      <div class="section-num">Section 04</div>
+      <div class="section-title">Theme Matrix & Critical User Journey Flows</div>
+    </div>
+    <div class="section-desc">Visual State Progression & End-to-End User Journeys</div>
+  </div>
+
+  <div class="card avoid-break" style="margin-bottom: 16px;">
+    <div class="card-title">Theme Token Contrast & Parity Matrix</div>
+    <table style="margin-bottom: 0;">
+      <thead>
+        <tr>
+          <th>UI Element / Token</th>
+          <th>Midnight Black Theme (#000000)</th>
+          <th>Pure Light Theme (#f4f6fa)</th>
+          <th>Visual Purpose</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Main Screen Background</strong></td>
+          <td><code>#000000</code> (Pitch Black)</td>
+          <td><code>#f4f6fa</code> (Light Canvas)</td>
+          <td>Primary root container background</td>
+        </tr>
+        <tr>
+          <td><strong>Card / Section Container</strong></td>
+          <td><code>#08080a</code> (Midnight Surface)</td>
+          <td><code>#ffffff</code> (Pure White)</td>
+          <td>Card elevation and structural grouping</td>
+        </tr>
+        <tr>
+          <td><strong>Secondary Tracks / Pills</strong></td>
+          <td><code>#111114</code> (Neutral Dark)</td>
+          <td><code>#f0f3f8</code> (Soft Slate)</td>
+          <td>Inner track, segment control backgrounds</td>
+        </tr>
+        <tr>
+          <td><strong>Borders & Dividers</strong></td>
+          <td><code>rgba(255,255,255,0.08)</code> / <code>#1c1c22</code></td>
+          <td><code>#e2e8f0</code></td>
+          <td>Crisp structural edge definition</td>
+        </tr>
+        <tr>
+          <td><strong>Primary Brand CTA</strong></td>
+          <td><code>#b3d332</code> (Electric Lime / Text #000)</td>
+          <td><code>#84a600</code> (Forest Lime / Text #FFF)</td>
+          <td>High-conversion action buttons</td>
+        </tr>
+        <tr>
+          <td><strong>Bottom Tab Bar</strong></td>
+          <td><code>#000000</code> (Pitch Black)</td>
+          <td><code>#ffffff</code> (Pure White)</td>
+          <td>Root app persistent navigation dock</td>
+        </tr>
+        <tr>
+          <td><strong>Status Bar Mode</strong></td>
+          <td><code>light-content</code> (White Icons)</td>
+          <td><code>dark-content</code> (Dark Icons)</td>
+          <td>OS status bar icon legibility</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="grid-2 avoid-break">
+    <div class="card">
+      <div class="card-title">🧭 Content Discovery & Playback Flow</div>
+      <ul class="spec-list">
+        <li><strong>Step 1:</strong> User browses Dynamic Home Sections or filters Short Films by Genre & Language.</li>
+        <li><strong>Step 2:</strong> Clicks Media Card &rarr; Navigates to <code>DetailsScreen</code> with backdrop trailer preview.</li>
+        <li><strong>Step 3:</strong> Clicks 'Watch Now' CTA &rarr; If Free: opens <code>PlayerScreen</code> with pre-roll ad.</li>
+        <li><strong>Step 4:</strong> If Premium content: checks active subscription &rarr; redirect to <code>SubscriptionScreen</code> if unverified.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-title">💎 Subscription & Upgrade Flow</div>
+      <ul class="spec-list">
+        <li><strong>Step 1:</strong> User selects plan (Basic / Standard / VIP Premium) in <code>SubscriptionScreen</code>.</li>
+        <li><strong>Step 2:</strong> Moves to <code>CheckoutScreen</code> &rarr; optional Promo Code application with real-time math.</li>
+        <li><strong>Step 3:</strong> Initiates Secure Gateway &rarr; payment verification webhook updates MongoDB user record.</li>
+        <li><strong>Step 4:</strong> Instant upgrade receipt &rarr; full ad-free 4K streaming unlocked immediately.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card avoid-break" style="margin-top: 14px; background: linear-gradient(180deg, #0d1204 0%, #08080a 100%); border-color: rgba(179, 211, 50, 0.3);">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <div>
+        <div style="font-size:11pt; font-weight:900; color:#ffffff;">LEMO OTT Mobile APK v1.0.5 is Ready for Deployment</div>
+        <div style="font-size:8pt; color:#9ca3af; margin-top:2px;">All UI screens, components, color tokens, and navigation safety protocols are production-certified.</div>
+      </div>
+      <div style="background:#b3d332; color:#000000; font-weight:900; font-size:8pt; padding:6px 14px; border-radius:8px;">
+        PRODUCTION READY
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

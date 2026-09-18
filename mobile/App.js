@@ -3,9 +3,11 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { View, Text, StyleSheet, ActivityIndicator, Linking, TouchableOpacity, Modal } from 'react-native';
 import { AuthProvider } from './src/context/AuthContext';
+import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import client from './src/api/client';
 import ErrorBoundary from './src/components/ErrorBoundary';
+import MobilePopupAd from './src/components/MobilePopupAd';
 import Constants from 'expo-constants';
 
 
@@ -57,6 +59,7 @@ const MobileCountdown = ({ targetDate, onComplete }) => {
 };
 
 function AppContent() {
+  const { theme, isDark } = useTheme();
   const [maintenance, setMaintenance] = useState(false);
   const [maintenanceData, setMaintenanceData] = useState(null);
 
@@ -86,7 +89,7 @@ function AppContent() {
         if (res.data) {
           const serverVersion = res.data.appVersion;
           const updateStatus = res.data.appUpdateStatus; // 'ON' / 'OFF'
-          const localVersion = Constants.expoConfig?.version || '1.0.5';
+          const localVersion = Constants.expoConfig?.version || '1.0.2';
           console.log('[AppUpdateCheck] Server Version:', serverVersion, 'Local Version:', localVersion, 'Status:', updateStatus);
 
           if (updateStatus?.toUpperCase() === 'ON' && serverVersion !== localVersion) {
@@ -199,11 +202,12 @@ function AppContent() {
   const isForcedUpdate = updateData?.appCancelBtn?.toUpperCase() === 'OFF';
 
   return (
-    <SafeAreaProvider style={{ flex: 1, backgroundColor: '#000000' }}>
-      <View style={{ flex: 1, backgroundColor: '#000000' }}>
+    <SafeAreaProvider style={{ flex: 1, backgroundColor: theme.background }}>
+      <View style={{ flex: 1, backgroundColor: theme.background }}>
         <AuthProvider>
           <AppNavigator />
-          <StatusBar style="light" backgroundColor="#000000" />
+          <MobilePopupAd />
+          <StatusBar style={theme.statusBarStyle} backgroundColor={theme.statusBarBg} />
         </AuthProvider>
       </View>
 
@@ -248,7 +252,9 @@ function AppContent() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <AppContent />
+      <ThemeProvider>
+        <AppContent />
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }

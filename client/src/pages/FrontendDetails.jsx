@@ -13,6 +13,7 @@ import {
  Check,
  Bookmark,
  Crown,
+ Lock,
  X
 } from 'lucide-react';
 import Loader from '../components/Loader';
@@ -165,6 +166,7 @@ const FrontendDetails = () => {
  const [loading, setLoading] = useState(false);
  const [related, setRelated] = useState([]);
  const [isWatchlisted, setIsWatchlisted] = useState(false);
+ const [savedEpisodeIds, setSavedEpisodeIds] = useState([]);
  const [notification, setNotification] = useState(null);
  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
  const [seasons, setSeasons] = useState([]);
@@ -248,6 +250,19 @@ const FrontendDetails = () => {
     }
   }, [chatMessages]);
 
+  const isPremiumUser = () => {
+    if (!user || !user.id) return false;
+    const role = user.role;
+    if (role === 'admin' || role === 'sub-admin') return true;
+    const planName = (user.subscriptionPlan || 'Basic Plan').toLowerCase();
+    const isPremium = planName.includes('premium') || planName.includes('platinum') || planName.includes('pro');
+    if (user.expiryDate) {
+      const expiry = new Date(user.expiryDate);
+      if (expiry < new Date()) return false;
+    }
+    return isPremium;
+  };
+
   const handlePlayVideo = (url, targetEpisode = null) => {
     // Ensure user is signed in to play ANY video
     if (!user || !user.id) {
@@ -260,23 +275,27 @@ const FrontendDetails = () => {
       ? (checkIsPaid(data, 'show') || (targetEpisode.access || '').toLowerCase() === 'paid')
       : checkIsPaid(data, cleanType);
       
-    if (isPaid) {
-      const checkUserPremium = () => {
-        const role = user.role;
-        if (role === 'admin' || role === 'sub-admin') return true;
-        const planName = (user.subscriptionPlan || 'Basic Plan').toLowerCase();
-        const isPremium = planName.includes('premium') || planName.includes('platinum') || planName.includes('pro');
-        if (user.expiryDate) {
-          const expiry = new Date(user.expiryDate);
-          if (expiry < new Date()) return false;
-        }
-        return isPremium;
-      };
-
-      if (!checkUserPremium()) {
-        alert('This content is only available to Premium subscribers. Redirecting to subscription plans.');
-        navigate('/subscription');
-        return;
+    if (isPaid && !isPremiumUser()) {
+      alert('This episode is only available to Premium subscribers. Redirecting to subscription plans.');
+      navigate('/subscription');
+      return;
+    }
+    
+    if (targetEpisode && targetEpisode._id) {
+      setCurrentPocketEp(targetEpisode);
+      if (user && user.id) {
+        const epIdx = episodes.findIndex(e => e._id === targetEpisode._id);
+        fetch('/api/watchlist/update-episode', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user.id,
+            contentId: id,
+            selectedEpisodeId: targetEpisode._id,
+            selectedEpisodeNumber: epIdx >= 0 ? epIdx + 1 : 1,
+            selectedEpisodeTitle: targetEpisode.title || ''
+          })
+        }).catch(() => {});
       }
     }
     
@@ -557,7 +576,24 @@ const FrontendDetails = () => {
      const wlResponse = await fetch(`/api/watchlist/${user.id}`);
      const wlData = await wlResponse.json();
      if (Array.isArray(wlData)) {
-      setIsWatchlisted(wlData.some(item => (item._id === id || item.id === id)));
+      const isEntireSeriesSaved = wlData.some(item => 
+        ((item.contentId && item.contentId.toString() === id.toString()) ||
+         (item.showId && item.showId.toString() === id.toString()) ||
+         (item._id && item._id.toString() === id.toString()) ||
+         (item.id && item.id.toString() === id.toString())) &&
+        !item.selectedEpisodeId
+      );
+      setIsWatchlisted(isEntireSeriesSaved);
+
+      const epIds = wlData
+        .filter(item => 
+          ((item.contentId && item.contentId.toString() === id.toString()) ||
+           (item.showId && item.showId.toString() === id.toString()) ||
+           (item._id && item._id.toString().startsWith(id.toString()))) &&
+          item.selectedEpisodeId
+        )
+        .map(item => item.selectedEpisodeId.toString());
+      setSavedEpisodeIds(epIds);
      }
      try {
       const rateResponse = await fetch(`/api/ratings/status?userId=${user.id}&contentId=${id}`);
@@ -570,7 +606,19 @@ const FrontendDetails = () => {
      }
     } else {
      const watchlist = JSON.parse(localStorage.getItem('watchlist') || '[]');
-     setIsWatchlisted(watchlist.some(item => (item.id === id || item._id === id)));
+     const isEntireSeriesSaved = watchlist.some(item => 
+       ((item.id === id || item._id === id || (item.contentId && item.contentId.toString() === id.toString()))) &&
+       !item.selectedEpisodeId
+     );
+     setIsWatchlisted(isEntireSeriesSaved);
+
+     const epIds = watchlist
+       .filter(item => 
+         ((item.id === id || item._id === id || (item._id && item._id.toString().startsWith(id.toString())) || (item.contentId && item.contentId.toString() === id.toString()))) &&
+         item.selectedEpisodeId
+       )
+       .map(item => item.selectedEpisodeId.toString());
+     setSavedEpisodeIds(epIds);
     }
    } catch (err) {
     console.error('Error fetching details:', err);
@@ -599,67 +647,164 @@ const FrontendDetails = () => {
  }, []);
 
  const handleWatchlist = async () => {
-  const cleanType = type ? type.toLowerCase().trim() : '';
-  const isPocket = Boolean(
-    cleanType === 'pocket-reel-series' ||
-    cleanType === 'pocket-reels' ||
-    data?.contentType === 'Pocket Reel Series' ||
-    data?.contentType === 'Pocket Reel'
-  );
+   const cleanType = type ? type.toLowerCase().trim() : '';
+   const isPocket = Boolean(
+     cleanType === 'pocket-reel-series' ||
+     cleanType === 'pocket-reels' ||
+     data?.contentType === 'Pocket Reel Series' ||
+     data?.contentType === 'Pocket Reel'
+   );
 
-  let normalizedWatchlistType = 'movie';
-  if (isPocket) {
-   normalizedWatchlistType = 'pocket-reel-series';
-  } else if (cleanType === 'show' || cleanType === 'shows' || cleanType === 'series' || cleanType === 'short-web-series') {
-   normalizedWatchlistType = 'show';
-  } else if (cleanType === 'sports' || cleanType === 'sport') {
-   normalizedWatchlistType = 'sports';
-  } else if (cleanType === 'live' || cleanType === 'channel' || cleanType === 'channels' || cleanType === 'tv-channel' || cleanType === 'tv-channels') {
-   normalizedWatchlistType = 'live';
-  }
+   let normalizedWatchlistType = 'movie';
+   if (isPocket) {
+    normalizedWatchlistType = 'pocket-reel-series';
+   } else if (cleanType === 'show' || cleanType === 'shows' || cleanType === 'series' || cleanType === 'short-web-series') {
+    normalizedWatchlistType = 'show';
+   } else if (cleanType === 'sports' || cleanType === 'sport') {
+    normalizedWatchlistType = 'sports';
+   } else if (cleanType === 'live' || cleanType === 'channel' || cleanType === 'channels' || cleanType === 'tv-channel' || cleanType === 'tv-channels') {
+    normalizedWatchlistType = 'live';
+   }
 
-  if (!user || !user.id) {
-   const localWl = JSON.parse(localStorage.getItem('watchlist') || '[]');
-   const existsIdx = localWl.findIndex(item => (item._id === id || item.id === id));
-   if (existsIdx > -1) {
-    localWl.splice(existsIdx, 1);
-    localStorage.setItem('watchlist', JSON.stringify(localWl));
-    setIsWatchlisted(false);
-    showNotification('Removed from Watchlist');
-   } else {
-    localWl.push({
-     _id: id,
-     id: id,
-     title: data?.title || '',
-     poster: formatImageUrl(data, 'poster') || '',
-     thumbnail: formatImageUrl(data, 'thumbnail') || '',
-     contentType: normalizedWatchlistType,
-     dbContentType: data?.contentType || (isPocket ? 'Pocket Reel Series' : 'Show'),
-     year: data?.releaseYear || (data?.releaseDate ? new Date(data.releaseDate).getFullYear() : '2026'),
-     duration: data?.duration || (episodes?.length > 0 ? `${episodes.length} Episodes` : (isPocket ? 'Pocket Series' : 'Series'))
+   const activeEp = currentPocketEp || (episodes && episodes.length > 0 ? episodes[0] : null);
+   const epIdx = activeEp ? episodes.findIndex(e => e._id === activeEp._id) : 0;
+
+   if (!user || !user.id) {
+    const localWl = JSON.parse(localStorage.getItem('watchlist') || '[]');
+    const existsIdx = localWl.findIndex(item => (item._id === id || item.id === id || item.contentId === id) && !item.selectedEpisodeId);
+    if (existsIdx > -1) {
+     localWl.splice(existsIdx, 1);
+     localStorage.setItem('watchlist', JSON.stringify(localWl));
+     setIsWatchlisted(false);
+     showNotification('Removed from Watchlist');
+    } else {
+     localWl.push({
+      _id: id,
+      id: id,
+      contentId: id,
+      title: data?.title || '',
+      displayTitle: data?.title || '',
+      subtitleText: data?.duration || (episodes?.length > 0 ? `${episodes.length} Episodes` : (isPocket ? 'Pocket Series' : 'Series')),
+      poster: formatImageUrl(data, 'poster') || '',
+      thumbnail: formatImageUrl(data, 'thumbnail') || '',
+      contentType: normalizedWatchlistType,
+      dbContentType: data?.contentType || (isPocket ? 'Pocket Reel Series' : 'Show'),
+      year: data?.releaseYear || (data?.releaseDate ? new Date(data.releaseDate).getFullYear() : '2026'),
+      duration: data?.duration || (episodes?.length > 0 ? `${episodes.length} Episodes` : (isPocket ? 'Pocket Series' : 'Series')),
+      selectedEpisodeId: null
+     });
+     localStorage.setItem('watchlist', JSON.stringify(localWl));
+     setIsWatchlisted(true);
+     showNotification('Added to Watchlist');
+    }
+    return;
+   }
+
+   try {
+    const response = await fetch('/api/watchlist/toggle', {
+     method: 'POST',
+     headers: { 'Content-Type': 'application/json' },
+     body: JSON.stringify({ 
+       userId: user.id, 
+       contentId: id, 
+       contentType: normalizedWatchlistType,
+       selectedEpisodeId: null
+     })
     });
-    localStorage.setItem('watchlist', JSON.stringify(localWl));
-    setIsWatchlisted(true);
-    showNotification('Added to Watchlist');
+    const result = await response.json();
+    if (response.ok) {
+     setIsWatchlisted(result.status === 'added');
+     showNotification(result.message);
+    }
+   } catch (err) {
+    console.error('Error toggling watchlist:', err);
    }
-   return;
-  }
+  };
 
-  try {
-   const response = await fetch('/api/watchlist/toggle', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId: user.id, contentId: id, contentType: normalizedWatchlistType })
-   });
-   const result = await response.json();
-   if (response.ok) {
-    setIsWatchlisted(result.status === 'added');
-    showNotification(result.message);
-   }
-  } catch (err) {
-   console.error('Error toggling watchlist:', err);
-  }
- };
+  const handleToggleEpisodeWatchlist = async (episode, idx, e) => {
+    if (e && e.stopPropagation) e.stopPropagation();
+    const cleanType = type ? type.toLowerCase().trim() : '';
+    const isPocket = Boolean(
+      cleanType === 'pocket-reel-series' ||
+      cleanType === 'pocket-reels' ||
+      data?.contentType === 'Pocket Reel Series' ||
+      data?.contentType === 'Pocket Reel'
+    );
+
+    let normalizedWatchlistType = isPocket ? 'pocket-reel-series' : 'show';
+    const epNum = idx + 1;
+    const epIdStr = episode._id ? episode._id.toString() : '';
+
+    if (!user || !user.id) {
+      const localWl = JSON.parse(localStorage.getItem('watchlist') || '[]');
+      const uniqueKey = `${id}_${episode._id}`;
+      const existsIdx = localWl.findIndex(item => 
+        item._id === uniqueKey || 
+        (item.contentId === id && item.selectedEpisodeId === episode._id)
+      );
+
+      if (existsIdx > -1) {
+        localWl.splice(existsIdx, 1);
+        localStorage.setItem('watchlist', JSON.stringify(localWl));
+        const nextSaved = savedEpisodeIds.filter(x => x !== epIdStr);
+        setSavedEpisodeIds(nextSaved);
+        if (nextSaved.length === 0) setIsWatchlisted(false);
+        showNotification(`Removed Ep ${epNum} from Watchlist`);
+      } else {
+        localWl.push({
+          _id: uniqueKey,
+          contentId: id,
+          title: data?.title || '',
+          displayTitle: `${data?.title || ''} (E${epNum})`,
+          subtitleText: episode.title ? `E${epNum}: ${episode.title}` : `Episode ${epNum}`,
+          poster: episode.poster || episode.thumbnail || formatImageUrl(data, 'poster') || '',
+          episodePoster: episode.poster || episode.thumbnail || '',
+          thumbnail: episode.thumbnail || episode.poster || formatImageUrl(data, 'thumbnail') || '',
+          contentType: normalizedWatchlistType,
+          dbContentType: data?.contentType || (isPocket ? 'Pocket Reel Series' : 'Show'),
+          selectedEpisodeId: episode._id,
+          selectedEpisodeNumber: epNum,
+          selectedEpisodeTitle: episode.title || ''
+        });
+        localStorage.setItem('watchlist', JSON.stringify(localWl));
+        setSavedEpisodeIds(prev => [...prev.filter(x => x !== epIdStr), epIdStr]);
+        setIsWatchlisted(true);
+        showNotification(`Saved Ep ${epNum} to Watchlist`);
+      }
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/watchlist/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          contentId: id,
+          contentType: normalizedWatchlistType,
+          selectedEpisodeId: episode._id,
+          selectedEpisodeNumber: epNum,
+          selectedEpisodeTitle: episode.title || ''
+        })
+      });
+
+      const result = await response.json();
+      if (response.ok) {
+        if (result.status === 'added') {
+          setSavedEpisodeIds(prev => [...prev.filter(x => x !== epIdStr), epIdStr]);
+          setIsWatchlisted(true);
+          showNotification(`Saved Ep ${epNum} to Watchlist`);
+        } else {
+          const nextSaved = savedEpisodeIds.filter(x => x !== epIdStr);
+          setSavedEpisodeIds(nextSaved);
+          if (nextSaved.length === 0) setIsWatchlisted(false);
+          showNotification(`Removed Ep ${epNum} from Watchlist`);
+        }
+      }
+    } catch (err) {
+      console.error('Error toggling episode watchlist:', err);
+    }
+  };
 
   const handleOpenRatingModal = () => {
    if (!user || !user.id) {
@@ -875,7 +1020,7 @@ const FrontendDetails = () => {
           onClick={handleWatchlist}
         >
           {isWatchlisted ? <Check size={17} /> : <Plus size={17} />}
-          <span>{isWatchlisted ? 'In Watchlist' : 'Watchlist'}</span>
+          <span>{isWatchlisted ? ('In Watchlist' + (savedEpisodeIds.length > 0 ? ` (${savedEpisodeIds.length} Ep${savedEpisodeIds.length > 1 ? 's' : ''})` : '')) : 'Watchlist'}</span>
         </button>
         <button 
           className={`action-btn-v rate-btn-v ${userRating > 0 ? 'active' : ''}`} 
@@ -1109,7 +1254,7 @@ Cancel
                     title={isWatchlisted ? 'In Watchlist' : 'Add to Watchlist'}
                   >
                     {isWatchlisted ? <Check size={18} /> : <Plus size={18} />}
-                    <span>{isWatchlisted ? 'Saved' : 'Watchlist'}</span>
+                    <span>{isWatchlisted ? ('Saved' + (savedEpisodeIds.length > 0 ? ` (${savedEpisodeIds.length} Ep${savedEpisodeIds.length > 1 ? 's' : ''})` : '')) : 'Watchlist'}</span>
                   </button>
 
                   <button 
@@ -1213,11 +1358,14 @@ Cancel
                       const isCurrent = (currentPocketEp && currentPocketEp._id === ep._id) || (activeVideoUrl && activeVideoUrl === epUrl);
                       const isScheduled = ep.isScheduled && ep.scheduledPublishTime && new Date(ep.scheduledPublishTime) > new Date();
                       const isUpcoming = ep.upcoming === 'Yes' || isScheduled;
+                      const isEpPaid = (data?.seriesAccess || '').toLowerCase() === 'paid' || (ep.access || '').toLowerCase() === 'paid';
+                      const isSubscribed = isPremiumUser();
+                      const isLocked = isEpPaid && !isSubscribed;
 
                       return (
                         <div 
                           key={ep._id} 
-                          className={`fe-pocket-ep-row-v ${isCurrent ? 'active' : ''} ${isUpcoming ? 'upcoming' : ''}`}
+                          className={`fe-pocket-ep-row-v ${isCurrent ? 'active' : ''} ${isUpcoming ? 'upcoming' : ''} ${isLocked ? 'locked' : ''}`}
                           onClick={() => {
                             if (isScheduled) {
                               alert(`This episode is scheduled to release on ${new Date(ep.scheduledPublishTime).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}.`);
@@ -1225,6 +1373,11 @@ Cancel
                             }
                             if (isUpcoming) {
                               alert('This episode is coming soon! Stay tuned.');
+                              return;
+                            }
+                            if (isLocked) {
+                              alert('This episode is only available to Premium subscribers. Upgrade your plan to watch!');
+                              navigate('/subscription');
                               return;
                             }
                             if (epUrl) {
@@ -1260,9 +1413,47 @@ Cancel
                             </div>
                           </div>
                           
-                          <button className={`fe-pocket-ep-play-circle ${isCurrent ? 'playing' : ''}`} style={isUpcoming ? { opacity: 0.5 } : {}} aria-label="Play">
-                            <Play size={13} fill={isCurrent ? '#000' : 'transparent'} color={isCurrent ? '#000' : (isUpcoming ? '#888' : '#fff')} />
-                          </button>
+                          <div className="fe-pocket-ep-actions-group" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            {(() => {
+                              const isEpSaved = savedEpisodeIds.includes(ep._id ? ep._id.toString() : '');
+                              return (
+                                <button
+                                  type="button"
+                                  className={`fe-pocket-ep-save-btn ${isEpSaved ? 'saved' : ''}`}
+                                  onClick={(e) => handleToggleEpisodeWatchlist(ep, realIndex, e)}
+                                  title={isEpSaved ? 'Saved in Watchlist' : 'Save Episode to Watchlist'}
+                                  style={{
+                                    width: '32px',
+                                    height: '32px',
+                                    borderRadius: '50%',
+                                    background: isEpSaved ? 'rgba(179, 211, 50, 0.2)' : 'rgba(255, 255, 255, 0.08)',
+                                    border: isEpSaved ? '1px solid #b3d332' : '1px solid rgba(255, 255, 255, 0.15)',
+                                    color: isEpSaved ? '#b3d332' : '#888',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s ease',
+                                    zIndex: 2
+                                  }}
+                                >
+                                  <Bookmark size={14} fill={isEpSaved ? '#b3d332' : 'transparent'} color={isEpSaved ? '#b3d332' : '#888'} />
+                                </button>
+                              );
+                            })()}
+
+                            <button 
+                              className={`fe-pocket-ep-play-circle ${isCurrent ? 'playing' : ''} ${isLocked ? 'locked' : ''}`} 
+                              style={isUpcoming ? { opacity: 0.5 } : {}} 
+                              aria-label={isLocked ? "Locked Episode" : "Play"}
+                            >
+                              {isLocked ? (
+                                <Lock size={13} color="#ffffff" />
+                              ) : (
+                                <Play size={13} fill={isCurrent ? '#000' : 'transparent'} color={isCurrent ? '#000' : (isUpcoming ? '#888' : '#fff')} />
+                              )}
+                            </button>
+                          </div>
                         </div>
                       );
                     })
@@ -1535,28 +1726,57 @@ Cancel
                 <div className="no-episodes-v">No episodes available.</div>
                ) : (
                 <div className="fe-episodes-grid-v">
-                 {filteredEpisodes.map((ep, idx) => (
-                  <div 
-                   key={ep._id} 
-                   className="fe-episode-card-v"
-                   onClick={() => {
-                    navigate(`/details/episodes/${ep._id}`);
-                   }}
-                  >
-                   <div className="fe-episode-thumb-wrapper-v">
-                    <img src={formatImageUrl(ep, 'poster') || formatImageUrl(ep, 'thumbnail')} alt={ep.title} />
-                    <div className="fe-episode-hover-play-v">
-                     <Play size={20} fill="white" color="white" />
-                    </div>
-                    {((data?.seriesAccess || '').toLowerCase() === 'paid' && (ep.access || '').toLowerCase() === 'paid') && (
-                     <div className="fe-episode-crown-tag-v">
-                      <Crown size={12} fill="white" color="white" />
+                 {filteredEpisodes.map((ep, idx) => {
+                  const isEpSaved = savedEpisodeIds.includes(ep._id ? ep._id.toString() : '');
+                  return (
+                   <div 
+                    key={ep._id} 
+                    className="fe-episode-card-v"
+                    onClick={() => {
+                     navigate(`/details/episodes/${ep._id}`);
+                    }}
+                    style={{ position: 'relative' }}
+                   >
+                    <div className="fe-episode-thumb-wrapper-v" style={{ position: 'relative' }}>
+                     <img src={formatImageUrl(ep, 'poster') || formatImageUrl(ep, 'thumbnail')} alt={ep.title} />
+                     <div className="fe-episode-hover-play-v">
+                      <Play size={20} fill="white" color="white" />
                      </div>
-                    )}
+                     {((data?.seriesAccess || '').toLowerCase() === 'paid' && (ep.access || '').toLowerCase() === 'paid') && (
+                      <div className="fe-episode-crown-tag-v">
+                       <Crown size={12} fill="white" color="white" />
+                      </div>
+                     )}
+                     <button
+                      type="button"
+                      className={`fe-ep-card-save-btn ${isEpSaved ? 'saved' : ''}`}
+                      onClick={(e) => handleToggleEpisodeWatchlist(ep, idx, e)}
+                      title={isEpSaved ? 'Saved in Watchlist' : 'Save Episode to Watchlist'}
+                      style={{
+                        position: 'absolute',
+                        top: '8px',
+                        right: '8px',
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        background: isEpSaved ? 'rgba(0, 0, 0, 0.85)' : 'rgba(0, 0, 0, 0.65)',
+                        border: isEpSaved ? '1px solid #b3d332' : '1px solid rgba(255, 255, 255, 0.25)',
+                        color: isEpSaved ? '#b3d332' : '#ffffff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        zIndex: 10,
+                        transition: 'all 0.2s ease'
+                      }}
+                     >
+                      <Bookmark size={15} fill={isEpSaved ? '#b3d332' : 'transparent'} color={isEpSaved ? '#b3d332' : '#ffffff'} />
+                     </button>
+                    </div>
+                    <h3 className="fe-episode-card-title-v">{ep.title}</h3>
                    </div>
-                   <h3 className="fe-episode-card-title-v">{ep.title}</h3>
-                  </div>
-                 ))}
+                  );
+                 })}
                 </div>
                )}
               </div>
@@ -1722,10 +1942,38 @@ Cancel
                   <div className="playing-now-badge-v">PLAYING</div>
                  )}
                 </div>
-                <div className="fe-sidebar-episode-info-v">
+                <div className="fe-sidebar-episode-info-v" style={{ flex: 1 }}>
                  <span className="ep-num-v">Episode {idx + 1}</span>
                  <h4>{ep.title}</h4>
                 </div>
+                {(() => {
+                  const isEpSaved = savedEpisodeIds.includes(ep._id ? ep._id.toString() : '');
+                  return (
+                    <button
+                      type="button"
+                      className={`fe-sidebar-ep-save-btn ${isEpSaved ? 'saved' : ''}`}
+                      onClick={(e) => handleToggleEpisodeWatchlist(ep, idx, e)}
+                      title={isEpSaved ? 'Saved in Watchlist' : 'Save Episode to Watchlist'}
+                      style={{
+                        width: '30px',
+                        height: '30px',
+                        borderRadius: '50%',
+                        background: isEpSaved ? 'rgba(179, 211, 50, 0.2)' : 'rgba(255, 255, 255, 0.08)',
+                        border: isEpSaved ? '1px solid #b3d332' : '1px solid rgba(255, 255, 255, 0.15)',
+                        color: isEpSaved ? '#b3d332' : '#888',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        flexShrink: 0,
+                        marginLeft: '8px',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      <Bookmark size={13} fill={isEpSaved ? '#b3d332' : 'transparent'} color={isEpSaved ? '#b3d332' : '#888'} />
+                    </button>
+                  );
+                })()}
                </div>
               );
              })}
@@ -2825,6 +3073,16 @@ Cancel
       background: linear-gradient(135deg, #b3d332, #9cb82c);
       border-color: transparent;
       color: #000;
+    }
+    .fe-pocket-ep-play-circle.locked {
+      background: rgba(255, 77, 77, 0.15);
+      border-color: rgba(255, 77, 77, 0.35);
+      color: #ff6b6b;
+    }
+    .fe-pocket-ep-row-v:hover .fe-pocket-ep-play-circle.locked {
+      border-color: #ff4d4d;
+      color: #ff4d4d;
+      background: rgba(255, 77, 77, 0.25);
     }
     .fe-pocket-no-eps {
       color: #888;

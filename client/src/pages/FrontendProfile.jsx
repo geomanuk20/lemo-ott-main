@@ -348,13 +348,23 @@ const FrontendProfile = () => {
                     {fullUser?.status === 'Active' ? 'Active Subscription' : 'Inactive'}
                   </div>
                   <div className="plan-details-v">
-                    <div className="detail-item-v">
-                      <Calendar size={20} />
-                      <div>
-                        <label>Expires On</label>
-                        <span>{fullUser?.expiryDate || 'N/A'}</span>
+                    {Boolean(
+                      fullUser?.subscriptionPlan &&
+                      !fullUser.subscriptionPlan.toLowerCase().includes('basic') &&
+                      !fullUser.subscriptionPlan.toLowerCase().includes('free') &&
+                      !fullUser.subscriptionPlan.toLowerCase().includes('base') &&
+                      fullUser.expiryDate &&
+                      fullUser.expiryDate !== 'N/A' &&
+                      !fullUser.expiryDate.startsWith('2099')
+                    ) && (
+                      <div className="detail-item-v">
+                        <Calendar size={20} />
+                        <div>
+                          <label>Expires On</label>
+                          <span>{fullUser?.expiryDate}</span>
+                        </div>
                       </div>
-                    </div>
+                    )}
                     <div className="detail-item-v">
                       <CreditCard size={20} />
                       <div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useContext } from 'react';
+import React, { useState, useEffect, useRef, useContext, useCallback } from 'react';
 import {
   StyleSheet,
   Text,
@@ -9,14 +9,18 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
-  useWindowDimensions
+  useWindowDimensions,
+  AppState
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import Svg, { Circle } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, Play, Tv, Film, Trophy, CreditCard, Clapperboard, Crown, Globe, MonitorPlay, Shield, Smartphone } from 'lucide-react-native';
 import client from '../api/client';
 import { formatImageUrl } from '../config/api';
 import { AuthContext } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
+import OfflineView from '../components/OfflineView';
 
 const BANNER_HEIGHT = 260;
 
@@ -27,41 +31,55 @@ const isValidQuality = (quality) => {
 };
 
 const isItemActive = (item, menuSettings) => {
-  if (!menuSettings || !item) return true;
-  const contentType = item.contentType;
-  if (contentType === 'Movie' && menuSettings.movies?.toUpperCase() === 'OFF') return false;
-  if (contentType === 'Short Film' && menuSettings.shortFilms?.toUpperCase() === 'OFF') return false;
-  if (contentType === 'TV Show' && menuSettings.shows?.toUpperCase() === 'OFF') return false;
-  if (contentType === 'Short Web Series' && menuSettings.webSeries?.toUpperCase() === 'OFF') return false;
-  if ((contentType === 'Pocket Reel Series' || contentType === 'Pocket Reel' || contentType === 'pocket-reel-series' || contentType === 'pocket-reels') && menuSettings.pocketReelSeries?.toUpperCase() === 'OFF') return false;
-  if (contentType === 'Sports' && menuSettings.sports?.toUpperCase() === 'OFF') return false;
-  if (contentType === 'Live TV' && menuSettings.liveTv?.toUpperCase() === 'OFF') return false;
+  if (!item) return false;
+  if (item.status && item.status.toLowerCase() !== 'active') return false;
+  if (!menuSettings) return true;
+
+  const rawCt = (item.contentType || item.type || item.postType || '').toLowerCase().trim();
+  const isShortFilm = rawCt === 'short film' || rawCt === 'short-film';
+  const isShortWeb = rawCt === 'short web series' || rawCt === 'short-web-series' || rawCt === 'web-series';
+  const isPocketReel = rawCt === 'pocket reel series' || rawCt === 'pocket-reel-series' || rawCt === 'pocket reels' || rawCt === 'pocket-reels' || rawCt === 'pocket reel';
+  const isMovie = !isShortFilm && (rawCt === 'movie' || rawCt === 'movies' || (item.duration && !item.seasons));
+  const isTvShow = !isShortWeb && !isPocketReel && !isMovie && (rawCt === 'tv show' || rawCt === 'show' || rawCt === 'tv shows' || rawCt === 'shows' || rawCt === '' || !item.contentType);
+
+  if (isShortFilm && menuSettings.shortFilms?.toUpperCase() === 'OFF') return false;
+  if (isMovie && menuSettings.movies?.toUpperCase() === 'OFF') return false;
+  if (isTvShow && menuSettings.shows?.toUpperCase() === 'OFF') return false;
+  if (isShortWeb && menuSettings.webSeries?.toUpperCase() === 'OFF') return false;
+  if (isPocketReel && menuSettings.pocketReelSeries?.toUpperCase() === 'OFF') return false;
+  if (rawCt === 'sports' && menuSettings.sports?.toUpperCase() === 'OFF') return false;
+  if (rawCt === 'live tv' && menuSettings.liveTv?.toUpperCase() === 'OFF') return false;
   return true;
 };
 
 const isSliderActive = (slide, menuSettings) => {
-  if (!menuSettings || !slide) return true;
-  const postType = slide.postType;
-  if (postType === 'Movies' && menuSettings.movies?.toUpperCase() === 'OFF') return false;
-  if (postType === 'Short Film' && menuSettings.shortFilms?.toUpperCase() === 'OFF') return false;
-  if (postType === 'TV Shows' && menuSettings.shows?.toUpperCase() === 'OFF') return false;
-  if (postType === 'Short Web Series' && menuSettings.webSeries?.toUpperCase() === 'OFF') return false;
-  if ((postType === 'Pocket Reel Series' || postType === 'Pocket Reel' || postType === 'pocket-reel-series') && menuSettings.pocketReelSeries?.toUpperCase() === 'OFF') return false;
-  if (postType === 'Sports' && menuSettings.sports?.toUpperCase() === 'OFF') return false;
-  if (postType === 'Live TV' && menuSettings.liveTv?.toUpperCase() === 'OFF') return false;
+  if (!slide) return false;
+  if (slide.status && slide.status.toLowerCase() !== 'active') return false;
+  if (!menuSettings) return true;
 
-  const contentType = slide.contentType;
-  if (contentType === 'Movie' && menuSettings.movies?.toUpperCase() === 'OFF') return false;
-  if (contentType === 'Short Film' && menuSettings.shortFilms?.toUpperCase() === 'OFF') return false;
-  if (contentType === 'TV Show' && menuSettings.shows?.toUpperCase() === 'OFF') return false;
-  if (contentType === 'Short Web Series' && menuSettings.webSeries?.toUpperCase() === 'OFF') return false;
-  if ((contentType === 'Pocket Reel Series' || contentType === 'Pocket Reel' || contentType === 'pocket-reel-series') && menuSettings.pocketReelSeries?.toUpperCase() === 'OFF') return false;
-  if (contentType === 'Sports' && menuSettings.sports?.toUpperCase() === 'OFF') return false;
-  if (contentType === 'Live TV' && menuSettings.liveTv?.toUpperCase() === 'OFF') return false;
+  const postType = (slide.postType || slide.type || '').toLowerCase().trim();
+  if ((postType === 'movies' || postType === 'movie') && menuSettings.movies?.toUpperCase() === 'OFF') return false;
+  if ((postType === 'short film' || postType === 'short-film') && menuSettings.shortFilms?.toUpperCase() === 'OFF') return false;
+  if ((postType === 'tv shows' || postType === 'tv show' || postType === 'shows' || postType === 'show') && menuSettings.shows?.toUpperCase() === 'OFF') return false;
+  if ((postType === 'short web series' || postType === 'web-series') && menuSettings.webSeries?.toUpperCase() === 'OFF') return false;
+  if ((postType === 'pocket reel series' || postType === 'pocket reel' || postType === 'pocket-reel-series') && menuSettings.pocketReelSeries?.toUpperCase() === 'OFF') return false;
+  if (postType === 'sports' && menuSettings.sports?.toUpperCase() === 'OFF') return false;
+  if (postType === 'live tv' && menuSettings.liveTv?.toUpperCase() === 'OFF') return false;
+
+  const contentType = (slide.contentType || '').toLowerCase().trim();
+  if ((contentType === 'movie' || contentType === 'movies') && menuSettings.movies?.toUpperCase() === 'OFF') return false;
+  if ((contentType === 'short film' || contentType === 'short-film') && menuSettings.shortFilms?.toUpperCase() === 'OFF') return false;
+  if ((contentType === 'tv show' || contentType === 'show' || contentType === 'shows' || contentType === 'tv shows') && menuSettings.shows?.toUpperCase() === 'OFF') return false;
+  if ((contentType === 'short web series' || contentType === 'web-series') && menuSettings.webSeries?.toUpperCase() === 'OFF') return false;
+  if ((contentType === 'pocket reel series' || contentType === 'pocket-reel-series' || contentType === 'pocket reels' || contentType === 'pocket reel') && menuSettings.pocketReelSeries?.toUpperCase() === 'OFF') return false;
+  if (contentType === 'sports' && menuSettings.sports?.toUpperCase() === 'OFF') return false;
+  if (contentType === 'live tv' && menuSettings.liveTv?.toUpperCase() === 'OFF') return false;
   return true;
 };
 
 const IMDBRatingCircle = ({ rating }) => {
+  const { theme } = useTheme();
+  const styles = React.useMemo(() => getStyles(theme), [theme]);
   const ratingVal = parseFloat(rating || '7.5');
   const normalizedRating = Math.min(Math.max(ratingVal, 0), 10);
   const size = 36;
@@ -78,16 +96,16 @@ const IMDBRatingCircle = ({ rating }) => {
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke="rgba(255, 255, 255, 0.15)"
+          stroke={theme.isDark ? "rgba(255, 255, 255, 0.15)" : "rgba(0, 0, 0, 0.15)"}
           strokeWidth={strokeWidth}
-          fill="#000000"
+          fill={theme.isDark ? "#000000" : "#ffffff"}
         />
         {/* Active Progress Circle */}
         <Circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke="#b3d332"
+          stroke={theme.primary}
           strokeWidth={strokeWidth}
           fill="transparent"
           strokeDasharray={circumference}
@@ -97,7 +115,7 @@ const IMDBRatingCircle = ({ rating }) => {
         />
       </Svg>
       <View style={styles.ratingCircleTextContainer}>
-        <Text style={styles.ratingCircleText}>{normalizedRating.toFixed(1)}</Text>
+        <Text style={[styles.ratingCircleText, { color: theme.text }]}>{normalizedRating.toFixed(1)}</Text>
       </View>
     </View>
   );
@@ -105,6 +123,8 @@ const IMDBRatingCircle = ({ rating }) => {
 
 export default function HomeScreen({ navigation }) {
   const { user } = useContext(AuthContext);
+  const { theme, isDark } = useTheme();
+  const styles = React.useMemo(() => getStyles(theme), [theme]);
 
   const isPremiumUser = () => {
     if (!user) return false;
@@ -145,6 +165,7 @@ export default function HomeScreen({ navigation }) {
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
   const [data, setData] = useState({
     sliders: [],
     movies: [],
@@ -187,19 +208,36 @@ export default function HomeScreen({ navigation }) {
         if (response.data.menuSettings) {
           setMenuSettings(response.data.menuSettings);
         }
+        setIsOffline(false);
         console.log('Mobile Home aggregated shorts count:', response.data.shorts?.length);
         console.log('Mobile Home sections from backend:', response.data.homeSections?.map(s => s.sectionType));
       }
     } catch (error) {
       console.error('Error fetching home data:', error);
+      setIsOffline(true);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
+  useFocusEffect(
+    useCallback(() => {
+      fetchHomeData();
+    }, [])
+  );
+
   useEffect(() => {
-    fetchHomeData();
+    // Listen to app state changes (when user returns to the app)
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        fetchHomeData();
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
   }, []);
 
   const onRefresh = () => {
@@ -503,6 +541,25 @@ export default function HomeScreen({ navigation }) {
     );
   }
 
+  const hasContent = (data.sliders && data.sliders.length > 0) ||
+    (data.movies && data.movies.length > 0) ||
+    (data.shows && data.shows.length > 0) ||
+    (data.newReleases && data.newReleases.length > 0) ||
+    (data.shorts && data.shorts.length > 0) ||
+    (data.homeSections && data.homeSections.length > 0);
+
+  if (isOffline && !hasContent) {
+    return (
+      <OfflineView
+        onRetry={async () => {
+          setLoading(true);
+          await fetchHomeData();
+        }}
+        logoUrl={settings?.siteLogo ? formatImageUrl(settings.siteLogo, 'logo') : null}
+      />
+    );
+  }
+
   const activeCount = [
     (!menuSettings || menuSettings.movies?.toUpperCase() !== 'OFF' || menuSettings.shortFilms?.toUpperCase() !== 'OFF'),
     (!menuSettings || menuSettings.shows?.toUpperCase() !== 'OFF' || menuSettings.webSeries?.toUpperCase() !== 'OFF'),
@@ -517,7 +574,7 @@ export default function HomeScreen({ navigation }) {
   const shouldCenterQuickLinks = totalQuickLinksWidth < windowWidth;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.headerBackground }]} edges={['top', 'left', 'right']}>
       {/* Header */}
       <View style={styles.header}>
         {settings?.siteLogo ? (
@@ -527,22 +584,23 @@ export default function HomeScreen({ navigation }) {
             resizeMode="contain" 
           />
         ) : (
-          <Text style={styles.brandLogo}>LEMO<Text style={{ color: '#b3d332' }}>OTT</Text></Text>
+          <Text style={styles.brandLogo}>LEMO<Text style={{ color: theme.primary }}>OTT</Text></Text>
         )}
         <TouchableOpacity style={styles.searchBtn} onPress={() => navigation.navigate('Search')}>
-          <Search color="#ffffff" size={22} />
+          <Search color={theme.text} size={22} />
         </TouchableOpacity>
       </View>
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#b3d332" />}
-      >
-        {/* Banner Slider */}
-        {data.sliders.filter(s => isSliderActive(s, menuSettings)).length > 0 && (
-          <View style={styles.sliderContainer}>
-            <FlatList
-              ref={sliderRef}
+      <View style={{ flex: 1, backgroundColor: theme.background }}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} colors={[theme.primary]} />}
+        >
+          {/* Banner Slider */}
+          {data.sliders.filter(s => isSliderActive(s, menuSettings)).length > 0 && (
+            <View style={styles.sliderContainer}>
+              <FlatList
+                ref={sliderRef}
               data={data.sliders.filter(s => isSliderActive(s, menuSettings))}
               renderItem={renderSliderItem}
               keyExtractor={(item, index) => index.toString()}
@@ -590,7 +648,7 @@ export default function HomeScreen({ navigation }) {
                 <Film color="#ff9500" size={20} />
               </View>
               <Text style={styles.quickLinkLabel}>
-                {(!menuSettings || menuSettings.movies?.toUpperCase() !== 'OFF') ? 'Movie' : 'Short Film'}
+                {menuSettings?.movies?.toUpperCase() === 'OFF' ? 'Short Film' : 'Movie'}
               </Text>
             </TouchableOpacity>
           )}
@@ -616,7 +674,7 @@ export default function HomeScreen({ navigation }) {
           )}
 
           {(!menuSettings || menuSettings.pocketReelSeries?.toUpperCase() !== 'OFF') && (
-            <TouchableOpacity style={styles.quickLinkItem} onPress={() => navigation.navigate('ShowsTab')}>
+            <TouchableOpacity style={styles.quickLinkItem} onPress={() => navigation.navigate('PocketReels')}>
               <View style={[styles.quickLinkIconContainer, { backgroundColor: 'rgba(179, 211, 50, 0.15)' }]}>
                 <Smartphone color="#b3d332" size={20} />
               </View>
@@ -655,20 +713,31 @@ export default function HomeScreen({ navigation }) {
           // If admin has configured home sections, render them in order
           if (data.homeSections && data.homeSections.length > 0) {
             let experienceRendered = false;
+            const seenSectionKeys = new Set();
             
             const renderedSections = data.homeSections.map((section) => {
+              if (!section) return null;
+              if (section.status && section.status.toLowerCase() !== 'active') return null;
+
               const key = section._id || section.title;
               const title = section.title;
-              const type = section.sectionType;
+              const type = (section.sectionType || '').trim();
+              const lowerTitle = (title || '').toLowerCase().trim();
+
+              const dedupeKey = `${type.toLowerCase()}__${lowerTitle}`;
+              if (seenSectionKeys.has(dedupeKey)) return null;
+              seenSectionKeys.add(dedupeKey);
 
               // Check if section is disabled in Menu Settings
               if (menuSettings) {
-                if (type === 'Movie' && menuSettings.movies?.toUpperCase() === 'OFF') return null;
-                if (type === 'Short Film' && menuSettings.shortFilms?.toUpperCase() === 'OFF') return null;
-                if (type === 'Shows' && menuSettings.shows?.toUpperCase() === 'OFF') return null;
-                if (type === 'Short Web Series' && menuSettings.webSeries?.toUpperCase() === 'OFF') return null;
-                if (type === 'Live TV' && menuSettings.liveTv?.toUpperCase() === 'OFF') return null;
-                if (type === 'Sports' && menuSettings.sports?.toUpperCase() === 'OFF') return null;
+                if ((type === 'Movie' || lowerTitle === 'movie' || lowerTitle === 'movies') && menuSettings.movies?.toUpperCase() === 'OFF') return null;
+                if ((type === 'Short Film' || lowerTitle === 'short film' || lowerTitle === 'short films') && menuSettings.shortFilms?.toUpperCase() === 'OFF') return null;
+                if ((type === 'Shows' || lowerTitle === 'shows' || lowerTitle === 'tv shows') && menuSettings.shows?.toUpperCase() === 'OFF') return null;
+                if ((type === 'Short Web Series' || lowerTitle === 'web series' || lowerTitle === 'short web series') && menuSettings.webSeries?.toUpperCase() === 'OFF') return null;
+                if ((type === 'Pocket Reel Series' || lowerTitle === 'pocket reel' || lowerTitle === 'pocket reels' || lowerTitle === 'short pocket series') && menuSettings.pocketReelSeries?.toUpperCase() === 'OFF') return null;
+                if ((type === 'Live TV' || lowerTitle === 'live tv') && menuSettings.liveTv?.toUpperCase() === 'OFF') return null;
+                if ((type === 'Sports' || lowerTitle === 'sports') && menuSettings.sports?.toUpperCase() === 'OFF') return null;
+                if ((type === 'Shorts' || lowerTitle === 'shorts') && menuSettings.shorts?.toUpperCase() === 'OFF') return null;
               }
 
               if (type === 'New Release') {
@@ -692,13 +761,17 @@ export default function HomeScreen({ navigation }) {
                 }
               }
               if (type === 'Movie') {
-                const moviesOnly = data.movies.filter(m => m.contentType !== 'Short Film' && m.contentType !== 'short-film');
+                if (menuSettings && menuSettings.movies?.toUpperCase() === 'OFF') return null;
+                const moviesOnly = data.movies.filter(m => (m.contentType || '').toLowerCase() !== 'short film' && (m.contentType || '').toLowerCase() !== 'short-film');
                 const filtered = moviesOnly.filter(item => isItemActive(item, menuSettings));
                 if (filtered.length > 0) {
                   return (
                     <View key={key} style={styles.sectionContainer}>
                       <View style={styles.sectionHeader}>
                         <Text style={styles.sectionTitle}>{title}</Text>
+                        <TouchableOpacity style={styles.seeAllBtn} onPress={() => navigation.navigate('MoviesTab')}>
+                          <Text style={styles.seeAllText}>See All</Text>
+                        </TouchableOpacity>
                       </View>
                       <FlatList
                         data={filtered.slice(0, section.limit || 20)}
@@ -720,6 +793,9 @@ export default function HomeScreen({ navigation }) {
                     <View key={key} style={styles.sectionContainer}>
                       <View style={styles.sectionHeader}>
                         <Text style={styles.sectionTitle}>{title}</Text>
+                        <TouchableOpacity style={styles.seeAllBtn} onPress={() => navigation.navigate('MoviesTab')}>
+                          <Text style={styles.seeAllText}>See All</Text>
+                        </TouchableOpacity>
                       </View>
                       <FlatList
                         data={filtered.slice(0, section.limit || 20)}
@@ -741,6 +817,9 @@ export default function HomeScreen({ navigation }) {
                     <View key={key} style={styles.sectionContainer}>
                       <View style={styles.sectionHeader}>
                         <Text style={styles.sectionTitle}>{title}</Text>
+                        <TouchableOpacity style={styles.seeAllBtn} onPress={() => navigation.navigate('ShowsTab')}>
+                          <Text style={styles.seeAllText}>See All</Text>
+                        </TouchableOpacity>
                       </View>
                       <FlatList
                         data={filtered.slice(0, section.limit || 20)}
@@ -762,6 +841,9 @@ export default function HomeScreen({ navigation }) {
                     <View key={key} style={styles.sectionContainer}>
                       <View style={styles.sectionHeader}>
                         <Text style={styles.sectionTitle}>{title}</Text>
+                        <TouchableOpacity style={styles.seeAllBtn} onPress={() => navigation.navigate('ShowsTab')}>
+                          <Text style={styles.seeAllText}>See All</Text>
+                        </TouchableOpacity>
                       </View>
                       <FlatList
                         data={filtered.slice(0, section.limit || 20)}
@@ -783,6 +865,9 @@ export default function HomeScreen({ navigation }) {
                     <View key={key} style={styles.sectionContainer}>
                       <View style={styles.sectionHeader}>
                         <Text style={styles.sectionTitle}>{title}</Text>
+                        <TouchableOpacity style={styles.seeAllBtn} onPress={() => navigation.navigate('PocketReels')}>
+                          <Text style={styles.seeAllText}>See All</Text>
+                        </TouchableOpacity>
                       </View>
                       <FlatList
                         data={filtered.slice(0, section.limit || 20)}
@@ -803,6 +888,9 @@ export default function HomeScreen({ navigation }) {
                     <View key={key} style={styles.sectionContainer}>
                       <View style={styles.sectionHeader}>
                         <Text style={styles.sectionTitle}>{title}</Text>
+                        <TouchableOpacity style={styles.seeAllBtn} onPress={() => navigation.navigate('LiveTV')}>
+                          <Text style={styles.seeAllText}>See All</Text>
+                        </TouchableOpacity>
                       </View>
                       <FlatList
                         data={filtered.slice(0, section.limit || 20)}
@@ -823,6 +911,9 @@ export default function HomeScreen({ navigation }) {
                     <View key={key} style={styles.sectionContainer}>
                       <View style={styles.sectionHeader}>
                         <Text style={styles.sectionTitle}>{title}</Text>
+                        <TouchableOpacity style={styles.seeAllBtn} onPress={() => navigation.navigate('Sports')}>
+                          <Text style={styles.seeAllText}>See All</Text>
+                        </TouchableOpacity>
                       </View>
                       <FlatList
                         data={filtered.slice(0, section.limit || 20)}
@@ -842,6 +933,9 @@ export default function HomeScreen({ navigation }) {
                     <View key={key} style={styles.sectionContainer}>
                       <View style={styles.sectionHeader}>
                         <Text style={styles.sectionTitle}>{title}</Text>
+                        <TouchableOpacity style={styles.seeAllBtn} onPress={() => navigation.navigate('ShortsTab')}>
+                          <Text style={styles.seeAllText}>See All</Text>
+                        </TouchableOpacity>
                       </View>
                       <FlatList
                         data={data.shorts.slice(0, section.limit || 20)}
@@ -884,13 +978,16 @@ export default function HomeScreen({ navigation }) {
                   />
                 </View>
               )}
-              {data.movies.filter(m => m.contentType !== 'Short Film' && m.contentType !== 'short-film').filter(item => isItemActive(item, menuSettings)).length > 0 && (!menuSettings || menuSettings.movies?.toUpperCase() !== 'OFF') && (
+              {menuSettings && menuSettings.movies?.toUpperCase() !== 'OFF' && data.movies.filter(m => (m.contentType || '').toLowerCase() !== 'short film' && (m.contentType || '').toLowerCase() !== 'short-film').filter(item => isItemActive(item, menuSettings)).length > 0 && (
                 <View style={styles.sectionContainer}>
                   <View style={styles.sectionHeader}>
                     <Text style={styles.sectionTitle}>Movies</Text>
+                    <TouchableOpacity style={styles.seeAllBtn} onPress={() => navigation.navigate('MoviesTab')}>
+                      <Text style={styles.seeAllText}>See All</Text>
+                    </TouchableOpacity>
                   </View>
                   <FlatList
-                    data={data.movies.filter(m => m.contentType !== 'Short Film' && m.contentType !== 'short-film').filter(item => isItemActive(item, menuSettings))}
+                    data={data.movies.filter(m => (m.contentType || '').toLowerCase() !== 'short film' && (m.contentType || '').toLowerCase() !== 'short-film').filter(item => isItemActive(item, menuSettings))}
                     renderItem={({ item }) => renderMediaCard({ item, type: 'movie' })}
                     keyExtractor={(item) => item._id}
                     horizontal
@@ -903,6 +1000,9 @@ export default function HomeScreen({ navigation }) {
                 <View style={styles.sectionContainer}>
                   <View style={styles.sectionHeader}>
                     <Text style={styles.sectionTitle}>Short Films</Text>
+                    <TouchableOpacity style={styles.seeAllBtn} onPress={() => navigation.navigate('MoviesTab')}>
+                      <Text style={styles.seeAllText}>See All</Text>
+                    </TouchableOpacity>
                   </View>
                   <FlatList
                     data={data.movies.filter(m => m.contentType === 'Short Film' || m.contentType === 'short-film').filter(item => isItemActive(item, menuSettings))}
@@ -918,6 +1018,9 @@ export default function HomeScreen({ navigation }) {
                 <View style={styles.sectionContainer}>
                   <View style={styles.sectionHeader}>
                     <Text style={styles.sectionTitle}>TV Shows</Text>
+                    <TouchableOpacity style={styles.seeAllBtn} onPress={() => navigation.navigate('ShowsTab')}>
+                      <Text style={styles.seeAllText}>See All</Text>
+                    </TouchableOpacity>
                   </View>
                   <FlatList
                     data={data.shows.filter(s => s.contentType !== 'Short Web Series' && s.contentType !== 'short-web-series' && s.contentType !== 'Pocket Reel Series' && s.contentType !== 'pocket-reel-series' && s.contentType !== 'Pocket Reels' && s.contentType !== 'pocket-reels').filter(item => isItemActive(item, menuSettings))}
@@ -933,6 +1036,9 @@ export default function HomeScreen({ navigation }) {
                 <View style={styles.sectionContainer}>
                   <View style={styles.sectionHeader}>
                     <Text style={styles.sectionTitle}>Short Web Series</Text>
+                    <TouchableOpacity style={styles.seeAllBtn} onPress={() => navigation.navigate('ShowsTab')}>
+                      <Text style={styles.seeAllText}>See All</Text>
+                    </TouchableOpacity>
                   </View>
                   <FlatList
                     data={data.shows.filter(s => s.contentType === 'Short Web Series' || s.contentType === 'short-web-series').filter(item => isItemActive(item, menuSettings))}
@@ -948,6 +1054,9 @@ export default function HomeScreen({ navigation }) {
                 <View style={styles.sectionContainer}>
                   <View style={styles.sectionHeader}>
                     <Text style={styles.sectionTitle}>Pocket Reel Series</Text>
+                    <TouchableOpacity style={styles.seeAllBtn} onPress={() => navigation.navigate('PocketReels')}>
+                      <Text style={styles.seeAllText}>See All</Text>
+                    </TouchableOpacity>
                   </View>
                   <FlatList
                     data={data.shows.filter(s => s.contentType === 'Pocket Reel Series' || s.contentType === 'pocket-reel-series' || s.contentType === 'Pocket Reels' || s.contentType === 'pocket-reels').filter(item => isItemActive(item, menuSettings))}
@@ -963,6 +1072,9 @@ export default function HomeScreen({ navigation }) {
                 <View style={styles.sectionContainer}>
                   <View style={styles.sectionHeader}>
                     <Text style={styles.sectionTitle}>Live Channels</Text>
+                    <TouchableOpacity style={styles.seeAllBtn} onPress={() => navigation.navigate('LiveTV')}>
+                      <Text style={styles.seeAllText}>See All</Text>
+                    </TouchableOpacity>
                   </View>
                   <FlatList
                     data={data.channels.filter(item => isItemActive(item, menuSettings))}
@@ -978,6 +1090,9 @@ export default function HomeScreen({ navigation }) {
                 <View style={styles.sectionContainer}>
                   <View style={styles.sectionHeader}>
                     <Text style={styles.sectionTitle}>Sports Highlights</Text>
+                    <TouchableOpacity style={styles.seeAllBtn} onPress={() => navigation.navigate('Sports')}>
+                      <Text style={styles.seeAllText}>See All</Text>
+                    </TouchableOpacity>
                   </View>
                   <FlatList
                     data={data.sports.filter(item => isItemActive(item, menuSettings))}
@@ -993,6 +1108,9 @@ export default function HomeScreen({ navigation }) {
                 <View style={styles.sectionContainer}>
                   <View style={styles.sectionHeader}>
                     <Text style={styles.sectionTitle}>Vertical Shorts</Text>
+                    <TouchableOpacity style={styles.seeAllBtn} onPress={() => navigation.navigate('ShortsTab')}>
+                      <Text style={styles.seeAllText}>See All</Text>
+                    </TouchableOpacity>
                   </View>
                   <FlatList
                     data={data.shorts}
@@ -1008,41 +1126,22 @@ export default function HomeScreen({ navigation }) {
           );
         })()}
 
-        {/* Extra Bottom Spacing */}
-        <View style={{ height: 30 }} />
+        {/* Extra Bottom Spacing for Floating Tab Dock */}
+        <View style={{ height: 85 }} />
       </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  shortCardContainer: {
-    width: 100,
-    marginHorizontal: 4,
-  },
-  shortCardImage: {
-    width: 100,
-    height: 160,
-    borderRadius: 12,
-    backgroundColor: '#1c1c1e',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-  },
-  shortCardTitle: {
-    color: '#ffffff',
-    fontSize: 11,
-    fontWeight: '600',
-    marginTop: 6,
-    paddingHorizontal: 2,
-    textAlign: 'center',
-  },
+const getStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: theme.background,
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: theme.background,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1051,24 +1150,28 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#000000',
+    paddingVertical: 10,
+    backgroundColor: theme.headerBackground,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.headerBorder,
   },
   brandLogo: {
     fontSize: 22,
     fontWeight: '900',
-    color: '#ffffff',
-    letterSpacing: 1.5,
+    color: theme.text,
+    letterSpacing: 1,
   },
   logoImage: {
-    width: 140,
+    width: 130,
     height: 38,
   },
   searchBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#1c1c1e',
+    backgroundColor: theme.isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
+    borderWidth: 1,
+    borderColor: theme.cardBorder,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1109,20 +1212,20 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   sliderMetaText: {
-    color: '#a1a1aa',
+    color: '#e4e4e7',
     fontSize: 12,
     fontWeight: '600',
   },
   sliderQualityContainer: {
-    backgroundColor: 'rgba(179, 211, 50, 0.12)',
-    borderColor: 'rgba(179, 211, 50, 0.3)',
+    backgroundColor: 'rgba(179, 211, 50, 0.15)',
+    borderColor: 'rgba(179, 211, 50, 0.35)',
     borderWidth: 1,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
   },
   sliderQualityText: {
-    color: '#b3d332',
+    color: theme.primary,
     fontSize: 10,
     fontWeight: '900',
     textTransform: 'uppercase',
@@ -1131,7 +1234,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    backgroundColor: '#b3d332',
+    backgroundColor: theme.primary,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 6,
@@ -1157,7 +1260,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 3,
   },
   activeDot: {
-    backgroundColor: '#b3d332',
+    backgroundColor: theme.primary,
     width: 14,
   },
   sectionContainer: {
@@ -1173,8 +1276,18 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 17,
     fontWeight: '800',
-    color: '#ffffff',
+    color: theme.text,
     letterSpacing: 0.2,
+  },
+  seeAllBtn: {
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+  },
+  seeAllText: {
+    color: theme.primary,
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
   listContent: {
     paddingHorizontal: 12,
@@ -1187,10 +1300,12 @@ const styles = StyleSheet.create({
     width: 110,
     height: 160,
     borderRadius: 8,
-    backgroundColor: '#1c1c1e',
+    backgroundColor: theme.cardSecondary,
+    borderWidth: 1,
+    borderColor: theme.cardBorder,
   },
   cardTitle: {
-    color: '#ffffff',
+    color: theme.text,
     fontSize: 12,
     fontWeight: '600',
     marginTop: 6,
@@ -1203,16 +1318,16 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   qualityBadge: {
-    color: '#b3d332',
+    color: theme.primary,
     fontSize: 9,
     fontWeight: '800',
-    borderColor: '#b3d332',
+    borderColor: theme.primary,
     borderWidth: 0.5,
     borderRadius: 2,
     paddingHorizontal: 2,
   },
   langBadge: {
-    color: '#8e8e93',
+    color: theme.textSecondary,
     fontSize: 9,
     fontWeight: '600',
   },
@@ -1225,7 +1340,9 @@ const styles = StyleSheet.create({
     width: 130,
     height: 80,
     borderRadius: 8,
-    backgroundColor: '#1c1c1e',
+    backgroundColor: theme.cardSecondary,
+    borderWidth: 1,
+    borderColor: theme.cardBorder,
   },
   liveOverlay: {
     position: 'absolute',
@@ -1242,7 +1359,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   channelTitle: {
-    color: '#ffffff',
+    color: theme.text,
     fontSize: 12,
     fontWeight: '600',
     marginTop: 6,
@@ -1269,9 +1386,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 6,
+    borderWidth: 1,
+    borderColor: theme.cardBorder,
   },
   quickLinkLabel: {
-    color: '#ffffff',
+    color: theme.text,
     fontSize: 12,
     fontWeight: '700',
   },
@@ -1304,14 +1423,14 @@ const styles = StyleSheet.create({
   experienceMainTitle: {
     fontSize: 24,
     fontWeight: '900',
-    color: '#ffffff',
+    color: theme.text,
     lineHeight: 32,
     marginBottom: 28,
   },
   experienceMainTitleUnderline: {
-    color: '#b3d332',
+    color: theme.primary,
     textDecorationLine: 'underline',
-    textDecorationColor: '#b3d332',
+    textDecorationColor: theme.primary,
   },
   experienceFeatureItem: {
     flexDirection: 'row',
@@ -1323,8 +1442,8 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#121212',
-    borderColor: '#1f1f1f',
+    backgroundColor: theme.cardBackground,
+    borderColor: theme.cardBorder,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
@@ -1333,15 +1452,33 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   experienceFeatureTitle: {
-    color: '#ffffff',
+    color: theme.text,
     fontSize: 15,
     fontWeight: '700',
     marginBottom: 6,
   },
   experienceFeatureDesc: {
-    color: '#8e8e93',
+    color: theme.textSecondary,
     fontSize: 12,
     lineHeight: 18,
+  },
+  shortCardContainer: {
+    width: 120,
+    marginHorizontal: 4,
+  },
+  shortCardImage: {
+    width: 120,
+    height: 200,
+    borderRadius: 12,
+    backgroundColor: theme.cardSecondary,
+    borderWidth: 1,
+    borderColor: theme.cardBorder,
+  },
+  shortCardTitle: {
+    color: theme.text,
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 6,
   },
   collageContainer: {
     width: '100%',
@@ -1355,7 +1492,7 @@ const styles = StyleSheet.create({
     height: 260,
     borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: '#2a2c31',
+    borderColor: theme.cardBorder,
     alignSelf: 'center',
   },
   collageInnerTwo: {
@@ -1372,7 +1509,7 @@ const styles = StyleSheet.create({
     top: 0,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#2a2c31',
+    borderColor: theme.cardBorder,
     zIndex: 1,
   },
   collageTwoImg2: {
@@ -1383,11 +1520,11 @@ const styles = StyleSheet.create({
     bottom: 0,
     borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: '#2a2c31',
+    borderColor: theme.cardBorder,
     zIndex: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
+    shadowOpacity: 0.2,
     shadowRadius: 10,
   },
   collageInner: {
@@ -1403,7 +1540,7 @@ const styles = StyleSheet.create({
     top: 40,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#2a2c31',
+    borderColor: theme.cardBorder,
     zIndex: 1,
   },
   collageImg2: {
@@ -1414,7 +1551,7 @@ const styles = StyleSheet.create({
     top: 40,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#2a2c31',
+    borderColor: theme.cardBorder,
     zIndex: 2,
   },
   collageImg3: {
@@ -1425,11 +1562,11 @@ const styles = StyleSheet.create({
     top: 15,
     borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: '#2a2c31',
+    borderColor: theme.cardBorder,
     zIndex: 3,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.5,
+    shadowOpacity: 0.25,
     shadowRadius: 15,
   },
   experienceLandscapeLayout: {

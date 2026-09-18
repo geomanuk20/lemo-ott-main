@@ -591,12 +591,12 @@ const getAdTriggers = (slot, currentTime, slotIdx = 0) => {
 const normalizeCategory = (cat) => {
   if (!cat) return '';
   const c = String(cat).toLowerCase().trim().replace(/[-_]/g, ' ');
-  if (c.includes('pocket')) return 'pocket_reel';
+  if (c.includes('pocket') || c.includes('reel')) return 'pocket_reel';
   if (c.includes('web')) return 'web_series';
-  if (c.includes('tv') || c.includes('show') || c.includes('season') || c.includes('episode')) return 'tv_show';
   if (c.includes('short') && c.includes('film')) return 'short_film';
   if (c.includes('movie') || c.includes('cinema')) return 'movie';
-  if (c.includes('live') || c.includes('sport')) return 'live_tv';
+  if (c.includes('tv') || c.includes('show') || c.includes('season') || c.includes('episode')) return 'tv_show';
+  if (c.includes('live') || c.includes('sport') || c.includes('channel')) return 'live_tv';
   return c;
 };
 
@@ -607,7 +607,7 @@ const isAdSlotApplicable = (slot, contentType) => {
   if (!Array.isArray(cats) || cats.length === 0 || cats.includes('all') || cats.includes('All Categories')) {
     return true;
   }
-  if (!contentType) return true; // fallback if unknown
+  if (!contentType) return false; // Strict check: do not play ad on unselected/unknown category
 
   const currentNormalized = normalizeCategory(contentType);
   return cats.some(c => {

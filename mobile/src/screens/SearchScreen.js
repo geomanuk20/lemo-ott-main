@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   StyleSheet,
   Text,
@@ -13,8 +13,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Search, X, Film } from 'lucide-react-native';
 import client from '../api/client';
 import { formatImageUrl } from '../config/api';
+import { useTheme } from '../context/ThemeContext';
 
 export default function SearchScreen({ navigation }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState([]);
@@ -45,20 +48,24 @@ export default function SearchScreen({ navigation }) {
 
 
   const renderResultItem = ({ item }) => {
-    const imageUrl = formatImageUrl(item, 'poster');
+    const imageUrl = formatImageUrl(item, 'poster') || formatImageUrl(item, 'thumbnail') || formatImageUrl(item, 'landscapePoster');
     const typeMap = {
       movie: 'Movie',
-      show: 'Web Series',
+      show: 'TV Show',
+      'short-film': 'Short Film',
+      'short-web-series': 'Short Web Series',
+      'pocket-reel-series': 'Pocket Reel Series',
       sports: 'Sports',
       'new-release': 'New Release',
       live: 'Live TV',
     };
-    const displayType = typeMap[item.contentType] || 'Content';
+    const displayType = item.displayType || typeMap[item.contentType] || 'Content';
     
     return (
       <TouchableOpacity
         style={styles.resultRow}
-        onPress={() => navigation.navigate('Details', { id: item._id, type: item.contentType })}
+        activeOpacity={0.8}
+        onPress={() => navigation.navigate('Details', { id: item._id, type: item.contentType || 'show' })}
       >
         <Image source={{ uri: imageUrl }} style={styles.resultThumb} resizeMode="cover" />
         <View style={styles.resultDetails}>
@@ -66,7 +73,9 @@ export default function SearchScreen({ navigation }) {
           <Text style={styles.resultType}>{displayType}</Text>
           {item.genres ? (
             <Text style={styles.resultGenre} numberOfLines={1}>
-              {item.genres.map(g => (typeof g === 'object' ? g.name : g)).join(', ')}
+              {Array.isArray(item.genres) 
+                ? item.genres.map(g => (typeof g === 'object' ? g.name : g)).join(', ')
+                : item.genres}
             </Text>
           ) : null}
         </View>
@@ -79,15 +88,15 @@ export default function SearchScreen({ navigation }) {
       {/* Search Header */}
       <View style={styles.searchHeader}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <ArrowLeft color="#ffffff" size={24} />
+          <ArrowLeft color={theme.text} size={24} />
         </TouchableOpacity>
         
         <View style={styles.inputContainer}>
-          <Search color="#8e8e93" size={18} style={styles.searchIcon} />
+          <Search color={theme.textSecondary} size={18} style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
             placeholder="Search movies, series..."
-            placeholderTextColor="#666"
+            placeholderTextColor={theme.textSecondary}
             value={query}
             onChangeText={setQuery}
             autoFocus
@@ -95,7 +104,7 @@ export default function SearchScreen({ navigation }) {
           />
           {query.length > 0 && (
             <TouchableOpacity onPress={() => setQuery('')} style={styles.clearBtn}>
-              <X color="#8e8e93" size={18} />
+              <X color={theme.textSecondary} size={18} />
             </TouchableOpacity>
           )}
         </View>
@@ -104,17 +113,17 @@ export default function SearchScreen({ navigation }) {
       {/* Search Results */}
       {loading ? (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#b3d332" />
+          <ActivityIndicator size="large" color={theme.primary} />
         </View>
       ) : query.trim().length === 0 ? (
         <View style={styles.centerContainer}>
-          <Search color="#333" size={48} style={{ marginBottom: 12 }} />
+          <Search color={theme.textSecondary} size={48} style={{ marginBottom: 12 }} />
           <Text style={styles.placeholderText}>Search for your favorite content</Text>
           <Text style={styles.placeholderSubtext}>Type titles, genres, or keywords above</Text>
         </View>
       ) : results.length === 0 ? (
         <View style={styles.centerContainer}>
-          <Film color="#333" size={48} style={{ marginBottom: 12 }} />
+          <Film color={theme.textSecondary} size={48} style={{ marginBottom: 12 }} />
           <Text style={styles.placeholderText}>No Results Found</Text>
           <Text style={styles.placeholderSubtext}>Try searching for different keywords</Text>
         </View>
@@ -132,10 +141,10 @@ export default function SearchScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: theme.background,
   },
   searchHeader: {
     flexDirection: 'row',
@@ -143,7 +152,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#1a1a1a',
+    borderBottomColor: theme.cardBorder,
+    backgroundColor: theme.headerBackground,
   },
   backBtn: {
     marginRight: 12,
@@ -152,19 +162,19 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1c1c1e',
+    backgroundColor: theme.cardBackground,
     borderRadius: 8,
     paddingHorizontal: 10,
     height: 40,
     borderWidth: 1,
-    borderColor: '#2a2c31',
+    borderColor: theme.cardBorder,
   },
   searchIcon: {
     marginRight: 8,
   },
   searchInput: {
     flex: 1,
-    color: '#ffffff',
+    color: theme.text,
     fontSize: 15,
     paddingVertical: 0,
   },
@@ -176,15 +186,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 40,
+    backgroundColor: theme.background,
   },
   placeholderText: {
-    color: '#ffffff',
+    color: theme.text,
     fontSize: 15,
     fontWeight: '700',
     textAlign: 'center',
   },
   placeholderSubtext: {
-    color: '#8e8e93',
+    color: theme.textSecondary,
     fontSize: 12,
     textAlign: 'center',
     marginTop: 4,
@@ -194,9 +205,9 @@ const styles = StyleSheet.create({
   },
   resultRow: {
     flexDirection: 'row',
-    backgroundColor: '#121212',
+    backgroundColor: theme.cardBackground,
     borderWidth: 1,
-    borderColor: '#1f1f1f',
+    borderColor: theme.cardBorder,
     borderRadius: 8,
     padding: 10,
     marginBottom: 12,
@@ -206,26 +217,27 @@ const styles = StyleSheet.create({
     width: 60,
     height: 90,
     borderRadius: 6,
-    backgroundColor: '#1c1c1e',
+    backgroundColor: theme.cardSecondary,
   },
   resultDetails: {
     flex: 1,
     marginLeft: 16,
   },
   resultTitle: {
-    color: '#ffffff',
+    color: theme.text,
     fontSize: 15,
     fontWeight: '700',
     marginBottom: 4,
   },
   resultType: {
-    color: '#b3d332',
+    color: theme.primary,
     fontSize: 11,
     fontWeight: '700',
     marginBottom: 4,
   },
   resultGenre: {
-    color: '#8e8e93',
+    color: theme.textSecondary,
     fontSize: 12,
   },
 });
+

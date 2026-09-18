@@ -30,7 +30,11 @@ const UserSchema = new mongoose.Schema({
   isBannedFromChat: { type: Boolean, default: false },
   watchlist: [{
     contentId: { type: mongoose.Schema.Types.ObjectId, required: true },
-    contentType: { type: String, enum: ['movie', 'show', 'sports', 'live'], required: true }
+    contentType: { type: String, default: 'show' },
+    selectedEpisodeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Episode', default: null },
+    selectedEpisodeNumber: { type: Number, default: 1 },
+    selectedEpisodeTitle: { type: String, default: '' },
+    updatedAt: { type: Date, default: Date.now }
   }],
   activeSessions: [{
     token: { type: String, required: true },

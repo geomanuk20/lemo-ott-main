@@ -99,13 +99,17 @@ const UserHistory = () => {
  const [transactions, setTransactions] = useState([]);
  const [loading, setLoading] = useState(true);
 
-  const handleTerminateSession = async (sessionId) => {
+  const handleTerminateSession = async (session) => {
     if (!window.confirm('Are you sure you want to terminate this active session? This will force-logout the user from this device.')) return;
     try {
+      const sessionId = typeof session === 'object' ? (session._id || session.deviceId || session.token) : session;
+      const deviceId = typeof session === 'object' ? session.deviceId : null;
+      const token = typeof session === 'object' ? session.token : null;
+
       const res = await fetch(`/api/users/${id}/sessions/terminate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId })
+        body: JSON.stringify({ sessionId, deviceId, token })
       });
       if (res.ok) {
         const data = await res.json();
@@ -332,7 +336,7 @@ const UserHistory = () => {
              </td>
             <td style={{ textAlign: 'center' }}>
              <button
-              onClick={() => handleTerminateSession(session._id)}
+              onClick={() => handleTerminateSession(session)}
               style={{
                background: 'none',
                border: 'none',

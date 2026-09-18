@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useCallback } from 'react';
+import React, { useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import {
   StyleSheet,
   Text,
@@ -15,8 +15,12 @@ import { AuthContext } from '../context/AuthContext';
 import client from '../api/client';
 import { formatImageUrl } from '../config/api';
 import { useFocusEffect } from '@react-navigation/native';
+import { useTheme } from '../context/ThemeContext';
+import OfflineView from '../components/OfflineView';
 
 export default function WatchlistScreen({ navigation }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
   const { user, isAuthenticated } = useContext(AuthContext);
 
   const isPremiumUser = () => {
@@ -51,6 +55,7 @@ export default function WatchlistScreen({ navigation }) {
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
   const [watchlist, setWatchlist] = useState([]);
 
   const fetchWatchlist = useCallback(async () => {
@@ -58,8 +63,10 @@ export default function WatchlistScreen({ navigation }) {
     try {
       const response = await client.get(`/watchlist/${user.id}`);
       setWatchlist(response.data || []);
+      setIsOffline(false);
     } catch (error) {
       console.error('Error fetching watchlist:', error);
+      setIsOffline(true);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -79,16 +86,17 @@ export default function WatchlistScreen({ navigation }) {
     fetchWatchlist();
   };
 
-  const handleRemoveFromWatchlist = async (contentId, contentType) => {
+  const handleRemoveFromWatchlist = async (uniqueKey, contentId, contentType, selectedEpisodeId) => {
     try {
       const response = await client.post('/watchlist/toggle', {
         userId: user.id,
-        contentId,
-        contentType
+        contentId: contentId || uniqueKey,
+        contentType,
+        selectedEpisodeId: selectedEpisodeId || null
       });
       if (response.data && response.data.status === 'removed') {
-        // Optimistically filter the item from state
-        setWatchlist(prev => prev.filter(item => item._id !== contentId));
+        // Optimistically filter the item from state by uniqueKey
+        setWatchlist(prev => prev.filter(item => item._id !== uniqueKey));
       }
     } catch (error) {
       console.error('Error removing from watchlist:', error);
@@ -96,18 +104,34 @@ export default function WatchlistScreen({ navigation }) {
   };
 
   const renderWatchlistItem = ({ item }) => {
-    const imageUrl = formatImageUrl(item, 'poster');
+    const imageUrl = item.episodePoster ? formatImageUrl(item.episodePoster) : formatImageUrl(item, 'poster');
     const displayType = item.contentType === 'show' ? 'Series' : 'Movie';
+    const hasEpisode = item.selectedEpisodeId || item.selectedEpisodeTitle;
+    const title = item.displayTitle || item.title || item.name;
+    const subtitle = item.subtitleText || (item.selectedEpisodeTitle 
+      ? `E${item.selectedEpisodeNumber || 1}: ${item.selectedEpisodeTitle}`
+      : (item.selectedEpisodeNumber && item.selectedEpisodeNumber > 1 ? `Episode ${item.selectedEpisodeNumber}` : displayType));
     
+    const targetContentId = item.contentId || (item._id && item._id.includes('_') ? item._id.split('_')[0] : item._id);
+
     return (
       <View style={styles.gridItem}>
         <TouchableOpacity
-          onPress={() => navigation.navigate('Details', { id: item._id, type: item.contentType })}
+          onPress={() => navigation.navigate('Details', { 
+            id: targetContentId, 
+            type: item.contentType, 
+            selectedEpisodeId: item.selectedEpisodeId 
+          })}
           activeOpacity={0.8}
           style={{ flex: 1 }}
         >
           <View style={{ position: 'relative' }}>
             <Image source={{ uri: imageUrl }} style={styles.posterImage} resizeMode="cover" />
+            {Boolean(hasEpisode) && (
+              <View style={styles.savedEpPill}>
+                <Text style={styles.savedEpPillText}>E{item.selectedEpisodeNumber || 1}</Text>
+              </View>
+            )}
             {checkIsPaid(item, item.contentType) && (() => {
               const isSubscribed = isPremiumUser();
               return (
@@ -128,14 +152,16 @@ export default function WatchlistScreen({ navigation }) {
               );
             })()}
           </View>
-          <Text style={styles.itemTitle} numberOfLines={1}>{item.title || item.name}</Text>
-          <Text style={styles.itemSubtitle}>{displayType}</Text>
+          <Text style={styles.itemTitle} numberOfLines={1}>{title}</Text>
+          <Text style={[styles.itemSubtitle, hasEpisode && { color: theme.primary, fontWeight: '700' }]} numberOfLines={1}>
+            {subtitle}
+          </Text>
         </TouchableOpacity>
         
         {/* Remove Button Overlay */}
         <TouchableOpacity
           style={styles.removeBtn}
-          onPress={() => handleRemoveFromWatchlist(item._id, item.contentType)}
+          onPress={() => handleRemoveFromWatchlist(item._id, targetContentId, item.contentType, item.selectedEpisodeId)}
         >
           <BookmarkMinus color="#ff4d4d" size={16} />
         </TouchableOpacity>
@@ -150,7 +176,7 @@ export default function WatchlistScreen({ navigation }) {
           <Text style={styles.headerTitle}>My Watchlist</Text>
         </View>
         <View style={styles.emptyContainer}>
-          <Film color="#444" size={54} style={{ marginBottom: 16 }} />
+          <Film color={theme.textSecondary} size={54} style={{ marginBottom: 16 }} />
           <Text style={styles.emptyText}>Sign In Required</Text>
           <Text style={styles.emptySubtext}>Please sign in to view, manage, and sync your watchlist.</Text>
           <TouchableOpacity 
@@ -164,11 +190,22 @@ export default function WatchlistScreen({ navigation }) {
     );
   }
 
-  if (loading) {
+  if (loading && !refreshing) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#b3d332" />
+        <ActivityIndicator size="large" color={theme.primary} />
       </View>
+    );
+  }
+
+  if (isOffline && watchlist.length === 0) {
+    return (
+      <OfflineView
+        onRetry={async () => {
+          setLoading(true);
+          await fetchWatchlist();
+        }}
+      />
     );
   }
 
@@ -185,10 +222,10 @@ export default function WatchlistScreen({ navigation }) {
         numColumns={2}
         columnWrapperStyle={styles.columnWrapper}
         contentContainerStyle={styles.gridContent}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#b3d332" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Film color="#444" size={48} style={{ marginBottom: 12 }} />
+            <Film color={theme.textSecondary} size={48} style={{ marginBottom: 12 }} />
             <Text style={styles.emptyText}>Your watchlist is empty.</Text>
             <Text style={styles.emptySubtext}>Movies and shows you add to your watchlist will appear here.</Text>
             <TouchableOpacity 
@@ -204,31 +241,33 @@ export default function WatchlistScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: theme.background,
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: theme.background,
     justifyContent: 'center',
     alignItems: 'center',
   },
   header: {
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#000000',
+    backgroundColor: theme.headerBackground,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.cardBorder,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '900',
-    color: '#ffffff',
+    color: theme.text,
   },
   gridContent: {
     paddingHorizontal: 12,
     paddingTop: 16,
-    paddingBottom: 24,
+    paddingBottom: 85,
     flexGrow: 1,
   },
   columnWrapper: {
@@ -241,18 +280,20 @@ const styles = StyleSheet.create({
   },
   posterImage: {
     width: '100%',
-    height: 240,
+    aspectRatio: 2 / 3,
     borderRadius: 8,
-    backgroundColor: '#1c1c1e',
+    backgroundColor: theme.cardBackground,
+    borderWidth: 0.5,
+    borderColor: theme.cardBorder,
   },
   itemTitle: {
-    color: '#ffffff',
+    color: theme.text,
     fontSize: 14,
     fontWeight: '700',
     marginTop: 8,
   },
   itemSubtitle: {
-    color: '#8e8e93',
+    color: theme.textSecondary,
     fontSize: 12,
     marginTop: 2,
   },
@@ -260,14 +301,14 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     right: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    backgroundColor: theme.isDark ? 'rgba(0, 0, 0, 0.75)' : 'rgba(255, 255, 255, 0.9)',
     width: 32,
     height: 32,
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: theme.cardBorder,
   },
   emptyContainer: {
     flex: 1,
@@ -277,20 +318,20 @@ const styles = StyleSheet.create({
     paddingVertical: 80,
   },
   emptyText: {
-    color: '#ffffff',
+    color: theme.text,
     fontSize: 16,
     fontWeight: '700',
     textAlign: 'center',
   },
   emptySubtext: {
-    color: '#8e8e93',
+    color: theme.textSecondary,
     fontSize: 13,
     textAlign: 'center',
     marginTop: 6,
     marginBottom: 20,
   },
   browseBtn: {
-    backgroundColor: '#b3d332',
+    backgroundColor: theme.primary,
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,
@@ -299,6 +340,20 @@ const styles = StyleSheet.create({
     color: '#000000',
     fontWeight: '800',
     fontSize: 14,
+  },
+  savedEpPill: {
+    position: 'absolute',
+    bottom: 8,
+    left: 8,
+    backgroundColor: '#b3d332',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  savedEpPillText: {
+    color: '#000000',
+    fontSize: 10,
+    fontWeight: '900',
   },
   premiumBadge: {
     position: 'absolute',
@@ -320,3 +375,4 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
 });
+

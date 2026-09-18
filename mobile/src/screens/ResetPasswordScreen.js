@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   StyleSheet,
   Text,
@@ -12,9 +12,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, KeyRound, Mail } from 'lucide-react-native';
+import { useTheme } from '../context/ThemeContext';
 import client from '../api/client';
 
 export default function ResetPasswordScreen({ navigation }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -55,7 +58,7 @@ export default function ResetPasswordScreen({ navigation }) {
       >
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <ArrowLeft color="#ffffff" size={24} />
+            <ArrowLeft color={theme.text} size={24} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Reset Password</Text>
         </View>
@@ -63,7 +66,7 @@ export default function ResetPasswordScreen({ navigation }) {
         <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
           <View style={styles.logoContainer}>
             <View style={styles.badge}>
-              <KeyRound color="#b3d332" size={32} strokeWidth={2.5} />
+              <KeyRound color={theme.primary} size={32} strokeWidth={2.5} />
             </View>
             <Text style={styles.logoText}>Recover Access</Text>
             <Text style={styles.tagline}>We will email you instructions to reset your password.</Text>
@@ -78,7 +81,7 @@ export default function ResetPasswordScreen({ navigation }) {
               <TextInput
                 style={styles.input}
                 placeholder="Enter registered email"
-                placeholderTextColor="#666"
+                placeholderTextColor={theme.textMuted}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -87,9 +90,9 @@ export default function ResetPasswordScreen({ navigation }) {
               />
             </View>
 
-            <TouchableOpacity style={styles.resetBtn} onPress={handleResetPassword} disabled={loading}>
+            <TouchableOpacity style={styles.resetBtn} onPress={handleResetPassword} disabled={Boolean(loading)}>
               {loading ? (
-                <ActivityIndicator color="#000000" size="small" />
+                <ActivityIndicator color={theme.isDark ? '#000000' : '#ffffff'} size="small" />
               ) : (
                 <Text style={styles.resetBtnText}>Send Reset Link</Text>
               )}
@@ -105,16 +108,19 @@ export default function ResetPasswordScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: theme.background,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
+    backgroundColor: theme.headerBackground,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.cardBorder,
   },
   backBtn: {
     marginRight: 16,
@@ -122,7 +128,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '900',
-    color: '#ffffff',
+    color: theme.text,
   },
   scrollContainer: {
     flexGrow: 1,
@@ -138,7 +144,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: 'rgba(179, 211, 50, 0.15)',
+    backgroundColor: theme.isDark ? 'rgba(179, 211, 50, 0.15)' : 'rgba(132, 166, 0, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 15,
@@ -146,21 +152,24 @@ const styles = StyleSheet.create({
   logoText: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#ffffff',
+    color: theme.text,
   },
   tagline: {
-    color: '#8e8e93',
+    color: theme.textSecondary,
     fontSize: 13,
     marginTop: 6,
     textAlign: 'center',
     paddingHorizontal: 20,
   },
   formContainer: {
-    backgroundColor: '#121212',
+    backgroundColor: theme.cardBackground,
     borderRadius: 16,
     padding: 24,
     borderWidth: 1,
-    borderColor: '#1f1f1f',
+    borderColor: theme.cardBorder,
+    width: '100%',
+    maxWidth: 440,
+    alignSelf: 'center',
   },
   successText: {
     color: '#00c853',
@@ -190,7 +199,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   label: {
-    color: '#8e8e93',
+    color: theme.textSecondary,
     fontSize: 12,
     fontWeight: '700',
     textTransform: 'uppercase',
@@ -198,28 +207,28 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#1a1b1e',
-    borderColor: '#2a2c31',
+    backgroundColor: theme.inputBackground || theme.cardSecondary,
+    borderColor: theme.cardBorder,
     borderWidth: 1,
     borderRadius: 8,
-    color: '#ffffff',
+    color: theme.text,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 15,
   },
   resetBtn: {
-    backgroundColor: '#b3d332',
+    backgroundColor: theme.primary,
     borderRadius: 8,
     paddingVertical: 14,
     alignItems: 'center',
-    shadowColor: '#b3d332',
+    shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 5,
     elevation: 3,
   },
   resetBtnText: {
-    color: '#000000',
+    color: theme.isDark ? '#000000' : '#ffffff',
     fontSize: 16,
     fontWeight: '800',
   },
@@ -228,7 +237,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   backToLoginText: {
-    color: '#8e8e93',
+    color: theme.textSecondary,
     fontSize: 14,
     fontWeight: '600',
   },

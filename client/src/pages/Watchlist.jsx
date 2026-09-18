@@ -36,10 +36,10 @@ const Watchlist = () => {
   fetchWatchlist();
  }, []);
 
- const removeFromWatchlist = async (contentId, contentType) => {
+ const removeFromWatchlist = async (uniqueKey, contentId, contentType, selectedEpisodeId) => {
   if (!user.id) {
    const localWl = JSON.parse(localStorage.getItem('watchlist') || '[]');
-   const updated = localWl.filter(item => (item._id !== contentId && item.id !== contentId));
+   const updated = localWl.filter(item => (item._id !== uniqueKey && item.id !== uniqueKey && item._id !== contentId));
    localStorage.setItem('watchlist', JSON.stringify(updated));
    setWatchlist(updated);
    showNotification('Removed from watchlist');
@@ -50,10 +50,15 @@ const Watchlist = () => {
    const response = await fetch('/api/watchlist/toggle', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId: user.id, contentId, contentType })
+    body: JSON.stringify({ 
+      userId: user.id, 
+      contentId: contentId || uniqueKey, 
+      contentType, 
+      selectedEpisodeId: selectedEpisodeId || null 
+    })
    });
    if (response.ok) {
-    setWatchlist(prev => prev.filter(item => item._id !== contentId));
+    setWatchlist(prev => prev.filter(item => item._id !== uniqueKey));
     showNotification('Removed from watchlist');
    }
   } catch (err) {
@@ -118,27 +123,40 @@ const Watchlist = () => {
         const detailType = isPocket ? 'pocket-reel-series' : (item.contentType ? item.contentType.toLowerCase() : 'movie');
         const badgeText = isPocket ? 'POCKET REEL' : (item.contentType ? item.contentType.toUpperCase() : 'MEDIA');
 
+        const hasEpisode = item.selectedEpisodeId || item.selectedEpisodeTitle;
+        const targetContentId = item.contentId || (item._id && item._id.includes('_') ? item._id.split('_')[0] : item._id);
+        const targetUrl = `/details/${detailType}/${targetContentId}${item.selectedEpisodeId ? `?episodeId=${item.selectedEpisodeId}` : ''}`;
+
         return (
-         <div key={item._id || item.id} className="watchlist-card-v">
+          <div key={item._id || item.id} className="watchlist-card-v">
           <div className="card-image-v">
            <img 
-            src={formatImageUrl(item, 'poster') || formatImageUrl(item, 'thumbnail') || 'https://via.placeholder.com/400x225?text=No+Preview'} 
-            alt={item.title} 
+            src={(item.episodePoster ? (item.episodePoster.startsWith('http') ? item.episodePoster : `/${item.episodePoster.replace(/^\//, '')}`) : '') || formatImageUrl(item, 'poster') || formatImageUrl(item, 'thumbnail') || 'https://via.placeholder.com/400x225?text=No+Preview'} 
+            alt={item.displayTitle || item.title} 
            />
            <div className="card-overlay-v">
-            <button className="play-overlay-btn-v" onClick={() => navigate(`/details/${detailType}/${item._id || item.id}`)}>
+            <button className="play-overlay-btn-v" onClick={() => navigate(targetUrl)}>
              <Play size={24} fill="currentColor" />
             </button>
-            <button className="remove-btn-v" onClick={() => removeFromWatchlist(item._id || item.id, item.contentType)}>
+            <button className="remove-btn-v" onClick={() => removeFromWatchlist(item._id || item.id, targetContentId, item.contentType, item.selectedEpisodeId)}>
              <Trash2 size={18} />
             </button>
            </div>
            <div className="card-type-badge-v">{badgeText}</div>
+           {Boolean(hasEpisode) && (
+            <div style={{ position: 'absolute', bottom: '8px', left: '8px', background: '#b3d332', color: '#000', fontSize: '10px', fontWeight: '900', padding: '2px 6px', borderRadius: '4px' }}>
+              E{item.selectedEpisodeNumber || 1}
+            </div>
+           )}
           </div>
-          <div className="card-info-v" onClick={() => navigate(`/details/${detailType}/${item._id || item.id}`)} style={{ cursor: 'pointer' }}>
-           <h3>{item.title}</h3>
+          <div className="card-info-v" onClick={() => navigate(targetUrl)} style={{ cursor: 'pointer' }}>
+           <h3>{item.displayTitle || item.title}</h3>
            <div className="card-meta-v">
-            <span>{item.year || (item.releaseDate ? new Date(item.releaseDate).getFullYear() : '2026')}</span>
+            {item.selectedEpisodeTitle ? (
+              <span style={{ color: '#b3d332', fontWeight: '700' }}>E{item.selectedEpisodeNumber || 1}: {item.selectedEpisodeTitle}</span>
+            ) : (
+              <span>{item.year || (item.releaseDate ? new Date(item.releaseDate).getFullYear() : '2026')}</span>
+            )}
             <span className="dot-v">•</span>
             <span>{item.duration || (item.totalSeasons ? `${item.totalSeasons} Seasons` : (isPocket ? 'Pocket Series' : '2h 15m'))}</span>
            </div>

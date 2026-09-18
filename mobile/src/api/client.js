@@ -28,4 +28,18 @@ client.interceptors.request.use(
   }
 );
 
+// Interceptor to handle 401 Unauthorized responses (e.g., session terminated by admin)
+client.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (error.response && error.response.status === 401) {
+      try {
+        await AsyncStorage.removeItem('token');
+        await AsyncStorage.removeItem('user');
+      } catch (_) {}
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default client;

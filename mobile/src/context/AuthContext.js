@@ -1,4 +1,5 @@
-import React, { createContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect, useRef } from 'react';
+import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import client from '../api/client';
 
@@ -8,6 +9,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
+  const appState = useRef(AppState.currentState);
 
   // Load cached token and user data on app startup
   useEffect(() => {
@@ -33,10 +35,40 @@ export const AuthProvider = ({ children }) => {
     bootstrapAsync();
   }, []);
 
+  // Validate session when app returns to foreground
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (
+        appState.current.match(/inactive|background/) &&
+        nextAppState === 'active'
+      ) {
+        if (token) {
+          validateSession(token);
+        }
+      }
+      appState.current = nextAppState;
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [token]);
+
+  // Periodic session validation (every 30 seconds)
+  useEffect(() => {
+    if (!token) return;
+    const interval = setInterval(() => {
+      validateSession(token);
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [token]);
+
   const validateSession = async (authToken) => {
+    const tokenToValidate = authToken || token;
+    if (!tokenToValidate) return;
     try {
       const response = await client.get('/auth/validate', {
-        headers: { Authorization: `Bearer ${authToken}` }
+        headers: { Authorization: `Bearer ${tokenToValidate}` }
       });
       if (response.data && response.data.user) {
         const updatedUser = { ...user, ...response.data.user, id: response.data.user.id };
@@ -46,7 +78,7 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.warn('Session expired or invalid, logging out', error.message);
       if (error.response && error.response.status === 401) {
-        logout();
+        await logout();
       }
     }
   };

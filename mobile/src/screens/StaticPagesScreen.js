@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   StyleSheet,
   Text,
@@ -11,13 +11,25 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import { ArrowLeft } from 'lucide-react-native';
 import client from '../api/client';
+import { useTheme } from '../context/ThemeContext';
 
 export default function StaticPagesScreen({ route, navigation }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
   const { title, slug } = route.params;
   const [loading, setLoading] = useState(true);
   const [pageData, setPageData] = useState(null);
 
   useEffect(() => {
+    if (slug === 'careers' || slug === 'career') {
+      navigation.replace('Careers');
+      return;
+    }
+    if (slug === 'submission' || slug === 'submissions') {
+      navigation.replace('Submission');
+      return;
+    }
+
     const fetchPage = async () => {
       try {
         const response = await client.get('/pages');
@@ -66,6 +78,24 @@ export default function StaticPagesScreen({ route, navigation }) {
     fetchPage();
   }, [slug]);
 
+  const htmlBg = theme.background;
+  const htmlText = theme.text;
+  const htmlTextSecondary = theme.textSecondary;
+  const htmlBorder = theme.cardBorder;
+  const htmlPrimary = theme.primary;
+
+  const getSanitizedContent = (content, pageTitle) => {
+    if (!content) return '';
+    let cleaned = content.trim();
+    const cleanTitle = (pageTitle || title || '').trim();
+    if (cleanTitle) {
+      const escaped = cleanTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const titleRegex = new RegExp(`^\\s*<h[1-3][^>]*>\\s*${escaped}\\s*<\\/h[1-3]>`, 'i');
+      cleaned = cleaned.replace(titleRegex, '').trim();
+    }
+    return cleaned;
+  };
+
   const htmlContent = pageData ? `
     <!DOCTYPE html>
     <html>
@@ -73,31 +103,31 @@ export default function StaticPagesScreen({ route, navigation }) {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
           body {
-            background-color: #000000;
-            color: #e5e5ea;
+            background-color: ${htmlBg};
+            color: ${htmlText};
             font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             padding: 16px;
             font-size: 15px;
             line-height: 1.6;
+            margin: 0;
           }
           h1, h2, h3, h4 {
-            color: #ffffff;
+            color: ${htmlText};
             font-weight: 800;
-            margin-top: 24px;
+            margin-top: 16px;
             margin-bottom: 12px;
           }
-          h1 { font-size: 22px; border-bottom: 1px solid #1f1f1f; padding-bottom: 8px; }
+          h1 { font-size: 22px; border-bottom: 1px solid ${htmlBorder}; padding-bottom: 8px; }
           h2 { font-size: 18px; }
-          p { margin-bottom: 16px; color: #a1a1a6; }
-          a { color: #b3d332; text-decoration: none; font-weight: 600; }
-          ul, ol { padding-left: 20px; margin-bottom: 16px; color: #a1a1a6; }
+          p { margin-bottom: 16px; color: ${htmlTextSecondary}; }
+          a { color: ${htmlPrimary}; text-decoration: none; font-weight: 600; }
+          ul, ol { padding-left: 20px; margin-bottom: 16px; color: ${htmlTextSecondary}; }
           li { margin-bottom: 8px; }
-          strong { color: #ffffff; }
+          strong { color: ${htmlText}; }
         </style>
       </head>
       <body>
-        <h1>${pageData.title}</h1>
-        <div>${pageData.content}</div>
+        <div>${getSanitizedContent(pageData.content, pageData.title)}</div>
       </body>
     </html>
   ` : '';
@@ -105,7 +135,7 @@ export default function StaticPagesScreen({ route, navigation }) {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#b3d332" />
+        <ActivityIndicator size="large" color={theme.primary} />
       </View>
     );
   }
@@ -115,7 +145,7 @@ export default function StaticPagesScreen({ route, navigation }) {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <ArrowLeft color="#ffffff" size={24} />
+          <ArrowLeft color={theme.text} size={24} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{title}</Text>
       </View>
@@ -124,8 +154,8 @@ export default function StaticPagesScreen({ route, navigation }) {
         <WebView
           originWhitelist={['*']}
           source={{ html: htmlContent }}
-          style={[styles.webView, { backgroundColor: '#000000' }]}
-          containerStyle={{ backgroundColor: '#000000' }}
+          style={[styles.webView, { backgroundColor: theme.background }]}
+          containerStyle={{ backgroundColor: theme.background }}
           onShouldStartLoadWithRequest={(request) => {
             // Keep base64 data and internal pages loading in WebView
             if (request.url.startsWith('about:blank') || request.url.startsWith('data:')) {
@@ -183,14 +213,14 @@ export default function StaticPagesScreen({ route, navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: theme.background,
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: theme.background,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -200,7 +230,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#1a1a1a',
+    borderBottomColor: theme.cardBorder,
+    backgroundColor: theme.headerBackground,
   },
   backBtn: {
     marginRight: 16,
@@ -208,21 +239,23 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '900',
-    color: '#ffffff',
+    color: theme.text,
   },
   webView: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: theme.background,
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 40,
+    backgroundColor: theme.background,
   },
   emptyText: {
-    color: '#8e8e93',
+    color: theme.textSecondary,
     fontSize: 14,
     textAlign: 'center',
   },
 });
+

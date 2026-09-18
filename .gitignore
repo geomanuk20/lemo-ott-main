@@ -30,3 +30,8 @@ scratch/
 server/debug_key.pem
 server/debug_log.txt
 server/test_decode.js
+
+# Build artifacts
+*.apk
+*.aab
+

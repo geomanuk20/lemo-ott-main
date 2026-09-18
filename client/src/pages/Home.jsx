@@ -644,7 +644,12 @@ const Home = () => {
             );
           }
         } else if (section.sectionType === 'Shows') {
-          const sectionShows = shows.slice(0, section.limit || 6);
+          const sectionShows = shows.filter(s => {
+            const rawCt = (s.contentType || s.type || s.postType || '').toLowerCase().trim();
+            const isShortWeb = rawCt === 'short web series' || rawCt === 'short-web-series' || rawCt === 'web-series' || rawCt === 'web series';
+            const isPocket = rawCt === 'pocket reel series' || rawCt === 'pocket-reel-series' || rawCt === 'pocket reels' || rawCt === 'pocket-reels' || rawCt === 'pocket reel';
+            return !isShortWeb && !isPocket;
+          }).slice(0, section.limit || 6);
           if (sectionShows.length > 0) {
             contentEl = (
               <section key={section._id} className="fe-watch-online-v" style={{ padding: '0 5%', margin: '40px 0' }}>
@@ -1394,36 +1399,45 @@ const Home = () => {
     .fe-pocket-reel-meta-v { display: flex; flex-direction: column; gap: 3px; padding: 8px 4px 0; }
     .fe-pocket-reel-title-v { color: #fff; font-size: 0.78rem; font-weight: 700; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; }
 
-    @media (max-width: 768px) {
       .fe-shorts-list-v { 
-        display: grid !important; 
-        grid-template-rows: repeat(2, auto) !important; 
-        grid-auto-flow: column !important; 
-        grid-auto-columns: calc((100% - 16px) / 3) !important; 
-        gap: 8px !important; 
+        display: flex !important; 
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        gap: 10px !important; 
         overflow-x: auto !important; 
+        overflow-y: hidden !important;
         padding-bottom: 20px !important; 
         scroll-snap-type: x mandatory !important; 
+        scrollbar-width: none !important;
+        -webkit-overflow-scrolling: touch !important;
       }
+      .fe-shorts-list-v::-webkit-scrollbar { display: none !important; }
       .fe-short-card-v { 
-        width: 100% !important; 
+        flex: 0 0 125px !important;
+        width: 125px !important; 
+        min-width: 125px !important;
         scroll-snap-align: start !important;
       }
       .fe-short-title { font-size: 0.68rem !important; }
       .fe-stat-badge { font-size: 0.52rem !important; padding: 2px 4px !important; }
 
       .fe-pocket-reel-list-v { 
-        display: grid !important; 
-        grid-template-rows: repeat(2, auto) !important; 
-        grid-auto-flow: column !important; 
-        grid-auto-columns: calc((100% - 16px) / 3) !important; 
-        gap: 8px !important; 
+        display: flex !important; 
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        gap: 10px !important; 
         overflow-x: auto !important; 
+        overflow-y: hidden !important;
         padding-bottom: 20px !important; 
         scroll-snap-type: x mandatory !important; 
+        scrollbar-width: none !important;
+        -webkit-overflow-scrolling: touch !important;
       }
+      .fe-pocket-reel-list-v::-webkit-scrollbar { display: none !important; }
       .fe-pocket-reel-card-v { 
-        width: 100% !important; 
+        flex: 0 0 120px !important;
+        width: 120px !important; 
+        min-width: 120px !important;
         scroll-snap-align: start !important;
       }
       .fe-pocket-reel-title-v { font-size: 0.72rem !important; }
@@ -1604,7 +1618,25 @@ const Home = () => {
 
     @media (max-width: 768px) {
      .watch-online-title-v { font-size: 1.35rem; }
-     .watch-online-grid-v { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 15px; }
+     .watch-online-grid-v { 
+      display: flex !important;
+      flex-direction: row !important;
+      flex-wrap: nowrap !important;
+      gap: 12px !important;
+      overflow-x: auto !important;
+      overflow-y: hidden !important;
+      scroll-snap-type: x mandatory !important;
+      padding-bottom: 15px !important;
+      scrollbar-width: none !important;
+      -webkit-overflow-scrolling: touch !important;
+     }
+     .watch-online-grid-v::-webkit-scrollbar { display: none !important; }
+     .online-movie-card-v {
+      flex: 0 0 130px !important;
+      width: 130px !important;
+      min-width: 130px !important;
+      scroll-snap-align: start !important;
+     }
      .online-quality-v { font-size: 0.5rem; padding: 3px 6px; }
      .online-rating-v { width: 30px; height: 30px; font-size: 0.7rem; }
      .meta-title-v { font-size: 0.95rem; }
@@ -1612,7 +1644,6 @@ const Home = () => {
 
     @media (max-width: 480px) {
      .watch-online-title-v { font-size: 1.2rem; }
-     .watch-online-grid-v { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; }
      .meta-title-v { font-size: 0.85rem; }
      .watch-online-header-v { margin-bottom: 25px; }
     }
@@ -1692,29 +1723,50 @@ const Home = () => {
      .fe-card-info-title-v { font-size: 0.65rem !important; }
      .fe-card-info-meta-v { font-size: 0.5rem !important; padding: 2px 5px !important; }
      .fe-movie-list-v { 
-      display: grid !important; 
-      grid-template-columns: repeat(3, 1fr) !important;
-      grid-template-rows: none !important;
-      grid-auto-flow: row !important;
-      gap: 10px !important; 
-      overflow: visible !important;
-      overflow-x: hidden !important; 
+      display: flex !important; 
+      flex-direction: row !important;
+      flex-wrap: nowrap !important;
+      gap: 12px !important; 
+      overflow-x: auto !important;
+      overflow-y: hidden !important;
+      scroll-snap-type: x mandatory !important; 
       padding-bottom: 15px !important; 
+      scrollbar-width: none !important;
+      -webkit-overflow-scrolling: touch !important;
+     }
+     .fe-movie-list-v::-webkit-scrollbar {
+      display: none !important;
      }
      .fe-movie-card-v { 
-      width: 100% !important; 
-      height: auto !important; 
+      flex: 0 0 130px !important;
+      width: 130px !important; 
+      min-width: 130px !important;
+      height: 195px !important; 
       aspect-ratio: 2/3 !important;
+      scroll-snap-align: start !important;
      }
      .fe-featured-row-v .fe-movie-list-v { 
-      grid-template-columns: repeat(3, 1fr) !important;
-      grid-template-rows: none !important;
-      grid-auto-flow: row !important;
+      display: flex !important; 
+      flex-direction: row !important;
+      flex-wrap: nowrap !important;
+      gap: 12px !important; 
+      overflow-x: auto !important;
+      overflow-y: hidden !important;
+      scroll-snap-type: x mandatory !important;
+      padding-bottom: 15px !important;
+      scrollbar-width: none !important;
+      -webkit-overflow-scrolling: touch !important;
+     }
+     .fe-featured-row-v .fe-movie-list-v::-webkit-scrollbar {
+      display: none !important;
      }
      .fe-featured-row-v .fe-movie-card-v { 
-      width: 100% !important; 
-      height: auto !important; 
+      flex: 0 0 135px !important;
+      width: 135px !important; 
+      min-width: 135px !important;
+      height: 202px !important; 
       aspect-ratio: 2/3 !important;
+      scroll-snap-align: start !important;
      }
      .row-title-v { font-size: 1rem; }
      .row-more-v { font-size: 0.5rem !important; gap: 3px !important; letter-spacing: 0.5px !important; }

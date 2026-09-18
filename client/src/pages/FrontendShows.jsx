@@ -38,7 +38,12 @@ const FrontendShows = () => {
    try {
     const res = await fetch('/api/shows');
     const data = await res.json();
-    setShows(Array.isArray(data) ? data.filter(s => s.status === 'Active') : []);
+    setShows(Array.isArray(data) ? data.filter(s => {
+      if (s.status !== 'Active') return false;
+      const rawCt = (s.contentType || s.type || s.postType || '').toLowerCase().trim();
+      const isPocket = rawCt === 'pocket reel series' || rawCt === 'pocket-reel-series' || rawCt === 'pocket reels' || rawCt === 'pocket-reels' || rawCt === 'pocket reel';
+      return !isPocket;
+    }) : []);
    } catch (err) {
     console.error('Error fetching shows:', err);
    } finally {

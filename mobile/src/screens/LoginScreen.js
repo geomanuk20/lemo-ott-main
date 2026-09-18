@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useContext, useEffect, useMemo } from 'react';
 import {
   StyleSheet,
   Text,
@@ -19,6 +19,7 @@ import { WebView } from 'react-native-webview';
 import { Eye, EyeOff, Shield } from 'lucide-react-native';
 import Svg, { Path } from 'react-native-svg';
 import { AuthContext } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import client from '../api/client';
 import { formatImageUrl } from '../config/api';
 
@@ -40,6 +41,8 @@ const FacebookIcon = () => (
 );
 
 export default function LoginScreen({ navigation }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
   const { login, socialLoginMobile, socialLoginReal } = useContext(AuthContext);
   const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
@@ -185,13 +188,6 @@ export default function LoginScreen({ navigation }) {
     }
 
     const trimmedEmail = email.trim().toLowerCase();
-    const isAdminDomain = trimmedEmail.endsWith('@video.com') || trimmedEmail === 'admin@video.com';
-    const isGmailDomain = trimmedEmail.endsWith('@gmail.com');
-
-    if (!isAdminDomain && !isGmailDomain) {
-      setErrorMsg('Only @gmail.com email addresses are allowed for users, and admin@video.com for admin login.');
-      return;
-    }
 
     setErrorMsg('');
     setLoading(true);
@@ -244,7 +240,7 @@ export default function LoginScreen({ navigation }) {
               <TextInput
                 style={styles.input}
                 placeholder="Enter your email"
-                placeholderTextColor="#666"
+                placeholderTextColor={theme.textSecondary}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -269,7 +265,7 @@ export default function LoginScreen({ navigation }) {
                     }
                   ]}
                   placeholder="Enter your password"
-                  placeholderTextColor="#666"
+                  placeholderTextColor={theme.textSecondary}
                   secureTextEntry={!showPassword}
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -280,7 +276,7 @@ export default function LoginScreen({ navigation }) {
                   style={styles.eyeBtn}
                   onPress={() => setShowPassword(!showPassword)}
                 >
-                  {showPassword ? <EyeOff color="#8e8e93" size={20} /> : <Eye color="#8e8e93" size={20} />}
+                  {showPassword ? <EyeOff color={theme.textSecondary} size={20} /> : <Eye color={theme.textSecondary} size={20} />}
                 </TouchableOpacity>
               </View>
               <TouchableOpacity
@@ -291,7 +287,7 @@ export default function LoginScreen({ navigation }) {
               </TouchableOpacity>
             </View>
 
-            <TouchableOpacity style={styles.loginBtn} onPress={handleLogin} disabled={loading}>
+            <TouchableOpacity style={styles.loginBtn} onPress={handleLogin} disabled={Boolean(loading)}>
               {loading ? (
                 <ActivityIndicator color="#000000" size="small" />
               ) : (
@@ -352,7 +348,7 @@ export default function LoginScreen({ navigation }) {
         animationType="slide"
         onRequestClose={() => setShowSocialWebView(false)}
       >
-        <View style={{ flex: 1, backgroundColor: '#121212', paddingTop: insets.top || (Platform.OS === 'android' ? StatusBar.currentHeight : 0) }}>
+        <View style={{ flex: 1, backgroundColor: theme.background, paddingTop: insets.top || (Platform.OS === 'android' ? StatusBar.currentHeight : 0) }}>
           {/* Header Row to Close */}
           <View style={{
             height: 50,
@@ -361,10 +357,10 @@ export default function LoginScreen({ navigation }) {
             justifyContent: 'space-between',
             paddingHorizontal: 16,
             borderBottomWidth: 1,
-            borderBottomColor: '#1f1f1f',
-            backgroundColor: '#121212'
+            borderBottomColor: theme.cardBorder,
+            backgroundColor: theme.headerBackground
           }}>
-            <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>
+            <Text style={{ color: theme.text, fontSize: 16, fontWeight: '700' }}>
               Sign In with {socialProvider}
             </Text>
             <TouchableOpacity 
@@ -391,7 +387,7 @@ export default function LoginScreen({ navigation }) {
             }
             renderLoading={() => (
               <ActivityIndicator 
-                color="#b3d332" 
+                color={theme.primary} 
                 size="large" 
                 style={{
                   position: 'absolute',
@@ -409,10 +405,10 @@ export default function LoginScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: theme.background,
   },
   scrollContainer: {
     flexGrow: 1,
@@ -436,7 +432,7 @@ const styles = StyleSheet.create({
   logoText: {
     fontSize: 26,
     fontWeight: '900',
-    color: '#ffffff',
+    color: theme.text,
     letterSpacing: 2,
   },
   logoImage: {
@@ -452,10 +448,10 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#1f1f1f',
+    backgroundColor: theme.cardBorder,
   },
   dividerText: {
-    color: '#444446',
+    color: theme.textSecondary,
     fontSize: 9,
     fontWeight: '800',
     letterSpacing: 1.5,
@@ -472,37 +468,40 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#1a1b1e',
-    borderColor: '#2a2c31',
+    backgroundColor: theme.cardSecondary,
+    borderColor: theme.cardBorder,
     borderWidth: 1,
     borderRadius: 8,
     paddingVertical: 9,
   },
   socialBtnText: {
-    color: '#ffffff',
+    color: theme.text,
     fontSize: 13,
     fontWeight: '700',
   },
   tagline: {
-    color: '#8e8e93',
+    color: theme.textSecondary,
     fontSize: 12,
     marginTop: 2,
   },
   formContainer: {
-    backgroundColor: '#121212',
+    backgroundColor: theme.cardBackground,
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#1f1f1f',
+    borderColor: theme.cardBorder,
+    width: '100%',
+    maxWidth: 440,
+    alignSelf: 'center',
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#ffffff',
+    color: theme.text,
   },
   headerSubtitle: {
     fontSize: 12,
-    color: '#8e8e93',
+    color: theme.textSecondary,
     marginTop: 2,
     marginBottom: 12,
   },
@@ -522,7 +521,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   label: {
-    color: '#8e8e93',
+    color: theme.textSecondary,
     fontSize: 11,
     fontWeight: '700',
     textTransform: 'uppercase',
@@ -530,11 +529,11 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   input: {
-    backgroundColor: '#1a1b1e',
-    borderColor: '#2a2c31',
+    backgroundColor: theme.cardSecondary,
+    borderColor: theme.cardBorder,
     borderWidth: 1,
     borderRadius: 8,
-    color: '#ffffff',
+    color: theme.text,
     paddingHorizontal: 12,
     height: 42,
     fontSize: 14,
@@ -542,8 +541,8 @@ const styles = StyleSheet.create({
   passwordContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1a1b1e',
-    borderColor: '#2a2c31',
+    backgroundColor: theme.cardSecondary,
+    borderColor: theme.cardBorder,
     borderWidth: 1,
     borderRadius: 8,
     height: 42,
@@ -555,12 +554,12 @@ const styles = StyleSheet.create({
     height: 40,
   },
   loginBtn: {
-    backgroundColor: '#b3d332',
+    backgroundColor: theme.primary,
     borderRadius: 8,
     paddingVertical: 11,
     alignItems: 'center',
     marginTop: 6,
-    shadowColor: '#b3d332',
+    shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 3,
@@ -577,11 +576,11 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   footerText: {
-    color: '#8e8e93',
+    color: theme.textSecondary,
     fontSize: 13,
   },
   footerLink: {
-    color: '#b3d332',
+    color: theme.primary,
     fontSize: 13,
     fontWeight: '700',
   },
@@ -590,8 +589,9 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   forgotBtnText: {
-    color: '#8e8e93',
+    color: theme.textSecondary,
     fontSize: 11,
     fontWeight: '600',
   },
 });
+

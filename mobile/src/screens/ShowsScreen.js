@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useContext } from 'react';
+import React, { useState, useEffect, useCallback, useContext, useMemo } from 'react';
 import {
   StyleSheet,
   Text,
@@ -16,6 +16,8 @@ import client from '../api/client';
 import { formatImageUrl } from '../config/api';
 import { useFocusEffect } from '@react-navigation/native';
 import { AuthContext } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
+import OfflineView from '../components/OfflineView';
 
 const isValidQuality = (quality) => {
   if (!quality) return false;
@@ -24,6 +26,8 @@ const isValidQuality = (quality) => {
 };
 
 export default function ShowsScreen({ navigation }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => getStyles(theme), [theme]);
   const { user } = useContext(AuthContext);
 
   const isPremiumUser = () => {
@@ -46,6 +50,7 @@ export default function ShowsScreen({ navigation }) {
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
   const [shows, setShows] = useState([]);
   const [genres, setGenres] = useState([]);
   const [languages, setLanguages] = useState([]);
@@ -66,8 +71,10 @@ export default function ShowsScreen({ navigation }) {
       setGenres(genresRes.data || []);
       setLanguages(languagesRes.data || []);
       setMenuSettings(menuRes.data || null);
+      setIsOffline(false);
     } catch (error) {
       console.error('Error fetching shows screen data:', error);
+      setIsOffline(true);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -88,90 +95,141 @@ export default function ShowsScreen({ navigation }) {
 
   // Filter logic
   const filteredShows = shows.filter(show => {
-    // 1. Filter by Menu Settings content types
-    if (menuSettings) {
-      const isWebSeries = (show.contentType || '').toLowerCase() === 'short web series' || (show.contentType || '').toLowerCase() === 'short-web-series';
-      const isPocketReel = (show.contentType || '').toLowerCase() === 'pocket reel series' || (show.contentType || '').toLowerCase() === 'pocket-reel-series' || (show.contentType || '').toLowerCase() === 'pocket reels' || (show.contentType || '').toLowerCase() === 'pocket-reels';
-      const isTvShow = !isWebSeries && !isPocketReel;
-      
-      const tvShowsOff = menuSettings.shows?.toUpperCase() === 'OFF';
-      const webSeriesOff = menuSettings.webSeries?.toUpperCase() === 'OFF';
-      const pocketReelOff = menuSettings.pocketReelSeries?.toUpperCase() === 'OFF';
+    // 0. Filter by active status
+    if (show.status && show.status.toLowerCase() !== 'active') return false;
 
-      if (isTvShow && tvShowsOff) return false;
-      if (isWebSeries && webSeriesOff) return false;
-      if (isPocketReel && pocketReelOff) return false;
+    const rawCt = (show.contentType || show.type || show.postType || '').toLowerCase().trim();
+    const isShortWeb = rawCt === 'short web series' || rawCt === 'short-web-series' || rawCt === 'web-series' || rawCt === 'web series';
+    const isPocketReel = rawCt === 'pocket reel series' || rawCt === 'pocket-reel-series' || rawCt === 'pocket reels' || rawCt === 'pocket-reels' || rawCt === 'pocket reel';
+    const isTvShow = !isShortWeb && !isPocketReel;
+
+    // ShowsScreen is strictly for TV Shows and Web Series - Pocket Reels have their own dedicated screen/tab
+    if (isPocketReel) return false;
+
+    // 1. Filter by Menu Settings enabled switches & content types
+    if (menuSettings) {
+      const showsOff = menuSettings.shows?.toUpperCase() === 'OFF';
+      const webSeriesOff = menuSettings.webSeries?.toUpperCase() === 'OFF';
+
+      if (isTvShow && showsOff) return false;
+      if (isShortWeb && webSeriesOff) return false;
+
+      if (menuSettings.showsContent) {
+        const allowed = menuSettings.showsContent.map(s => (s || '').toLowerCase().trim());
+        if (allowed.length > 0 && !allowed.includes(rawCt) && rawCt !== '') {
+          return false;
+        }
+      }
     }
 
     // 2. Filter by Genre
-    const matchesGenre = selectedGenre === 'All' || 
-      (show.genres && show.genres.some(g => {
-        const genreName = typeof g === 'object' ? g.name : g;
-        return genreName === selectedGenre;
-      }));
-      
-    // 3. Filter by Language
-    const matchesLanguage = selectedLanguage === 'All' || 
-      (show.language && (typeof show.language === 'object' ? show.language.name : show.language) === selectedLanguage);
+    if (selectedGenre !== 'All') {
+      const g = show.genre;
+      if (Array.isArray(g)) {
+        if (!g.some(item => (typeof item === 'object' ? item.name : item) === selectedGenre)) {
+          return false;
+        }
+      } else if (typeof g === 'object' && g !== null) {
+        if (g.name !== selectedGenre) return false;
+      } else if (typeof g === 'string') {
+        if (g !== selectedGenre) return false;
+      } else {
+        return false;
+      }
+    }
 
-    return matchesGenre && matchesLanguage;
+    // 3. Filter by Language
+    if (selectedLanguage !== 'All') {
+      const l = show.language;
+      if (Array.isArray(l)) {
+        if (!l.some(item => (typeof item === 'object' ? item.name : item) === selectedLanguage)) {
+          return false;
+        }
+      } else if (typeof l === 'object' && l !== null) {
+        if (l.name !== selectedLanguage) return false;
+      } else if (typeof l === 'string') {
+        if (l !== selectedLanguage) return false;
+      } else {
+        return false;
+      }
+    }
+
+    return true;
   });
 
   const getHeaderTitle = () => {
-    if (!menuSettings) return 'Pocket Reel';
+    if (!menuSettings) return 'Shows';
     const showsOn = menuSettings.shows?.toUpperCase() !== 'OFF';
     const webSeriesOn = menuSettings.webSeries?.toUpperCase() !== 'OFF';
     const pocketReelOn = menuSettings.pocketReelSeries?.toUpperCase() !== 'OFF';
-    if (showsOn && webSeriesOn) return 'TV Shows & Web Series';
-    if (showsOn) return 'TV Shows';
-    if (webSeriesOn) return 'Web Series';
-    if (pocketReelOn) return 'Pocket Reel Series';
+
+    if (showsOn) return menuSettings.showsLabel || 'Shows';
+    if (pocketReelOn) return menuSettings.pocketReelsLabel || 'Pocket Reel';
+    if (webSeriesOn) return menuSettings.webSeriesLabel || 'Web Series';
     return 'Shows';
   };
 
   const renderShowItem = ({ item }) => {
-    const imageUrl = formatImageUrl(item, 'poster');
+    const isLocked = item.isPremium && !isPremiumUser();
+    const posterUri = formatImageUrl(item.poster || item.thumbnail);
+    const genreStr = Array.isArray(item.genre) 
+      ? item.genre.map(g => (typeof g === 'object' ? g.name : g)).join(', ')
+      : (typeof item.genre === 'object' && item.genre !== null ? item.genre.name : item.genre || '');
+    
+    const langStr = Array.isArray(item.language)
+      ? item.language.map(l => (typeof l === 'object' ? l.name : l)).join(', ')
+      : (typeof item.language === 'object' && item.language !== null ? item.language.name : item.language || '');
+
     return (
       <TouchableOpacity
         style={styles.gridItem}
-        onPress={() => navigation.navigate('Details', { id: item._id, type: 'show' })}
+        activeOpacity={0.8}
+        onPress={() => navigation.navigate('Details', { id: item._id, type: 'shows' })}
       >
-        <View style={{ position: 'relative' }}>
-          <Image source={{ uri: imageUrl }} style={styles.posterImage} resizeMode="cover" />
-          {((item.seriesAccess || '').toLowerCase() === 'paid') && (() => {
-            const isSubscribed = isPremiumUser();
-            return (
-              <View style={[
-                styles.premiumBadge,
-                isSubscribed && { backgroundColor: '#ffffff', borderColor: '#ffffff' }
-              ]}>
-                <Crown 
-                  color={isSubscribed ? '#000000' : '#ffd700'} 
-                  size={9} 
-                  fill={isSubscribed ? '#000000' : '#ffd700'} 
-                />
-                <Text style={[
-                  styles.premiumBadgeText,
-                  isSubscribed && { color: '#000000' }
-                ]}>PRO</Text>
-              </View>
-            );
-          })()}
+        <View>
+          <Image
+            source={{ uri: posterUri || 'https://via.placeholder.com/300x450' }}
+            style={styles.posterImage}
+            resizeMode="cover"
+          />
+          {item.isPremium && (
+            <View style={styles.premiumBadge}>
+              <Crown size={10} color="#ffd700" />
+              <Text style={styles.premiumBadgeText}>{isLocked ? 'VIP' : 'UNLOCKED'}</Text>
+            </View>
+          )}
         </View>
-        <Text style={styles.showTitle} numberOfLines={1}>{item.title}</Text>
+        <Text style={styles.showTitle} numberOfLines={1}>
+          {item.title}
+        </Text>
         <View style={styles.badgeRow}>
-          {isValidQuality(item.videoQuality) ? <Text style={styles.qualityText}>{item.videoQuality}</Text> : null}
-          {item.language ? <Text style={styles.langText}>{item.language}</Text> : null}
+          {isValidQuality(item.quality) && (
+            <Text style={styles.qualityText}>{item.quality}</Text>
+          )}
+          {langStr ? (
+            <Text style={styles.langText} numberOfLines={1}>{langStr}</Text>
+          ) : null}
         </View>
       </TouchableOpacity>
     );
   };
 
-  if (loading) {
+  if (loading && !refreshing) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#b3d332" />
+        <ActivityIndicator size="large" color={theme.primary} />
       </View>
+    );
+  }
+
+  if (isOffline && shows.length === 0) {
+    return (
+      <OfflineView
+        onRetry={async () => {
+          setLoading(true);
+          await fetchData();
+        }}
+      />
     );
   }
 
@@ -230,7 +288,7 @@ export default function ShowsScreen({ navigation }) {
         numColumns={2}
         columnWrapperStyle={styles.columnWrapper}
         contentContainerStyle={styles.gridContent}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#b3d332" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>No shows match the selected filters.</Text>
@@ -241,50 +299,53 @@ export default function ShowsScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: theme.background,
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: theme.background,
     justifyContent: 'center',
     alignItems: 'center',
   },
   header: {
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#000000',
+    backgroundColor: theme.headerBackground,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.cardBorder,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '900',
-    color: '#ffffff',
+    color: theme.text,
   },
   filtersWrapper: {
-    paddingBottom: 12,
+    paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#1a1a1a',
+    borderBottomColor: theme.cardBorder,
+    backgroundColor: theme.background,
   },
   filterScroll: {
     paddingHorizontal: 12,
   },
   filterBtn: {
-    backgroundColor: '#1c1c1e',
+    backgroundColor: theme.cardBackground,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
     marginRight: 8,
     borderWidth: 1,
-    borderColor: '#2a2c31',
+    borderColor: theme.cardBorder,
   },
   activeFilterBtn: {
-    backgroundColor: '#b3d332',
-    borderColor: '#b3d332',
+    backgroundColor: theme.primary,
+    borderColor: theme.primary,
   },
   filterBtnText: {
-    color: '#8e8e93',
+    color: theme.textSecondary,
     fontSize: 12,
     fontWeight: '600',
   },
@@ -295,7 +356,7 @@ const styles = StyleSheet.create({
   gridContent: {
     paddingHorizontal: 12,
     paddingTop: 16,
-    paddingBottom: 24,
+    paddingBottom: 85,
   },
   columnWrapper: {
     justifyContent: 'space-between',
@@ -306,12 +367,14 @@ const styles = StyleSheet.create({
   },
   posterImage: {
     width: '100%',
-    height: 240,
+    aspectRatio: 2 / 3,
     borderRadius: 8,
-    backgroundColor: '#1c1c1e',
+    backgroundColor: theme.cardBackground,
+    borderWidth: 0.5,
+    borderColor: theme.cardBorder,
   },
   showTitle: {
-    color: '#ffffff',
+    color: theme.text,
     fontSize: 14,
     fontWeight: '700',
     marginTop: 8,
@@ -323,17 +386,17 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   qualityText: {
-    color: '#b3d332',
+    color: theme.primary,
     fontSize: 10,
     fontWeight: '800',
-    borderColor: '#b3d332',
+    borderColor: theme.primary,
     borderWidth: 0.5,
     borderRadius: 2,
     paddingHorizontal: 3,
     paddingVertical: 1,
   },
   langText: {
-    color: '#8e8e93',
+    color: theme.textSecondary,
     fontSize: 10,
     fontWeight: '600',
   },
@@ -343,7 +406,7 @@ const styles = StyleSheet.create({
     paddingVertical: 60,
   },
   emptyText: {
-    color: '#8e8e93',
+    color: theme.textSecondary,
     fontSize: 14,
     textAlign: 'center',
   },
