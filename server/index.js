@@ -2891,9 +2891,17 @@ mongoose.connection.on('disconnected', () => {
 });
 
 // Start listening immediately to prevent Hostinger 500/504 deployment/health check timeout
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
+// Configure 2-hour server timeouts to allow massive 10GB video uploads without socket dropping
+server.timeout = 2 * 60 * 60 * 1000;
+server.keepAliveTimeout = 2 * 60 * 60 * 1000;
+server.headersTimeout = (2 * 60 * 60 * 1000) + 1000;
+if (server.requestTimeout !== undefined) {
+  server.requestTimeout = 2 * 60 * 60 * 1000;
+}
 
 connectDB();
 
