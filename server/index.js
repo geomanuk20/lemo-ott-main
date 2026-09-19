@@ -542,6 +542,9 @@ app.get(['/health', '/healthz'], (req, res) => {
   });
 });
 
+// Trust proxy for reverse proxies like Nginx, Cloudflare, Hostinger
+app.set('trust proxy', 1);
+
 // Middleware
 app.use(cors());
 app.use('/api/', apiRateLimiter);
@@ -2906,18 +2909,22 @@ if (server.requestTimeout !== undefined) {
 connectDB();
 
 // Start RTMP Media Server (requires node-media-server to be installed)
-try {
-  const { createRtmpServer } = require('./rtmpServer');
-  const nms = createRtmpServer(LiveStreamSettings);
-  nms.run();
-  console.log('[RTMP] Node Media Server started on port 1935');
-  console.log('[RTMP] HLS output will be at: /hls/live/<streamKey>/index.m3u8');
-} catch (err) {
-  if (err.code === 'MODULE_NOT_FOUND' && err.message.includes('node-media-server')) {
-    console.warn('[RTMP] node-media-server not installed. Run: npm install node-media-server');
-    console.warn('[RTMP] RTMP ingest from OBS is DISABLED until package is installed.');
-  } else {
-    console.error('[RTMP] Failed to start RTMP server:', err.message);
+if (process.env.ENABLE_RTMP !== 'false') {
+  try {
+    const { createRtmpServer } = require('./rtmpServer');
+    const nms = createRtmpServer(LiveStreamSettings);
+    if (nms && typeof nms.run === 'function') {
+      nms.run();
+      console.log('[RTMP] Node Media Server started on port 1935');
+      console.log('[RTMP] HLS output will be at: /hls/live/<streamKey>/index.m3u8');
+    }
+  } catch (err) {
+    if (err.code === 'MODULE_NOT_FOUND' && err.message.includes('node-media-server')) {
+      console.warn('[RTMP] node-media-server not installed. Run: npm install node-media-server');
+      console.warn('[RTMP] RTMP ingest from OBS is DISABLED until package is installed.');
+    } else {
+      console.warn('[RTMP] RTMP server skipped or port restricted:', err.message);
+    }
   }
 }
 

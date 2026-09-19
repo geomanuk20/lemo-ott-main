@@ -77,6 +77,10 @@ const createRateLimiter = ({ windowMs = 15 * 60 * 1000, max = 5000, message = 'T
     max,
     standardHeaders: true,
     legacyHeaders: false,
+    validate: {
+      xForwardedForHeader: false,
+      default: false,
+    },
     skip: (req) => {
       // Bypass rate limit in local development or for admin requests
       if (process.env.NODE_ENV === 'development' || !process.env.NODE_ENV) return true;
