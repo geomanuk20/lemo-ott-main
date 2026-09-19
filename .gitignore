@@ -35,3 +35,7 @@ server/test_decode.js
 *.apk
 *.aab
 
+# Temp uploads
+server/uploads/tmp/
+
+
