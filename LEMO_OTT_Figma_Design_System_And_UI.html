@@ -3,1113 +3,756 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>LEMO OTT - Complete Figma UI/UX Design System & Mockups (Web & Mobile)</title>
+  <title>LEMO OTT - Complete UI/UX Figma Design & Architecture Specification</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
   <style>
-    :root {
-      --primary: #b3d332;
-      --primary-hover: #c5e63e;
-      --primary-glow: rgba(179, 211, 50, 0.35);
-      --bg-dark: #070709;
-      --bg-surface: #0f1015;
-      --bg-card: #15161e;
-      --bg-card-hover: #1c1d28;
-      --border: rgba(255, 255, 255, 0.08);
-      --border-active: rgba(179, 211, 50, 0.4);
-      --text-white: #ffffff;
-      --text-muted: #94a3b8;
-      --text-dim: #64748b;
-      --accent-red: #ef4444;
-      --accent-gold: #f59e0b;
-      --radius-sm: 8px;
-      --radius-md: 14px;
-      --radius-lg: 20px;
-      --radius-full: 9999px;
+    @page {
+      size: A4 portrait;
+      margin: 10mm;
     }
 
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      -webkit-font-smoothing: antialiased;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
     }
 
     body {
       font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
-      background-color: var(--bg-dark);
-      color: var(--text-white);
-      line-height: 1.5;
-      padding: 40px 24px;
-      overflow-x: hidden;
+      background-color: #070709 !important;
+      color: #f8fafc;
+      line-height: 1.45;
+      font-size: 10pt;
     }
 
-    .container {
-      max-width: 1440px;
-      margin: 0 auto;
-    }
-
-    /* Header Banner */
-    .hero-header {
-      background: linear-gradient(135deg, rgba(179, 211, 50, 0.12) 0%, rgba(15, 16, 21, 0.8) 100%);
-      border: 1px solid var(--border-active);
-      border-radius: var(--radius-lg);
-      padding: 48px;
-      margin-bottom: 48px;
+    .doc-page {
+      width: 100%;
+      min-height: 270mm;
+      padding: 20px;
+      page-break-after: always;
+      break-after: page;
       position: relative;
-      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      background: #0d0e12;
+      margin-bottom: 20px;
     }
 
-    .hero-header::after {
-      content: '';
-      position: absolute;
-      top: -50%;
-      right: -10%;
-      width: 400px;
-      height: 400px;
-      background: radial-gradient(circle, var(--primary-glow) 0%, transparent 70%);
-      pointer-events: none;
+    .doc-page:last-child {
+      page-break-after: avoid;
+      break-after: avoid;
+      margin-bottom: 0;
     }
 
-    .brand-badge {
-      display: inline-flex;
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding-bottom: 12px;
+      margin-bottom: 18px;
+    }
+
+    .brand-logo {
+      font-size: 14pt;
+      font-weight: 900;
+      color: #fff;
+      letter-spacing: -0.5px;
+    }
+
+    .brand-logo span {
+      color: #b3d332;
+    }
+
+    .doc-meta {
+      font-size: 8pt;
+      color: #94a3b8;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .page-footer {
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      padding-top: 10px;
+      margin-top: 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 8pt;
+      color: #64748b;
+    }
+
+    .section-title {
+      font-size: 14pt;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 14px;
+      display: flex;
       align-items: center;
       gap: 8px;
+    }
+
+    .section-title::before {
+      content: '';
+      display: inline-block;
+      width: 4px;
+      height: 16px;
+      background: #b3d332;
+      border-radius: 2px;
+    }
+
+    /* Cover Page Styles */
+    .cover-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 30px;
+      background: radial-gradient(circle at 90% 10%, rgba(179, 211, 50, 0.18) 0%, transparent 60%),
+                  linear-gradient(180deg, #10121a 0%, #070709 100%);
+      border-radius: 12px;
+      border: 1px solid rgba(179, 211, 50, 0.3);
+    }
+
+    .pill-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
       background: rgba(179, 211, 50, 0.15);
-      border: 1px solid var(--primary);
-      color: var(--primary);
-      padding: 6px 16px;
-      border-radius: var(--radius-full);
-      font-size: 0.8rem;
+      border: 1px solid #b3d332;
+      color: #b3d332;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 8pt;
       font-weight: 800;
       letter-spacing: 1.5px;
       text-transform: uppercase;
       margin-bottom: 16px;
     }
 
-    .main-title {
-      font-size: 2.8rem;
+    .cover-title {
+      font-size: 28pt;
       font-weight: 900;
-      letter-spacing: -1px;
+      color: #fff;
+      line-height: 1.1;
       margin-bottom: 12px;
-      line-height: 1.15;
     }
 
-    .main-title span {
-      color: var(--primary);
+    .cover-title span {
+      color: #b3d332;
     }
 
-    .subtitle {
-      font-size: 1.1rem;
-      color: var(--text-muted);
-      max-width: 720px;
-      margin-bottom: 24px;
+    .cover-desc {
+      font-size: 11pt;
+      color: #94a3b8;
+      max-width: 500px;
+      line-height: 1.5;
+      margin-bottom: 28px;
     }
 
-    .quick-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 16px;
+    .spec-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      width: 100%;
     }
 
-    .btn-primary {
-      background: var(--primary);
-      color: #000;
-      font-weight: 800;
-      padding: 12px 24px;
-      border-radius: var(--radius-full);
-      border: none;
-      font-size: 0.95rem;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      box-shadow: 0 4px 20px var(--primary-glow);
-      transition: all 0.2s ease;
-      text-decoration: none;
+    .spec-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 10px 14px;
     }
 
-    .btn-primary:hover {
-      background: var(--primary-hover);
-      transform: translateY(-2px);
+    .spec-label {
+      font-size: 7.5pt;
+      color: #64748b;
+      text-transform: uppercase;
+      font-weight: 700;
     }
 
-    .btn-outline {
-      background: rgba(255, 255, 255, 0.05);
+    .spec-val {
+      font-size: 9.5pt;
       color: #fff;
       font-weight: 700;
-      padding: 12px 24px;
-      border-radius: var(--radius-full);
-      border: 1px solid var(--border);
-      font-size: 0.95rem;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      text-decoration: none;
-      transition: all 0.2s;
+      margin-top: 2px;
     }
 
-    .btn-outline:hover {
-      background: rgba(255, 255, 255, 0.1);
-      border-color: rgba(255, 255, 255, 0.3);
-    }
-
-    /* Section Headers */
-    .section-title {
-      font-size: 1.8rem;
-      font-weight: 800;
-      margin: 48px 0 24px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .section-title::before {
-      content: '';
-      width: 4px;
-      height: 24px;
-      background: var(--primary);
-      border-radius: 4px;
-    }
-
-    /* Design System Tokens */
-    .token-grid {
+    /* Tokens Cards */
+    .color-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 16px;
-      margin-bottom: 40px;
-    }
-
-    .color-card {
-      background: var(--bg-surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-md);
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
+      grid-template-columns: repeat(4, 1fr);
       gap: 12px;
+      margin-bottom: 18px;
     }
 
-    .color-swatch {
-      height: 70px;
-      border-radius: var(--radius-sm);
+    .color-box {
+      background: #15161f;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 10px;
+    }
+
+    .color-preview {
+      height: 44px;
+      border-radius: 6px;
+      margin-bottom: 8px;
       border: 1px solid rgba(255, 255, 255, 0.1);
     }
 
-    .color-info h4 {
-      font-size: 0.95rem;
+    .color-name {
+      font-size: 8.5pt;
       font-weight: 700;
-      margin-bottom: 4px;
+      color: #fff;
     }
 
-    .color-info code {
+    .color-hex {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 0.8rem;
-      color: var(--text-dim);
+      font-size: 7.5pt;
+      color: #94a3b8;
     }
 
-    /* Artboards Grid */
-    .artboards-container {
-      display: flex;
-      flex-direction: column;
-      gap: 56px;
-    }
-
-    .artboard-card {
-      background: var(--bg-surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: 32px;
-      overflow: hidden;
-    }
-
-    .artboard-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 24px;
-      padding-bottom: 16px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .artboard-tag {
-      background: rgba(255, 255, 255, 0.08);
-      color: var(--text-muted);
-      padding: 4px 12px;
-      border-radius: var(--radius-full);
-      font-size: 0.8rem;
-      font-weight: 700;
-    }
-
-    /* Desktop Mockup Preview */
-    .browser-frame {
+    /* Web Preview Mockup */
+    .web-frame {
       background: #000;
-      border: 1px solid #232530;
-      border-radius: 12px;
+      border: 1px solid #232532;
+      border-radius: 10px;
       overflow: hidden;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+      margin-bottom: 14px;
     }
 
-    .browser-bar {
-      background: #15161e;
-      padding: 12px 16px;
+    .web-bar {
+      background: #15161f;
+      padding: 8px 12px;
       display: flex;
       align-items: center;
-      gap: 12px;
-      border-bottom: 1px solid #232530;
+      gap: 10px;
+      border-bottom: 1px solid #232532;
     }
 
-    .browser-dots {
+    .dots {
       display: flex;
-      gap: 6px;
+      gap: 5px;
     }
 
     .dot {
-      width: 10px;
-      height: 10px;
+      width: 7px;
+      height: 7px;
       border-radius: 50%;
     }
 
-    .dot.red { background: #ff5f56; }
-    .dot.yellow { background: #ffbd2e; }
-    .dot.green { background: #27c93f; }
+    .dot.r { background: #ef4444; }
+    .dot.y { background: #f59e0b; }
+    .dot.g { background: #22c55e; }
 
-    .browser-url {
-      background: #0a0b0e;
-      border: 1px solid rgba(255, 255, 255, 0.05);
-      border-radius: 6px;
-      padding: 4px 14px;
-      font-size: 0.75rem;
-      color: var(--text-dim);
+    .url-input {
+      background: #090a0d;
+      border-radius: 4px;
+      padding: 2px 10px;
+      font-size: 7pt;
+      color: #64748b;
       font-family: 'JetBrains Mono', monospace;
-      flex: 1;
-      max-width: 400px;
     }
 
-    /* Web UI View */
-    .web-navbar {
-      background: rgba(10, 11, 15, 0.85);
-      backdrop-filter: blur(12px);
-      padding: 16px 32px;
+    .web-nav {
+      background: #0a0b0e;
+      padding: 8px 16px;
       display: flex;
-      align-items: center;
       justify-content: space-between;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .web-logo {
-      font-size: 1.3rem;
-      font-weight: 900;
-      color: #fff;
-      display: flex;
       align-items: center;
-      gap: 6px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     }
 
-    .web-logo span {
-      color: var(--primary);
-    }
-
-    .web-navlinks {
-      display: flex;
-      gap: 24px;
-      list-style: none;
-    }
-
-    .web-navlinks a {
-      color: var(--text-muted);
-      text-decoration: none;
-      font-size: 0.9rem;
-      font-weight: 600;
-      transition: color 0.2s;
-    }
-
-    .web-navlinks a.active, .web-navlinks a:hover {
-      color: #fff;
-    }
-
-    .web-hero {
-      position: relative;
-      height: 420px;
-      background: linear-gradient(180deg, rgba(7, 7, 9, 0.2) 0%, rgba(7, 7, 9, 0.95) 100%),
-                  radial-gradient(circle at 75% 30%, rgba(179, 211, 50, 0.2) 0%, transparent 60%),
-                  #111218;
-      padding: 48px;
+    .web-hero-box {
+      height: 160px;
+      background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(7,7,9,0.95) 100%),
+                  radial-gradient(circle at 80% 30%, rgba(179, 211, 50, 0.25) 0%, transparent 60%),
+                  #12131b;
+      padding: 20px;
       display: flex;
       flex-direction: column;
       justify-content: flex-end;
-      gap: 16px;
     }
 
-    .hero-badge-pill {
-      background: rgba(179, 211, 50, 0.2);
-      border: 1px solid var(--primary);
-      color: var(--primary);
-      padding: 4px 10px;
-      border-radius: 6px;
-      font-size: 0.75rem;
-      font-weight: 800;
-      width: fit-content;
-    }
-
-    .hero-title {
-      font-size: 2.4rem;
-      font-weight: 900;
-      line-height: 1.1;
-    }
-
-    .hero-meta {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      font-size: 0.85rem;
-      color: var(--text-muted);
-      font-weight: 600;
-    }
-
-    .web-content-row {
-      padding: 32px;
-    }
-
-    .row-heading {
-      font-size: 1.25rem;
-      font-weight: 800;
-      margin-bottom: 18px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .row-heading a {
-      font-size: 0.85rem;
-      color: var(--primary);
-      text-decoration: none;
-      font-weight: 700;
-    }
-
-    .cards-row {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 20px;
-    }
-
-    .movie-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      transition: transform 0.2s;
-    }
-
-    .card-poster {
-      height: 180px;
-      background: linear-gradient(135deg, #1e2029 0%, #101116 100%);
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 800;
-      color: #4b5563;
-    }
-
-    .card-badge {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      background: rgba(0, 0, 0, 0.75);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      color: #fff;
-      padding: 2px 8px;
-      border-radius: 4px;
-      font-size: 0.7rem;
-      font-weight: 700;
-    }
-
-    .card-info {
+    .web-row {
       padding: 14px;
     }
 
-    .card-title {
-      font-size: 0.95rem;
-      font-weight: 700;
-      margin-bottom: 4px;
-    }
-
-    .card-sub {
-      font-size: 0.78rem;
-      color: var(--text-dim);
-    }
-
-    /* Mobile Phones Grid */
-    .mobile-mockups-grid {
+    .web-cards-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: 32px;
-    }
-
-    .phone-wrapper {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 16px;
-    }
-
-    .phone-title {
-      font-size: 1rem;
-      font-weight: 800;
-      color: var(--text-white);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .phone-title span {
-      color: var(--primary);
-    }
-
-    .phone-frame {
-      width: 320px;
-      height: 660px;
-      background: #000;
-      border: 8px solid #1c1d24;
-      border-radius: 44px;
-      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.1);
-      position: relative;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-    }
-
-    /* Dynamic Island Notch */
-    .phone-notch {
-      position: absolute;
-      top: 8px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 90px;
-      height: 22px;
-      background: #000;
-      border-radius: 20px;
-      z-index: 100;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 8px;
-    }
-
-    .notch-camera {
-      width: 8px;
-      height: 8px;
-      background: #111;
-      border: 1px solid #222;
-      border-radius: 50%;
-      margin-left: auto;
-    }
-
-    .phone-screen {
-      flex: 1;
-      overflow-y: auto;
-      padding: 40px 14px 70px 14px;
-      background: var(--bg-dark);
-      position: relative;
-    }
-
-    /* Phone Components */
-    .mobile-topbar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 16px;
-    }
-
-    .mobile-hero-card {
-      height: 230px;
-      background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.95) 100%),
-                  radial-gradient(circle at 50% 30%, rgba(179, 211, 50, 0.25) 0%, transparent 70%),
-                  #16171f;
-      border-radius: 16px;
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
-      margin-bottom: 20px;
-      border: 1px solid var(--border);
-    }
-
-    .mobile-section-heading {
-      font-size: 0.95rem;
-      font-weight: 800;
-      margin-bottom: 12px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .mobile-card-row {
-      display: flex;
+      grid-template-columns: repeat(4, 1fr);
       gap: 10px;
-      overflow-x: hidden;
-      margin-bottom: 20px;
     }
 
-    .mobile-poster-card {
-      width: 100px;
-      flex-shrink: 0;
-      background: var(--bg-card);
-      border-radius: 10px;
+    .card-item {
+      background: #15161f;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 8px;
       overflow: hidden;
-      border: 1px solid var(--border);
     }
 
-    .mobile-poster-img {
-      height: 130px;
-      background: #1e2029;
+    .card-thumb {
+      height: 70px;
+      background: linear-gradient(135deg, #1e202d 0%, #101118 100%);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 0.65rem;
-      color: #6b7280;
-      font-weight: 700;
+      font-size: 7pt;
+      font-weight: 800;
+      color: #64748b;
+      position: relative;
     }
 
-    .mobile-poster-meta {
-      padding: 6px;
+    .card-badge-pill {
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      background: rgba(0,0,0,0.8);
+      color: #b3d332;
+      border: 1px solid #b3d332;
+      font-size: 5.5pt;
+      padding: 1px 4px;
+      border-radius: 3px;
+      font-weight: 800;
     }
 
-    .mobile-poster-title {
-      font-size: 0.72rem;
+    .card-body {
+      padding: 6px 8px;
+    }
+
+    .card-txt-title {
+      font-size: 7.5pt;
       font-weight: 700;
+      color: #fff;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
 
-    /* Bottom Bar */
-    .mobile-bottom-nav {
+    .card-txt-sub {
+      font-size: 6.5pt;
+      color: #64748b;
+    }
+
+    /* Mobile Phones in Print */
+    .mobile-tri-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+
+    .phone-box {
+      background: #000;
+      border: 4px solid #1c1d26;
+      border-radius: 24px;
+      height: 480px;
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.8);
+    }
+
+    .phone-notch-bar {
+      position: absolute;
+      top: 6px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 65px;
+      height: 14px;
+      background: #000;
+      border-radius: 10px;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding: 0 4px;
+    }
+
+    .phone-cam {
+      width: 5px;
+      height: 5px;
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 50%;
+    }
+
+    .phone-screen-content {
+      flex: 1;
+      padding: 24px 10px 45px 10px;
+      background: #070709;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .phone-bottom-nav {
       position: absolute;
       bottom: 0;
       left: 0;
       right: 0;
-      height: 56px;
-      background: rgba(10, 11, 15, 0.95);
-      backdrop-filter: blur(10px);
-      border-top: 1px solid var(--border);
+      height: 38px;
+      background: #0d0e14;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
       display: flex;
       justify-content: space-around;
       align-items: center;
-      padding: 0 10px;
-      z-index: 50;
-    }
-
-    .nav-item {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 3px;
-      font-size: 0.62rem;
+      font-size: 6pt;
       font-weight: 700;
-      color: var(--text-dim);
+      color: #64748b;
     }
 
-    .nav-item.active {
-      color: var(--primary);
+    .phone-bottom-nav .active {
+      color: #b3d332;
     }
 
-    .nav-icon {
-      font-size: 1.1rem;
-    }
-
-    /* Vertical Shorts Player Screen */
-    .shorts-screen {
-      height: 100%;
-      background: linear-gradient(180deg, #101118 0%, #000 100%);
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      padding: 40px 14px 20px 14px;
-    }
-
-    .shorts-right-actions {
-      position: absolute;
-      right: 12px;
-      bottom: 80px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 16px;
-      z-index: 20;
-    }
-
-    .shorts-action-btn {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 4px;
-      font-size: 0.65rem;
-      font-weight: 700;
-      color: #fff;
-    }
-
-    .shorts-icon-circle {
-      width: 40px;
-      height: 40px;
-      background: rgba(0, 0, 0, 0.6);
-      backdrop-filter: blur(8px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.1rem;
-    }
-
-    /* Export JSON & Tokens section */
-    .json-box {
-      background: #0d0e12;
-      border: 1px solid var(--border);
-      border-radius: var(--radius-md);
-      padding: 24px;
+    /* Code Block */
+    .code-box {
+      background: #090a0d;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 12px;
       font-family: 'JetBrains Mono', monospace;
-      font-size: 0.85rem;
+      font-size: 7.5pt;
       color: #cbd5e1;
+      line-height: 1.4;
       overflow-x: auto;
-      max-height: 400px;
-    }
-
-    @media (max-width: 1024px) {
-      .cards-row {
-        grid-template-columns: repeat(2, 1fr);
-      }
     }
   </style>
 </head>
 <body>
 
-  <div class="container">
-    
-    <!-- Hero Header -->
-    <header class="hero-header">
-      <div class="brand-badge">⚡ Official Design System & UI Specification</div>
-      <h1 class="main-title">LEMO OTT — <span>Figma Master UI & Tokens</span></h1>
-      <p class="subtitle">
-        High-fidelity vector design architecture and UI mockups for the Web Application and Mobile APK (Android & iOS).
-        Optimized for direct Figma import, design tokens syncing, and asset extraction.
+  <!-- ==================== PAGE 1: COVER & OVERVIEW ==================== -->
+  <div class="doc-page">
+    <div class="page-header">
+      <div class="brand-logo">LEMO<span>OTT</span></div>
+      <div class="doc-meta">Design Specification • Page 1</div>
+    </div>
+
+    <div class="cover-container">
+      <div class="pill-badge">Official UI/UX & Architecture System</div>
+      <h1 class="cover-title">LEMO OTT<br/><span>Figma Master UI Guide</span></h1>
+      <p class="cover-desc">
+        Complete high-fidelity vector specification and component architecture for the LEMO OTT Web Platform & Native Mobile Applications (Android APK & iOS).
       </p>
-      <div class="quick-actions">
-        <button class="btn-primary" onclick="window.print()">🖨️ Export as PDF / Vector</button>
-        <button class="btn-outline" onclick="copyTokens()">📋 Copy Figma Tokens JSON</button>
-      </div>
-    </header>
 
-    <!-- SECTION 1: DESIGN TOKENS -->
-    <h2 class="section-title">01. Color Palette & Design Tokens</h2>
-    <div class="token-grid">
-      <div class="color-card">
-        <div class="color-swatch" style="background: #b3d332; box-shadow: 0 0 20px rgba(179, 211, 50, 0.4);"></div>
-        <div class="color-info">
-          <h4>Brand Lime Primary</h4>
-          <code>#b3d332 (rgb 179, 211, 50)</code>
+      <div class="spec-grid">
+        <div class="spec-card">
+          <div class="spec-label">Primary Color</div>
+          <div class="spec-val" style="color: #b3d332;">#b3d332 (Lemo Lime)</div>
         </div>
-      </div>
-      <div class="color-card">
-        <div class="color-swatch" style="background: #070709;"></div>
-        <div class="color-info">
-          <h4>Background Pitch Dark</h4>
-          <code>#070709 (True Deep Black)</code>
+        <div class="spec-card">
+          <div class="spec-label">Dark Theme Base</div>
+          <div class="spec-val">#070709 (Pitch Black)</div>
         </div>
-      </div>
-      <div class="color-card">
-        <div class="color-swatch" style="background: #0f1015;"></div>
-        <div class="color-info">
-          <h4>Surface Glass Dark</h4>
-          <code>#0f1015 (Card / Sheet BG)</code>
+        <div class="spec-card">
+          <div class="spec-label">Typography</div>
+          <div class="spec-val">Plus Jakarta Sans & JetBrains Mono</div>
         </div>
-      </div>
-      <div class="color-card">
-        <div class="color-swatch" style="background: #15161e;"></div>
-        <div class="color-info">
-          <h4>Elevated Surface</h4>
-          <code>#15161e (Border / Hover)</code>
+        <div class="spec-card">
+          <div class="spec-label">Platforms Supported</div>
+          <div class="spec-val">Desktop Web, Android APK, iOS .ipa</div>
         </div>
       </div>
     </div>
 
-    <!-- SECTION 2: WEB APPLICATION UI ARTBOARD -->
-    <h2 class="section-title">02. Web Application Artboard (Desktop 1440x900)</h2>
-    <div class="artboards-container">
-      
-      <div class="artboard-card">
-        <div class="artboard-header">
-          <div>
-            <h3>Desktop Homepage & Hero Cinema Artboard</h3>
-            <p style="color: var(--text-dim); font-size: 0.85rem;">Format: 1440px Desktop Grid • 12-Column Responsive</p>
-          </div>
-          <span class="artboard-tag">Web UI • Main</span>
-        </div>
-
-        <div class="browser-frame">
-          <div class="browser-bar">
-            <div class="browser-dots">
-              <div class="dot red"></div>
-              <div class="dot yellow"></div>
-              <div class="dot green"></div>
-            </div>
-            <div class="browser-url">https://lemoott.com/home</div>
-          </div>
-
-          <!-- Web Content -->
-          <nav class="web-navbar">
-            <div class="web-logo">LEMO<span>OTT</span></div>
-            <ul class="web-navlinks">
-              <li><a href="#" class="active">Home</a></li>
-              <li><a href="#">Movies</a></li>
-              <li><a href="#">Short Films</a></li>
-              <li><a href="#">Shows</a></li>
-              <li><a href="#">Pocket Reels</a></li>
-              <li><a href="#">Live TV</a></li>
-            </ul>
-            <div style="display: flex; gap: 12px; align-items: center;">
-              <span style="font-size: 0.85rem; color: var(--text-muted);">🔍 Search</span>
-              <button class="btn-primary" style="padding: 8px 18px; font-size: 0.8rem;">VIP Premium</button>
-            </div>
-          </nav>
-
-          <div class="web-hero">
-            <div class="hero-badge-pill">🔥 EXCLUSIVE PREMIERE</div>
-            <h2 class="hero-title">THE FLAME: A TALE OF COURAGE</h2>
-            <div class="hero-meta">
-              <span style="color: var(--primary);">★ 9.4 Rating</span>
-              <span>•</span>
-              <span>Short Film</span>
-              <span>•</span>
-              <span>Malayalam</span>
-              <span>•</span>
-              <span>4K Ultra HD</span>
-            </div>
-            <div style="display: flex; gap: 12px; margin-top: 10px;">
-              <button class="btn-primary">▶ Play Stream</button>
-              <button class="btn-outline">+ Add to Watchlist</button>
-            </div>
-          </div>
-
-          <div class="web-content-row">
-            <div class="row-heading">
-              <span>Trending Short Films & New Releases</span>
-              <a href="#">Explore All →</a>
-            </div>
-            <div class="cards-row">
-              <div class="movie-card">
-                <div class="card-poster">
-                  <span class="card-badge">FREE</span>
-                  <span>THE FLAME</span>
-                </div>
-                <div class="card-info">
-                  <div class="card-title">The Flame</div>
-                  <div class="card-sub">Short Film • 30m • Malayalam</div>
-                </div>
-              </div>
-              <div class="movie-card">
-                <div class="card-poster">
-                  <span class="card-badge">PAID</span>
-                  <span>ATHIJEEVITHA</span>
-                </div>
-                <div class="card-info">
-                  <div class="card-title">Athijeevitha</div>
-                  <div class="card-sub">Short Film • 24m • Malayalam</div>
-                </div>
-              </div>
-              <div class="movie-card">
-                <div class="card-poster">
-                  <span class="card-badge">FREE</span>
-                  <span>WHEELS</span>
-                </div>
-                <div class="card-info">
-                  <div class="card-title">Wheels</div>
-                  <div class="card-sub">Short Film • 18m • Malayalam</div>
-                </div>
-              </div>
-              <div class="movie-card">
-                <div class="card-poster">
-                  <span class="card-badge">PAID</span>
-                  <span>KASHI</span>
-                </div>
-                <div class="card-info">
-                  <div class="card-title">Kashi</div>
-                  <div class="card-sub">Short Film • 35m • Malayalam</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
+    <div class="page-footer">
+      <span>LEMO OTT — Confidential & Proprietary</span>
+      <span>Document Version 1.0.9</span>
     </div>
-
-    <!-- SECTION 3: MOBILE APPLICATION UI ARTBOARDS -->
-    <h2 class="section-title">03. Mobile App Artboards (Android APK & iOS 390x844)</h2>
-    <div class="mobile-mockups-grid">
-      
-      <!-- Phone 1: Mobile Home -->
-      <div class="phone-wrapper">
-        <div class="phone-title">01. <span>Mobile Home Feed</span></div>
-        <div class="phone-frame">
-          <div class="phone-notch">
-            <span style="font-size: 0.6rem; font-weight: 700; color: #fff;">9:41</span>
-            <div class="notch-camera"></div>
-          </div>
-          
-          <div class="phone-screen">
-            <div class="mobile-topbar">
-              <div style="font-weight: 900; font-size: 1.1rem; color: #fff;">LEMO<span style="color: var(--primary);">OTT</span></div>
-              <div style="font-size: 0.9rem;">🔔 🔍</div>
-            </div>
-
-            <div class="mobile-hero-card">
-              <span class="hero-badge-pill" style="font-size: 0.65rem; padding: 2px 6px;">TOP TRENDING</span>
-              <div style="font-size: 1.1rem; font-weight: 900; margin-top: 4px;">THE FLAME</div>
-              <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 8px;">Short Film • Malayalam • 4K</div>
-              <button class="btn-primary" style="padding: 6px 14px; font-size: 0.75rem; width: fit-content;">▶ Watch Now</button>
-            </div>
-
-            <div class="mobile-section-heading">
-              <span>Popular Short Films</span>
-              <span style="color: var(--primary); font-size: 0.75rem;">View All</span>
-            </div>
-
-            <div class="mobile-card-row">
-              <div class="mobile-poster-card">
-                <div class="mobile-poster-img">THE FLAME</div>
-                <div class="mobile-poster-meta">
-                  <div class="mobile-poster-title">The Flame</div>
-                </div>
-              </div>
-              <div class="mobile-poster-card">
-                <div class="mobile-poster-img">ATHIJEEVITHA</div>
-                <div class="mobile-poster-meta">
-                  <div class="mobile-poster-title">Athijeevitha</div>
-                </div>
-              </div>
-              <div class="mobile-poster-card">
-                <div class="mobile-poster-img">WHEELS</div>
-                <div class="mobile-poster-meta">
-                  <div class="mobile-poster-title">Wheels</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="mobile-bottom-nav">
-            <div class="nav-item active">
-              <div class="nav-icon">🏠</div>
-              <span>Home</span>
-            </div>
-            <div class="nav-item">
-              <div class="nav-icon">🎬</div>
-              <span>Shorts</span>
-            </div>
-            <div class="nav-item">
-              <div class="nav-icon">📺</div>
-              <span>Live TV</span>
-            </div>
-            <div class="nav-item">
-              <div class="nav-icon">👤</div>
-              <span>Profile</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Phone 2: Pocket Reels & Shorts -->
-      <div class="phone-wrapper">
-        <div class="phone-title">02. <span>Pocket Reels & 9:16 Shorts</span></div>
-        <div class="phone-frame">
-          <div class="phone-notch">
-            <span style="font-size: 0.6rem; font-weight: 700; color: #fff;">9:41</span>
-            <div class="notch-camera"></div>
-          </div>
-          
-          <div class="shorts-screen">
-            <div style="display: flex; justify-content: space-between; align-items: center; z-index: 10;">
-              <span style="font-weight: 800; font-size: 0.85rem; color: rgba(255,255,255,0.7);">Following</span>
-              <span style="font-weight: 900; font-size: 0.95rem; color: #fff; border-bottom: 2px solid var(--primary); padding-bottom: 2px;">Pocket Reels</span>
-              <span>🔍</span>
-            </div>
-
-            <div class="shorts-right-actions">
-              <div class="shorts-action-btn">
-                <div class="shorts-icon-circle">❤️</div>
-                <span>14.2K</span>
-              </div>
-              <div class="shorts-action-btn">
-                <div class="shorts-icon-circle">💬</div>
-                <span>428</span>
-              </div>
-              <div class="shorts-action-btn">
-                <div class="shorts-icon-circle">↗️</div>
-                <span>Share</span>
-              </div>
-            </div>
-
-            <div style="z-index: 10; margin-bottom: 50px;">
-              <div style="font-size: 0.85rem; font-weight: 800; margin-bottom: 4px;">@lemo_originals • Episode 1</div>
-              <p style="font-size: 0.75rem; color: #cbd5e1; line-height: 1.3;">
-                The suspense begins in this intense pocket thriller reel! #LemoOTT #PocketReels
-              </p>
-            </div>
-          </div>
-
-          <div class="mobile-bottom-nav">
-            <div class="nav-item">
-              <div class="nav-icon">🏠</div>
-              <span>Home</span>
-            </div>
-            <div class="nav-item active">
-              <div class="nav-icon">🎬</div>
-              <span>Shorts</span>
-            </div>
-            <div class="nav-item">
-              <div class="nav-icon">📺</div>
-              <span>Live TV</span>
-            </div>
-            <div class="nav-item">
-              <div class="nav-icon">👤</div>
-              <span>Profile</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Phone 3: Cinema Player & Details -->
-      <div class="phone-wrapper">
-        <div class="phone-title">03. <span>Stream Player & Details</span></div>
-        <div class="phone-frame">
-          <div class="phone-notch">
-            <span style="font-size: 0.6rem; font-weight: 700; color: #fff;">9:41</span>
-            <div class="notch-camera"></div>
-          </div>
-          
-          <div class="phone-screen" style="padding: 0;">
-            <!-- Player Area -->
-            <div style="height: 190px; background: #000; display: flex; align-items: center; justify-content: center; position: relative;">
-              <span style="color: var(--primary); font-size: 2rem;">▶</span>
-              <div style="position: absolute; bottom: 8px; left: 12px; font-size: 0.7rem; color: #aaa;">04:15 / 30:00</div>
-              <div style="position: absolute; top: 8px; right: 12px; font-size: 0.7rem; background: rgba(0,0,0,0.6); padding: 2px 8px; border-radius: 4px;">1080p HD</div>
-            </div>
-
-            <div style="padding: 16px;">
-              <div style="font-size: 1.2rem; font-weight: 900; margin-bottom: 4px;">THE FLAME</div>
-              <div style="font-size: 0.75rem; color: var(--text-dim); margin-bottom: 12px;">2026 • 30m • Short Film • Malayalam</div>
-              
-              <div style="display: flex; gap: 10px; margin-bottom: 16px;">
-                <button class="btn-primary" style="flex: 1; padding: 8px; font-size: 0.8rem; justify-content: center;">▶ Resume</button>
-                <button class="btn-outline" style="padding: 8px 14px; font-size: 0.8rem;">📥 Download</button>
-              </div>
-
-              <div style="font-size: 0.8rem; color: #cbd5e1; line-height: 1.4; margin-bottom: 20px;">
-                As a girl steps into adolescence, a fire within her sparked in childhood intensifies under the gaze of society...
-              </div>
-
-              <div style="font-weight: 800; font-size: 0.9rem; margin-bottom: 10px;">Cast & Crew</div>
-              <div style="display: flex; gap: 10px; font-size: 0.75rem; color: #94a3b8;">
-                <span>Director: Lemo Studio</span> • <span>Language: Malayalam</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="mobile-bottom-nav">
-            <div class="nav-item">
-              <div class="nav-icon">🏠</div>
-              <span>Home</span>
-            </div>
-            <div class="nav-item">
-              <div class="nav-icon">🎬</div>
-              <span>Shorts</span>
-            </div>
-            <div class="nav-item">
-              <div class="nav-icon">📺</div>
-              <span>Live TV</span>
-            </div>
-            <div class="nav-item">
-              <div class="nav-icon">👤</div>
-              <span>Profile</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- SECTION 4: FIGMA TOKENS JSON -->
-    <h2 class="section-title">04. Figma Tokens Specification (JSON Export)</h2>
-    <div class="json-box" id="tokens-json">
-{
-  "name": "LEMO OTT Design Tokens",
-  "version": "1.0.9",
-  "colors": {
-    "primary": {
-      "value": "#b3d332",
-      "type": "color",
-      "description": "LEMO OTT Vibrant Electric Lime brand color"
-    },
-    "backgroundDark": {
-      "value": "#070709",
-      "type": "color",
-      "description": "True Pitch Deep Dark background"
-    },
-    "surfaceGlass": {
-      "value": "#0f1015",
-      "type": "color",
-      "description": "Card surface and sheet background"
-    },
-    "surfaceElevated": {
-      "value": "#15161e",
-      "type": "color",
-      "description": "Card elevated border and hover states"
-    },
-    "textPrimary": {
-      "value": "#ffffff",
-      "type": "color"
-    },
-    "textMuted": {
-      "value": "#94a3b8",
-      "type": "color"
-    }
-  },
-  "typography": {
-    "fontFamily": "Plus Jakarta Sans, sans-serif",
-    "weights": {
-      "regular": 400,
-      "medium": 500,
-      "semibold": 600,
-      "bold": 700,
-      "extraBold": 800,
-      "black": 900
-    }
-  },
-  "borderRadius": {
-    "small": "8px",
-    "medium": "14px",
-    "large": "20px",
-    "full": "9999px"
-  }
-}
-    </div>
-
   </div>
 
-  <script>
-    function copyTokens() {
-      const text = document.getElementById('tokens-json').innerText;
-      navigator.clipboard.writeText(text).then(() => {
-        alert('Figma Design Tokens JSON copied to clipboard!');
-      });
-    }
-  </script>
+  <!-- ==================== PAGE 2: DESIGN TOKENS & PALETTE ==================== -->
+  <div class="doc-page">
+    <div class="page-header">
+      <div class="brand-logo">LEMO<span>OTT</span></div>
+      <div class="doc-meta">Design Tokens & Palette • Page 2</div>
+    </div>
+
+    <div>
+      <h2 class="section-title">01. Core Color Tokens</h2>
+      <div class="color-grid">
+        <div class="color-box">
+          <div class="color-preview" style="background: #b3d332;"></div>
+          <div class="color-name">Brand Primary</div>
+          <div class="color-hex">#b3d332</div>
+        </div>
+        <div class="color-box">
+          <div class="color-preview" style="background: #070709;"></div>
+          <div class="color-name">Pitch Dark Base</div>
+          <div class="color-hex">#070709</div>
+        </div>
+        <div class="color-box">
+          <div class="color-preview" style="background: #0f1015;"></div>
+          <div class="color-name">Glass Surface</div>
+          <div class="color-hex">#0f1015</div>
+        </div>
+        <div class="color-box">
+          <div class="color-preview" style="background: #15161f;"></div>
+          <div class="color-name">Card Surface</div>
+          <div class="color-hex">#15161f</div>
+        </div>
+      </div>
+
+      <h2 class="section-title" style="margin-top: 20px;">02. Typography & Radius Rules</h2>
+      <div class="spec-grid" style="margin-bottom: 20px;">
+        <div class="spec-card">
+          <div class="spec-label">Hero Title Style</div>
+          <div class="spec-val">28pt / 900 Black / -1px Tracking</div>
+        </div>
+        <div class="spec-card">
+          <div class="spec-label">Section Headers</div>
+          <div class="spec-val">14pt / 800 Bold / Lime Indicator</div>
+        </div>
+        <div class="spec-card">
+          <div class="spec-label">Card Border Radius</div>
+          <div class="spec-val">10px - 14px (Smooth Squircle)</div>
+        </div>
+        <div class="spec-card">
+          <div class="spec-label">Pill Action Radius</div>
+          <div class="spec-val">999px (Full Capsule)</div>
+        </div>
+      </div>
+
+      <h2 class="section-title">03. Figma Tokens Studio Schema (JSON)</h2>
+      <pre class="code-box">
+{
+  "theme": "LEMO_OTT_DARK",
+  "colors": {
+    "primary": "#b3d332",
+    "background": "#070709",
+    "surface": "#0f1015",
+    "card": "#15161f",
+    "text": "#ffffff",
+    "textMuted": "#94a3b8"
+  },
+  "fonts": {
+    "body": "Plus Jakarta Sans",
+    "mono": "JetBrains Mono"
+  }
+}
+      </pre>
+    </div>
+
+    <div class="page-footer">
+      <span>LEMO OTT Design Architecture</span>
+      <span>Figma Tokens V1</span>
+    </div>
+  </div>
+
+  <!-- ==================== PAGE 3: DESKTOP WEB ARTBOARD ==================== -->
+  <div class="doc-page">
+    <div class="page-header">
+      <div class="brand-logo">LEMO<span>OTT</span></div>
+      <div class="doc-meta">Desktop Web UI • Page 3</div>
+    </div>
+
+    <div>
+      <h2 class="section-title">Desktop Web Architecture (1440 × 900 Viewport)</h2>
+      
+      <div class="web-frame">
+        <div class="web-bar">
+          <div class="dots">
+            <div class="dot r"></div>
+            <div class="dot y"></div>
+            <div class="dot g"></div>
+          </div>
+          <div class="url-input">https://lemoott.com</div>
+        </div>
+
+        <div class="web-nav">
+          <div style="font-weight: 900; font-size: 10pt; color: #fff;">LEMO<span style="color: #b3d332;">OTT</span></div>
+          <div style="display: flex; gap: 14px; font-size: 7.5pt; font-weight: 600; color: #94a3b8;">
+            <span style="color: #fff;">Home</span>
+            <span>Movies</span>
+            <span>Short Films</span>
+            <span>Shows</span>
+            <span>Pocket Reels</span>
+            <span>Live TV</span>
+          </div>
+          <div style="background: #b3d332; color: #000; font-size: 7pt; font-weight: 800; padding: 3px 10px; border-radius: 999px;">VIP Premium</div>
+        </div>
+
+        <div class="web-hero-box">
+          <div style="background: rgba(179, 211, 50, 0.2); border: 1px solid #b3d332; color: #b3d332; font-size: 6pt; font-weight: 800; padding: 2px 6px; border-radius: 4px; width: fit-content;">EXCLUSIVE SHORT FILM</div>
+          <div style="font-size: 16pt; font-weight: 900; color: #fff; margin-top: 4px;">THE FLAME: SPECIAL EDITION</div>
+          <div style="font-size: 7pt; color: #94a3b8; margin: 4px 0 10px 0;">★ 9.4 Rating • 30m • Short Film • Malayalam • 4K Ultra HD</div>
+          <div style="display: flex; gap: 8px;">
+            <div style="background: #b3d332; color: #000; font-size: 7pt; font-weight: 800; padding: 4px 12px; border-radius: 999px;">▶ Watch Now</div>
+            <div style="background: rgba(255,255,255,0.1); color: #fff; font-size: 7pt; font-weight: 700; padding: 4px 12px; border-radius: 999px;">+ Watchlist</div>
+          </div>
+        </div>
+
+        <div class="web-row">
+          <div style="font-size: 8.5pt; font-weight: 800; color: #fff; margin-bottom: 8px; display: flex; justify-content: space-between;">
+            <span>Featured Short Films & Originals</span>
+            <span style="color: #b3d332; font-size: 7pt;">See All →</span>
+          </div>
+          <div class="web-cards-grid">
+            <div class="card-item">
+              <div class="card-thumb"><span class="card-badge-pill">FREE</span>THE FLAME</div>
+              <div class="card-body">
+                <div class="card-txt-title">The Flame</div>
+                <div class="card-txt-sub">Short Film • 30m</div>
+              </div>
+            </div>
+            <div class="card-item">
+              <div class="card-thumb"><span class="card-badge-pill">PAID</span>ATHIJEEVITHA</div>
+              <div class="card-body">
+                <div class="card-txt-title">Athijeevitha</div>
+                <div class="card-txt-sub">Short Film • 24m</div>
+              </div>
+            </div>
+            <div class="card-item">
+              <div class="card-thumb"><span class="card-badge-pill">FREE</span>WHEELS</div>
+              <div class="card-body">
+                <div class="card-txt-title">Wheels</div>
+                <div class="card-txt-sub">Short Film • 18m</div>
+              </div>
+            </div>
+            <div class="card-item">
+              <div class="card-thumb"><span class="card-badge-pill">PAID</span>KASHI</div>
+              <div class="card-body">
+                <div class="card-txt-title">Kashi</div>
+                <div class="card-txt-sub">Short Film • 35m</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="page-footer">
+      <span>LEMO OTT Desktop Specification</span>
+      <span>12-Column Responsive Layout</span>
+    </div>
+  </div>
+
+  <!-- ==================== PAGE 4: MOBILE APK & IOS ARTBOARDS ==================== -->
+  <div class="doc-page">
+    <div class="page-header">
+      <div class="brand-logo">LEMO<span>OTT</span></div>
+      <div class="doc-meta">Mobile APK & iOS UI • Page 4</div>
+    </div>
+
+    <div>
+      <h2 class="section-title">Mobile App Screens (Android APK & iOS 390 × 844)</h2>
+      
+      <div class="mobile-tri-grid">
+        
+        <!-- Screen 1: Home -->
+        <div class="phone-box">
+          <div class="phone-notch-bar"><div class="phone-cam"></div></div>
+          <div class="phone-screen-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+              <span style="font-weight: 900; font-size: 8.5pt; color: #fff;">LEMO<span style="color: #b3d332;">OTT</span></span>
+              <span style="font-size: 7.5pt;">🔍 🔔</span>
+            </div>
+
+            <div style="height: 120px; background: linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.9) 100%), #14161f; border-radius: 10px; padding: 10px; display: flex; flex-direction: column; justify-content: flex-end; margin-bottom: 12px; border: 1px solid rgba(255,255,255,0.08);">
+              <span style="color: #b3d332; font-size: 5.5pt; font-weight: 800;">TRENDING NOW</span>
+              <div style="font-size: 9pt; font-weight: 900; color: #fff;">THE FLAME</div>
+              <div style="font-size: 6pt; color: #94a3b8; margin-bottom: 6px;">Short Film • Malayalam</div>
+              <div style="background: #b3d332; color: #000; font-size: 6pt; font-weight: 800; padding: 2px 8px; border-radius: 999px; width: fit-content;">▶ Watch</div>
+            </div>
+
+            <div style="font-size: 7.5pt; font-weight: 800; color: #fff; margin-bottom: 6px;">Trending Short Films</div>
+            <div style="display: flex; gap: 6px;">
+              <div style="width: 70px; background: #14161f; border-radius: 6px; overflow: hidden; border: 1px solid rgba(255,255,255,0.06);">
+                <div style="height: 75px; background: #1d1f2b; display: flex; align-items: center; justify-content: center; font-size: 5.5pt; color: #64748b;">FLAME</div>
+                <div style="padding: 3px; font-size: 5.5pt; font-weight: 700; color: #fff;">The Flame</div>
+              </div>
+              <div style="width: 70px; background: #14161f; border-radius: 6px; overflow: hidden; border: 1px solid rgba(255,255,255,0.06);">
+                <div style="height: 75px; background: #1d1f2b; display: flex; align-items: center; justify-content: center; font-size: 5.5pt; color: #64748b;">ATHI</div>
+                <div style="padding: 3px; font-size: 5.5pt; font-weight: 700; color: #fff;">Athijeevitha</div>
+              </div>
+            </div>
+          </div>
+          <div class="phone-bottom-nav">
+            <span class="active">🏠 Home</span>
+            <span>🎬 Shorts</span>
+            <span>📺 Live TV</span>
+            <span>👤 Profile</span>
+          </div>
+        </div>
+
+        <!-- Screen 2: Pocket Reels -->
+        <div class="phone-box">
+          <div class="phone-notch-bar"><div class="phone-cam"></div></div>
+          <div class="phone-screen-content" style="background: linear-gradient(180deg, #101118 0%, #000 100%); justify-content: space-between; padding-bottom: 45px;">
+            <div style="text-align: center; font-weight: 800; font-size: 7pt; color: #fff; border-bottom: 1.5px solid #b3d332; width: fit-content; margin: 0 auto; padding-bottom: 2px;">
+              Pocket Reels
+            </div>
+
+            <div style="margin-left: auto; display: flex; flex-direction: column; gap: 10px; align-items: center;">
+              <div style="width: 28px; height: 28px; background: rgba(0,0,0,0.6); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 8pt; border: 1px solid rgba(255,255,255,0.2);">❤️</div>
+              <span style="font-size: 5.5pt; font-weight: 700;">14K</span>
+              <div style="width: 28px; height: 28px; background: rgba(0,0,0,0.6); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 8pt; border: 1px solid rgba(255,255,255,0.2);">💬</div>
+              <span style="font-size: 5.5pt; font-weight: 700;">420</span>
+            </div>
+
+            <div>
+              <div style="font-size: 7pt; font-weight: 800; color: #fff;">@lemo_originals • Ep 1</div>
+              <div style="font-size: 6pt; color: #cbd5e1; line-height: 1.3;">Thrilling suspense in this 9:16 Pocket Reel! #LemoOTT</div>
+            </div>
+          </div>
+          <div class="phone-bottom-nav">
+            <span>🏠 Home</span>
+            <span class="active">🎬 Shorts</span>
+            <span>📺 Live TV</span>
+            <span>👤 Profile</span>
+          </div>
+        </div>
+
+        <!-- Screen 3: Details & Player -->
+        <div class="phone-box">
+          <div class="phone-notch-bar"><div class="phone-cam"></div></div>
+          <div class="phone-screen-content" style="padding: 0 0 45px 0;">
+            <div style="height: 110px; background: #000; display: flex; align-items: center; justify-content: center; position: relative;">
+              <span style="color: #b3d332; font-size: 14pt;">▶</span>
+              <span style="position: absolute; bottom: 4px; left: 6px; font-size: 5.5pt; color: #aaa;">04:15 / 30:00</span>
+              <span style="position: absolute; top: 4px; right: 6px; font-size: 5.5pt; background: rgba(0,0,0,0.6); padding: 1px 4px; border-radius: 2px;">1080p</span>
+            </div>
+            
+            <div style="padding: 10px;">
+              <div style="font-size: 9pt; font-weight: 900; color: #fff;">THE FLAME</div>
+              <div style="font-size: 6pt; color: #64748b; margin-bottom: 8px;">2026 • 30m • Short Film • Malayalam</div>
+              
+              <div style="display: flex; gap: 6px; margin-bottom: 10px;">
+                <div style="flex: 1; background: #b3d332; color: #000; font-size: 6.5pt; font-weight: 800; padding: 4px; border-radius: 4px; text-align: center;">▶ Resume</div>
+                <div style="background: rgba(255,255,255,0.08); color: #fff; font-size: 6.5pt; font-weight: 700; padding: 4px 8px; border-radius: 4px;">📥 Download</div>
+              </div>
+
+              <div style="font-size: 6.5pt; color: #cbd5e1; line-height: 1.4;">
+                As a girl steps into adolescence, a fire within her sparked in childhood intensifies under the gaze of society...
+              </div>
+            </div>
+          </div>
+          <div class="phone-bottom-nav">
+            <span>🏠 Home</span>
+            <span>🎬 Shorts</span>
+            <span>📺 Live TV</span>
+            <span class="active">👤 Profile</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="page-footer">
+      <span>LEMO OTT Mobile UI Framework</span>
+      <span>Unified React Native Architecture</span>
+    </div>
+  </div>
+
 </body>
 </html>
