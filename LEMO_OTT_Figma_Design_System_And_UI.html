@@ -889,17 +889,17 @@
     }
 
     /* =========================================================================
-       COLUMN 2: 8-SCREEN COMPLETE MOBILE APK & IOS SUITE
+       COLUMN 2: 8-SCREEN ACCURATE MOBILE APK & IOS APPLICATION SUITE
        ========================================================================= */
     .mobile-suite-frame {
-      width: 1420px;
+      width: 1440px;
       background: #08080b;
       border-radius: 20px;
       border: 1px solid rgba(255, 255, 255, 0.1);
       padding: 36px;
       display: flex;
       flex-direction: column;
-      gap: 28px;
+      gap: 32px;
     }
 
     .mobile-phones-grid-4 {
@@ -909,12 +909,12 @@
     }
 
     .phone-chassis {
-      width: 320px;
-      height: 650px;
+      width: 324px;
+      height: 680px;
       background: #000000;
-      border-radius: 38px;
-      border: 6px solid #1c1d24;
-      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.1);
+      border-radius: 42px;
+      border: 7px solid #1c1d24;
+      box-shadow: 0 30px 70px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(255, 255, 255, 0.12);
       position: relative;
       overflow: hidden;
       display: flex;
@@ -926,14 +926,15 @@
       top: 10px;
       left: 50%;
       transform: translateX(-50%);
-      width: 90px;
-      height: 18px;
+      width: 96px;
+      height: 20px;
       background: #000;
       border-radius: 20px;
       z-index: 100;
       display: flex;
       align-items: center;
       justify-content: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.8);
     }
 
     .phone-camera-lens {
@@ -950,7 +951,8 @@
       background: #000000;
       display: flex;
       flex-direction: column;
-      padding-top: 32px;
+      padding-top: 36px;
+      padding-bottom: 70px;
       position: relative;
     }
 
@@ -958,139 +960,329 @@
       display: none;
     }
 
-    /* Mobile Bottom Tab Bar */
-    .mobile-tab-bar {
-      height: 54px;
-      background: rgba(0, 0, 0, 0.96);
-      backdrop-filter: blur(16px);
-      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    /* REAL FLOATING GLASS TAB BAR (Matching TabNavigator.js) */
+    .mobile-floating-dock-wrapper {
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      bottom: 12px;
+      z-index: 99;
       display: flex;
-      align-items: center;
-      justify-content: space-around;
-      padding: 0 10px;
-      position: sticky;
-      bottom: 0;
-      z-index: 90;
+      justify-content: center;
     }
 
-    .m-tab-item {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 3px;
-      color: #808080;
-      font-size: 8.5px;
-      font-weight: 700;
-      text-decoration: none;
-    }
-
-    .m-tab-item.active {
-      color: var(--accent-lime);
-    }
-
-    .m-tab-item svg {
-      width: 16px;
-      height: 16px;
-      fill: currentColor;
-    }
-
-    /* Mobile Screen 1: Home */
-    .m-home-header {
+    .mobile-floating-dock {
+      width: 100%;
+      background: rgba(8, 8, 12, 0.75);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 28px;
+      padding: 6px 10px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 8px 14px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8), 0 0 1px rgba(255, 255, 255, 0.3);
     }
 
-    .m-brand-logo {
-      font-size: 16px;
+    .m-dock-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      color: #94a3b8;
+      font-size: 8px;
+      font-weight: 700;
+      text-decoration: none;
+      flex: 1;
+    }
+
+    .m-dock-btn.active {
+      color: var(--accent-lime);
+      font-weight: 800;
+    }
+
+    .m-dock-btn span {
+      font-size: 13px;
+    }
+
+    /* REAL MOBILE HOME SCREEN COMPONENTS */
+    .m-app-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 16px;
+      background: #000;
+    }
+
+    .m-brand-text {
+      font-size: 17px;
       font-weight: 900;
-      letter-spacing: -0.4px;
+      letter-spacing: -0.5px;
+      color: #fff;
     }
 
-    .m-hero-card {
-      margin: 8px 12px;
-      height: 170px;
-      background: linear-gradient(180deg, rgba(0,0,0,0.1) 0%, #000 100%), #151622;
-      border-radius: 12px;
-      padding: 12px;
+    .m-brand-text span {
+      color: var(--accent-lime);
+    }
+
+    .m-search-circle-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      color: #fff;
+    }
+
+    /* Mobile Hero Slider with Real IMDb Circular Ring */
+    .m-slider-banner {
+      height: 200px;
+      background: linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.95) 100%),
+                  radial-gradient(circle at 80% 30%, rgba(179,211,50,0.3) 0%, transparent 60%),
+                  #12131c;
+      margin: 0 12px 14px;
+      border-radius: 14px;
+      padding: 14px;
       display: flex;
       flex-direction: column;
       justify-content: flex-end;
-      border: 1px solid rgba(255,255,255,0.08);
+      position: relative;
+      border: 1px solid rgba(255, 255, 255, 0.08);
     }
 
-    .m-rail-row {
+    .m-imdb-circle-badge {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: #000;
+      border: 2px solid var(--accent-lime);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 900;
+      color: #fff;
+      box-shadow: 0 0 10px var(--accent-lime-glow);
+    }
+
+    .m-slider-dots-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      margin-bottom: 12px;
+    }
+
+    .m-dot-pill {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.25);
+    }
+
+    .m-dot-pill.active {
+      width: 16px;
+      border-radius: 4px;
+      background: var(--accent-lime);
+    }
+
+    /* Mobile Quick Links Horizontal Bar */
+    .m-quick-links-bar {
+      display: flex;
+      gap: 12px;
+      padding: 0 14px;
+      overflow-x: auto;
+      margin-bottom: 18px;
+    }
+
+    .m-quick-link-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      min-width: 50px;
+    }
+
+    .m-quick-icon-round {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+
+    .m-quick-label {
+      font-size: 9px;
+      font-weight: 700;
+      color: #cbd5e1;
+      white-space: nowrap;
+    }
+
+    /* Mobile Section Rails */
+    .m-section-block {
+      padding: 0 14px;
+      margin-bottom: 18px;
+    }
+
+    .m-section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .m-section-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .m-see-all {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: var(--accent-lime);
+    }
+
+    .m-cards-horizontal {
       display: flex;
       gap: 10px;
-      padding: 0 12px;
       overflow-x: auto;
-      margin-bottom: 14px;
     }
 
-    .m-poster-box {
+    .m-poster-box-2x3 {
       min-width: 95px;
-      height: 135px;
-      background: #111219;
-      border-radius: 8px;
-      border: 1px solid rgba(255,255,255,0.08);
+      height: 140px;
+      background: #111218;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
       position: relative;
       overflow: hidden;
       display: flex;
       flex-direction: column;
       justify-content: flex-end;
-      padding: 6px;
+      padding: 8px;
     }
 
-    /* Mobile Screen 2: Shorts / Pocket Reels */
-    .m-shorts-container {
-      height: 100%;
-      background: linear-gradient(180deg, #10111d 0%, #000000 100%);
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      padding: 12px;
-      position: relative;
-    }
-
-    .m-shorts-actions-rail {
+    .m-pill-tag-free {
       position: absolute;
-      right: 12px;
-      bottom: 60px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 14px;
+      top: 6px;
+      left: 6px;
+      background: rgba(0, 0, 0, 0.7);
+      border: 1px solid var(--accent-lime);
+      color: var(--accent-lime);
+      font-size: 7px;
+      font-weight: 900;
+      padding: 2px 5px;
+      border-radius: 3px;
     }
 
-    .m-action-circle {
-      width: 36px;
-      height: 36px;
+    .m-pill-tag-vip {
+      position: absolute;
+      top: 6px;
+      left: 6px;
+      background: rgba(0, 0, 0, 0.7);
+      border: 1px solid var(--accent-gold);
+      color: var(--accent-gold);
+      font-size: 7px;
+      font-weight: 900;
+      padding: 2px 5px;
+      border-radius: 3px;
+    }
+
+    /* DETAILS SCREEN & PULSING HERO WAVE */
+    .m-details-hero-box {
+      height: 190px;
+      background: linear-gradient(180deg, rgba(0,0,0,0.2) 0%, #000 100%), #141420;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .m-back-circle {
+      position: absolute;
+      top: 10px;
+      left: 12px;
+      width: 32px;
+      height: 32px;
       border-radius: 50%;
       background: rgba(0, 0, 0, 0.6);
       backdrop-filter: blur(8px);
-      border: 1px solid rgba(255, 255, 255, 0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      color: #fff;
+      z-index: 10;
+    }
+
+    .m-pulse-wave-ring {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--accent-lime);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 0 10px rgba(179, 211, 50, 0.25), 0 0 30px var(--accent-lime-glow);
+      cursor: pointer;
+    }
+
+    /* POCKET REELS ACTIONS RAIL */
+    .m-reels-screen-vert {
+      height: 100%;
+      background: linear-gradient(180deg, #10111a 0%, #000000 100%);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 12px 14px 20px;
+      position: relative;
+    }
+
+    .m-reels-actions-col {
+      position: absolute;
+      right: 12px;
+      bottom: 75px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .m-reel-action-bubble {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 14px;
     }
 
-    /* Mobile Screen 3: Player & Details */
-    .m-player-box {
-      height: 180px;
-      background: #000;
+    .m-audio-disk-spin {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #222;
+      border: 3px solid #000;
+      box-shadow: 0 0 8px var(--accent-lime);
       display: flex;
       align-items: center;
       justify-content: center;
-      position: relative;
-    }
-
-    .m-details-pad {
-      padding: 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
+      font-size: 9px;
     }
 
     /* =========================================================================
@@ -1704,70 +1896,100 @@
             <div class="phone-notch-island"><div class="phone-camera-lens"></div></div>
             <div class="phone-screen-container">
               
-              <div class="m-home-header">
-                <div class="m-brand-logo">LEMO<span style="color: var(--accent-lime);">OTT</span></div>
-                <div style="display: flex; gap: 10px; font-size: 14px;">
-                  <span>🔍</span>
-                  <span>🔔</span>
+              <!-- Header -->
+              <div class="m-app-header">
+                <div class="m-brand-text">LEMO<span>OTT</span></div>
+                <div class="m-search-circle-btn">🔍</div>
+              </div>
+
+              <!-- Slider Hero with SVG Circular IMDb Ring -->
+              <div class="m-slider-banner">
+                <div class="m-imdb-circle-badge">
+                  <span>8.9</span>
+                </div>
+                <span class="m-pill-tag-vip" style="position: static; margin-bottom: 4px; width: fit-content;">TRENDING #1</span>
+                <div style="font-size: 15px; font-weight: 900; line-height: 1.1;">THE FLAME</div>
+                <div style="font-size: 9.5px; color: var(--text-secondary); margin: 3px 0 8px;">Malayalam • 30 mins • 4K UHD</div>
+                <button class="btn-play-primary" style="padding: 6px 14px; font-size: 10px; border-radius: 6px; width: fit-content;">▶ Watch Movie</button>
+              </div>
+
+              <!-- Slider Dots Indicator -->
+              <div class="m-slider-dots-row">
+                <div class="m-dot-pill active"></div>
+                <div class="m-dot-pill"></div>
+                <div class="m-dot-pill"></div>
+                <div class="m-dot-pill"></div>
+              </div>
+
+              <!-- Quick Links Scroll Row -->
+              <div class="m-quick-links-bar">
+                <div class="m-quick-link-col">
+                  <div class="m-quick-icon-round" style="background: rgba(255, 149, 0, 0.18); color: #ff9500;">🎬</div>
+                  <span class="m-quick-label">Movie</span>
+                </div>
+                <div class="m-quick-link-col">
+                  <div class="m-quick-icon-round" style="background: rgba(175, 82, 222, 0.18); color: #af52de;">📺</div>
+                  <span class="m-quick-label">Shows</span>
+                </div>
+                <div class="m-quick-link-col">
+                  <div class="m-quick-icon-round" style="background: rgba(255, 45, 85, 0.18); color: #ff2d55;">📱</div>
+                  <span class="m-quick-label">Shorts</span>
+                </div>
+                <div class="m-quick-link-col">
+                  <div class="m-quick-icon-round" style="background: rgba(179, 211, 50, 0.18); color: var(--accent-lime);">📲</div>
+                  <span class="m-quick-label">Pocket Reel</span>
+                </div>
+                <div class="m-quick-link-col">
+                  <div class="m-quick-icon-round" style="background: rgba(255, 59, 48, 0.18); color: #ff3b30;">🔴</div>
+                  <span class="m-quick-label">Live TV</span>
+                </div>
+                <div class="m-quick-link-col">
+                  <div class="m-quick-icon-round" style="background: rgba(0, 122, 255, 0.18); color: #007aff;">🏆</div>
+                  <span class="m-quick-label">Sports</span>
+                </div>
+                <div class="m-quick-link-col">
+                  <div class="m-quick-icon-round" style="background: rgba(179, 211, 50, 0.18); color: var(--accent-lime);">💳</div>
+                  <span class="m-quick-label">Plans</span>
                 </div>
               </div>
 
-              <!-- Mobile Hero -->
-              <div class="m-hero-card">
-                <span class="poster-badge vip" style="position: static; margin-bottom: 4px; width: fit-content;">TRENDING #1</span>
-                <div style="font-size: 14px; font-weight: 900;">THE FLAME</div>
-                <div style="font-size: 10px; color: var(--text-secondary); margin-bottom: 8px;">Malayalam • 30 mins • 4K</div>
-                <button class="btn-play-primary" style="padding: 6px 12px; font-size: 10.5px; border-radius: 6px;">▶ Watch Movie</button>
-              </div>
-
-              <!-- Rail: Short Films -->
-              <div style="padding: 0 12px; margin-bottom: 6px; font-size: 11px; font-weight: 800;">🔥 Top Short Films</div>
-              <div class="m-rail-row">
-                <div class="m-poster-box">
-                  <div style="font-size: 9px; font-weight: 800;">Athi (Bound)</div>
+              <!-- Section: Top Short Films -->
+              <div class="m-section-block">
+                <div class="m-section-head">
+                  <span class="m-section-title">🔥 Top Short Films</span>
+                  <span class="m-see-all">See All &gt;</span>
                 </div>
-                <div class="m-poster-box">
-                  <div style="font-size: 9px; font-weight: 800;">Shadows</div>
-                </div>
-                <div class="m-poster-box">
-                  <div style="font-size: 9px; font-weight: 800;">Komban</div>
-                </div>
-              </div>
-
-              <!-- Rail: Pocket Reels -->
-              <div style="padding: 0 12px; margin-bottom: 6px; font-size: 11px; font-weight: 800;">📱 Pocket Reels (9:16)</div>
-              <div class="m-rail-row">
-                <div class="m-poster-box" style="height: 110px; background: #2b1118;">
-                  <div style="font-size: 8.5px; font-weight: 800;">Ep 1: Secret</div>
-                </div>
-                <div class="m-poster-box" style="height: 110px; background: #13243a;">
-                  <div style="font-size: 8.5px; font-weight: 800;">Ep 2: College</div>
-                </div>
-                <div class="m-poster-box" style="height: 110px; background: #1b382b;">
-                  <div style="font-size: 8.5px; font-weight: 800;">Ep 3: City</div>
+                <div class="m-cards-horizontal">
+                  <div class="m-poster-box-2x3" style="background: linear-gradient(180deg, #241a15 0%, #0d0e14 100%);">
+                    <span class="m-pill-tag-free">FREE</span>
+                    <div style="font-size: 9px; font-weight: 800;">Athi (Bound)</div>
+                    <div style="font-size: 7.5px; color: #888;">24m • Drama</div>
+                  </div>
+                  <div class="m-poster-box-2x3" style="background: linear-gradient(180deg, #152233 0%, #0d0e14 100%);">
+                    <span class="m-pill-tag-vip">VIP</span>
+                    <div style="font-size: 9px; font-weight: 800;">Shadows</div>
+                    <div style="font-size: 7.5px; color: #888;">42m • Crime</div>
+                  </div>
+                  <div class="m-poster-box-2x3" style="background: linear-gradient(180deg, #11291f 0%, #0d0e14 100%);">
+                    <span class="m-pill-tag-free">FREE</span>
+                    <div style="font-size: 9px; font-weight: 800;">Komban</div>
+                    <div style="font-size: 7.5px; color: #888;">35m • Action</div>
+                  </div>
                 </div>
               </div>
 
             </div>
 
-            <!-- Bottom Tabs -->
-            <div class="mobile-tab-bar">
-              <a href="#" class="m-tab-item active">
-                <span>🏠</span>
-                <span>Home</span>
-              </a>
-              <a href="#" class="m-tab-item">
-                <span>🎬</span>
-                <span>Reels</span>
-              </a>
-              <a href="#" class="m-tab-item">
-                <span>📺</span>
-                <span>Live TV</span>
-              </a>
-              <a href="#" class="m-tab-item">
-                <span>👤</span>
-                <span>Profile</span>
-              </a>
+            <!-- Floating Glass Dock Tab Bar -->
+            <div class="mobile-floating-dock-wrapper">
+              <div class="mobile-floating-dock">
+                <a href="#" class="m-dock-btn active"><span>🏠</span>Home</a>
+                <a href="#" class="m-dock-btn"><span>🎬</span>Movies</a>
+                <a href="#" class="m-dock-btn"><span>📺</span>Shows</a>
+                <a href="#" class="m-dock-btn"><span>📲</span>Reels</a>
+                <a href="#" class="m-dock-btn"><span>🔖</span>Saved</a>
+                <a href="#" class="m-dock-btn"><span>👤</span>Profile</a>
+              </div>
             </div>
           </div>
 
@@ -1775,87 +1997,136 @@
           <!-- SCREEN 2: POCKET REELS (9:16 VERTICAL PLAYER) -->
           <div class="phone-chassis">
             <div class="phone-notch-island"><div class="phone-camera-lens"></div></div>
-            <div class="phone-screen-container" style="padding: 32px 0 0 0;">
+            <div class="phone-screen-container" style="padding-top: 36px;">
               
-              <div class="m-shorts-container">
-                <div style="display: flex; justify-content: center; gap: 16px; font-size: 11px; font-weight: 800;">
+              <div class="m-reels-screen-vert">
+                <!-- Top Tabs -->
+                <div style="display: flex; justify-content: center; gap: 18px; font-size: 11px; font-weight: 800;">
                   <span style="color: var(--text-secondary);">Following</span>
-                  <span style="color: #fff; border-bottom: 2px solid var(--accent-lime); padding-bottom: 2px;">For You</span>
+                  <span style="color: #fff; border-bottom: 2px solid var(--accent-lime); padding-bottom: 3px;">For You</span>
                 </div>
 
-                <div class="m-shorts-actions-rail">
-                  <div class="m-action-circle">❤️</div>
-                  <span style="font-size: 9px; font-weight: 800;">48.2K</span>
-                  <div class="m-action-circle">💬</div>
-                  <span style="font-size: 9px; font-weight: 800;">1.4K</span>
-                  <div class="m-action-circle">↗️</div>
-                  <span style="font-size: 9px; font-weight: 800;">Share</span>
-                  <div class="m-action-circle" style="border-color: var(--accent-lime);">👑</div>
+                <!-- Right Action Rail -->
+                <div class="m-reels-actions-col">
+                  <div class="m-reel-action-bubble">❤️</div>
+                  <span style="font-size: 8.5px; font-weight: 800;">48.2K</span>
+                  
+                  <div class="m-reel-action-bubble">💬</div>
+                  <span style="font-size: 8.5px; font-weight: 800;">1.4K</span>
+                  
+                  <div class="m-reel-action-bubble">↗️</div>
+                  <span style="font-size: 8.5px; font-weight: 800;">890</span>
+                  
+                  <div class="m-reel-action-bubble" style="border-color: var(--accent-gold); color: var(--accent-gold);">👑</div>
+                  
+                  <div class="m-audio-disk-spin">💿</div>
                 </div>
 
+                <!-- Bottom Creator Info & Action -->
                 <div>
-                  <div style="font-size: 11px; font-weight: 800; margin-bottom: 4px;">@lemo_originals • Ep 4</div>
-                  <div style="font-size: 10px; color: #ddd; margin-bottom: 8px;">The final twist uncovered in the woods! #LemoShorts #Malayalam</div>
-                  <div style="background: rgba(179,211,50,0.2); border: 1px solid var(--accent-lime); border-radius: 6px; padding: 4px 8px; font-size: 9px; font-weight: 800; width: fit-content;">▶ Watch Next Ep 5</div>
+                  <div style="font-size: 11px; font-weight: 800; margin-bottom: 3px; display: flex; align-items: center; gap: 6px;">
+                    @lemo_originals <span class="m-pill-tag-vip" style="position: static;">EPISODE 4</span>
+                  </div>
+                  <div style="font-size: 9.5px; color: #ddd; line-height: 1.35; margin-bottom: 8px;">
+                    The mysterious shadow reveals the truth deep in the valley! #LemoShorts #Malayalam
+                  </div>
+                  <div style="background: rgba(179,211,50,0.2); border: 1px solid var(--accent-lime); border-radius: 6px; padding: 5px 10px; font-size: 9.5px; font-weight: 800; width: fit-content; color: var(--accent-lime);">
+                    ▶ Watch Next Ep-5
+                  </div>
                 </div>
               </div>
 
             </div>
 
-            <!-- Bottom Tabs -->
-            <div class="mobile-tab-bar">
-              <a href="#" class="m-tab-item"><span>🏠</span><span>Home</span></a>
-              <a href="#" class="m-tab-item active"><span>🎬</span><span>Reels</span></a>
-              <a href="#" class="m-tab-item"><span>📺</span><span>Live TV</span></a>
-              <a href="#" class="m-tab-item"><span>👤</span><span>Profile</span></a>
+            <!-- Floating Glass Dock Tab Bar -->
+            <div class="mobile-floating-dock-wrapper">
+              <div class="mobile-floating-dock">
+                <a href="#" class="m-dock-btn"><span>🏠</span>Home</a>
+                <a href="#" class="m-dock-btn"><span>🎬</span>Movies</a>
+                <a href="#" class="m-dock-btn"><span>📺</span>Shows</a>
+                <a href="#" class="m-dock-btn active"><span>📲</span>Reels</a>
+                <a href="#" class="m-dock-btn"><span>🔖</span>Saved</a>
+                <a href="#" class="m-dock-btn"><span>👤</span>Profile</a>
+              </div>
             </div>
           </div>
 
 
-          <!-- SCREEN 3: VIDEO PLAYER & DETAILS -->
+          <!-- SCREEN 3: VIDEO PLAYER & DETAILS SCREEN -->
           <div class="phone-chassis">
             <div class="phone-notch-island"><div class="phone-camera-lens"></div></div>
-            <div class="phone-screen-container" style="padding-top: 32px;">
+            <div class="phone-screen-container" style="padding-top: 36px;">
               
-              <div class="m-player-box">
-                <span style="color: var(--accent-lime); font-size: 28px;">▶</span>
-                <span style="position: absolute; bottom: 6px; left: 10px; font-size: 8px; font-family: 'JetBrains Mono';">04:15 / 30:00 • 1080p</span>
+              <!-- Hero Player with Pulsing Lime Wave -->
+              <div class="m-details-hero-box">
+                <div class="m-back-circle">←</div>
+                <div class="m-pulse-wave-ring">
+                  <span style="font-size: 18px; color: #000; margin-left: 2px;">▶</span>
+                </div>
+                <span style="position: absolute; bottom: 8px; right: 10px; font-size: 8px; font-family: 'JetBrains Mono'; background: rgba(0,0,0,0.7); padding: 2px 6px; border-radius: 4px;">1080p FHD</span>
               </div>
 
-              <div class="m-details-pad">
+              <!-- Content Info -->
+              <div style="padding: 12px 14px; display: flex; flex-direction: column; gap: 10px;">
                 <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                   <div>
-                    <h4 style="font-size: 14px; font-weight: 900;">THE FLAME</h4>
-                    <p style="font-size: 10px; color: var(--text-secondary);">2026 • 30m • Mystery / Crime</p>
+                    <h4 style="font-size: 15px; font-weight: 900;">THE FLAME</h4>
+                    <p style="font-size: 9.5px; color: var(--text-secondary);">2026 • 30 mins • Mystery / Thriller</p>
                   </div>
-                  <span class="poster-badge free" style="position: static;">FREE 4K</span>
+                  <span class="m-pill-tag-vip" style="position: static; font-size: 8px;">👑 PREMIUM</span>
                 </div>
 
-                <div style="display: flex; gap: 8px;">
-                  <button class="btn-play-primary" style="flex: 1; padding: 7px; font-size: 10.5px; border-radius: 6px; justify-content: center;">▶ Resume Play</button>
-                  <button class="btn-secondary-watchlist" style="padding: 7px 12px; font-size: 10.5px; border-radius: 6px;">📥 Save</button>
+                <!-- Full-Width Play Button -->
+                <button class="btn-play-primary" style="width: 100%; justify-content: center; padding: 9px; font-size: 11px; border-radius: 8px;">
+                  ▶ Play Full Movie (4K)
+                </button>
+
+                <!-- Meta Sub-Row -->
+                <div style="display: flex; align-items: center; gap: 6px; font-size: 9px; color: var(--text-secondary);">
+                  <span style="color: #fff; font-weight: 800;">48.2K Views</span>
+                  <span>•</span>
+                  <span style="color: var(--accent-lime); font-weight: 800;">⭐ 4.8 (1.2K)</span>
+                  <span>•</span>
+                  <span style="color: #cbd5e1; font-weight: 700;">MALAYALAM</span>
                 </div>
 
-                <p style="font-size: 10px; color: #bbb; line-height: 1.4;">
-                  An intense investigation begins when a series of unexplained events disrupt a quiet high-range plantation town.
-                </p>
-
-                <div style="font-size: 10.5px; font-weight: 800; border-top: 1px solid #1a1a24; padding-top: 8px;">Cast & Crew</div>
+                <!-- Action Buttons -->
                 <div style="display: flex; gap: 8px;">
-                  <div style="width: 32px; height: 32px; border-radius: 50%; background: #222; display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 800;">AD</div>
-                  <div style="width: 32px; height: 32px; border-radius: 50%; background: #222; display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 800;">AN</div>
-                  <div style="width: 32px; height: 32px; border-radius: 50%; background: #222; display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 800;">GV</div>
+                  <div style="flex: 1; background: #111218; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 6px; text-align: center; font-size: 9.5px; font-weight: 700;">+ Watchlist</div>
+                  <div style="flex: 1; background: #111218; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 6px; text-align: center; font-size: 9.5px; font-weight: 700;">⭐ Rate</div>
+                  <div style="flex: 1; background: #111218; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 6px; text-align: center; font-size: 9.5px; font-weight: 700;">↗️ Share</div>
+                </div>
+
+                <!-- Cast Avatars -->
+                <div style="font-size: 10px; font-weight: 800; border-top: 1px solid #1a1a24; padding-top: 8px;">Cast & Director</div>
+                <div style="display: flex; gap: 8px;">
+                  <div style="display: flex; flex-direction: column; align-items: center; gap: 3px;">
+                    <div style="width: 32px; height: 32px; border-radius: 50%; background: #222; border: 1px solid #333; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800;">AD</div>
+                    <span style="font-size: 7.5px; color: #aaa;">Arjun D.</span>
+                  </div>
+                  <div style="display: flex; flex-direction: column; align-items: center; gap: 3px;">
+                    <div style="width: 32px; height: 32px; border-radius: 50%; background: #222; border: 1px solid #333; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800;">AN</div>
+                    <span style="font-size: 7.5px; color: #aaa;">Ananya N.</span>
+                  </div>
+                  <div style="display: flex; flex-direction: column; align-items: center; gap: 3px;">
+                    <div style="width: 32px; height: 32px; border-radius: 50%; background: #222; border: 1px solid #333; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800;">GV</div>
+                    <span style="font-size: 7.5px; color: #aaa;">Gautham</span>
+                  </div>
                 </div>
               </div>
 
             </div>
 
-            <!-- Bottom Tabs -->
-            <div class="mobile-tab-bar">
-              <a href="#" class="m-tab-item active"><span>🏠</span><span>Home</span></a>
-              <a href="#" class="m-tab-item"><span>🎬</span><span>Reels</span></a>
-              <a href="#" class="m-tab-item"><span>📺</span><span>Live TV</span></a>
-              <a href="#" class="m-tab-item"><span>👤</span><span>Profile</span></a>
+            <!-- Floating Glass Dock Tab Bar -->
+            <div class="mobile-floating-dock-wrapper">
+              <div class="mobile-floating-dock">
+                <a href="#" class="m-dock-btn active"><span>🏠</span>Home</a>
+                <a href="#" class="m-dock-btn"><span>🎬</span>Movies</a>
+                <a href="#" class="m-dock-btn"><span>📺</span>Shows</a>
+                <a href="#" class="m-dock-btn"><span>📲</span>Reels</a>
+                <a href="#" class="m-dock-btn"><span>🔖</span>Saved</a>
+                <a href="#" class="m-dock-btn"><span>👤</span>Profile</a>
+              </div>
             </div>
           </div>
 
@@ -1863,103 +2134,128 @@
           <!-- SCREEN 4: LIVE TV & SPORTS STREAMING -->
           <div class="phone-chassis">
             <div class="phone-notch-island"><div class="phone-camera-lens"></div></div>
-            <div class="phone-screen-container" style="padding-top: 32px;">
+            <div class="phone-screen-container" style="padding-top: 36px;">
               
-              <div class="m-player-box" style="height: 160px; background: #0c121c;">
-                <span class="live-pulse-badge" style="top: 8px; left: 8px;"><span class="live-pulse-dot"></span> LIVE NOW</span>
-                <span style="font-size: 14px; font-weight: 900;">LEMO SPORTS HD</span>
+              <!-- Live Video Stream -->
+              <div class="m-details-hero-box" style="height: 170px; background: #0b1118;">
+                <span class="live-pulse-badge" style="top: 10px; left: 10px;"><span class="live-pulse-dot"></span> LIVE 74'</span>
+                <span style="font-size: 15px; font-weight: 900; letter-spacing: -0.3px;">LEMO SPORTS HD</span>
               </div>
 
-              <div style="padding: 12px; display: flex; flex-direction: column; gap: 10px;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                  <div style="font-size: 12px; font-weight: 800;">Football Championship 2026</div>
-                  <span style="color: var(--accent-red); font-size: 10px; font-weight: 900;">LIVE 74'</span>
+              <!-- Live Scoreboard Card -->
+              <div style="padding: 12px 14px; display: flex; flex-direction: column; gap: 10px;">
+                <div style="background: #11121c; border: 1px solid #222436; border-radius: 10px; padding: 10px; display: flex; justify-content: space-around; align-items: center;">
+                  <div style="text-align: center;">
+                    <div style="font-size: 11px; font-weight: 900;">KERALA FC</div>
+                    <div style="font-size: 18px; font-weight: 900; color: var(--accent-lime);">2</div>
+                  </div>
+                  <span style="font-size: 10px; color: #888; font-weight: 800;">VS</span>
+                  <div style="text-align: center;">
+                    <div style="font-size: 11px; font-weight: 900;">GOA UTD</div>
+                    <div style="font-size: 18px; font-weight: 900; color: #fff;">1</div>
+                  </div>
                 </div>
 
-                <div style="background: #11121c; border: 1px solid #222436; border-radius: 8px; padding: 8px; display: flex; justify-content: space-around; align-items: center;">
-                  <div style="font-size: 11px; font-weight: 800;">KERALA FC <span style="color: var(--accent-lime);">2</span></div>
-                  <span style="font-size: 10px; color: #888;">VS</span>
-                  <div style="font-size: 11px; font-weight: 800;"><span style="color: #fff;">1</span> GOA UTD</div>
-                </div>
-
-                <div style="font-size: 11px; font-weight: 800; margin-top: 4px;">Other Live Channels</div>
+                <div style="font-size: 11px; font-weight: 800;">Other Live Channels</div>
                 
-                <div style="background: #0f1017; border-radius: 6px; padding: 8px; display: flex; justify-content: space-between; align-items: center;">
-                  <div style="font-size: 10px; font-weight: 800;">📺 LEMO News 24/7</div>
-                  <span style="font-size: 9px; color: var(--accent-lime);">▶ Switch</span>
+                <div style="background: #101118; border-radius: 8px; padding: 8px 10px; display: flex; justify-content: space-between; align-items: center;">
+                  <div>
+                    <div style="font-size: 10.5px; font-weight: 800;">📺 LEMO News 24/7</div>
+                    <div style="font-size: 8px; color: var(--accent-red);">● Prime Bulletin Live</div>
+                  </div>
+                  <span style="font-size: 9.5px; color: var(--accent-lime); font-weight: 800;">▶ Switch</span>
                 </div>
 
-                <div style="background: #0f1017; border-radius: 6px; padding: 8px; display: flex; justify-content: space-between; align-items: center;">
-                  <div style="font-size: 10px; font-weight: 800;">🎵 Music Wave 4K</div>
-                  <span style="font-size: 9px; color: var(--accent-lime);">▶ Switch</span>
+                <div style="background: #101118; border-radius: 8px; padding: 8px 10px; display: flex; justify-content: space-between; align-items: center;">
+                  <div>
+                    <div style="font-size: 10.5px; font-weight: 800;">🎵 Music Wave 4K</div>
+                    <div style="font-size: 8px; color: var(--accent-red);">● Non-stop Hits</div>
+                  </div>
+                  <span style="font-size: 9.5px; color: var(--accent-lime); font-weight: 800;">▶ Switch</span>
                 </div>
               </div>
 
             </div>
 
-            <!-- Bottom Tabs -->
-            <div class="mobile-tab-bar">
-              <a href="#" class="m-tab-item"><span>🏠</span><span>Home</span></a>
-              <a href="#" class="m-tab-item"><span>🎬</span><span>Reels</span></a>
-              <a href="#" class="m-tab-item active"><span>📺</span><span>Live TV</span></a>
-              <a href="#" class="m-tab-item"><span>👤</span><span>Profile</span></a>
+            <!-- Floating Glass Dock Tab Bar -->
+            <div class="mobile-floating-dock-wrapper">
+              <div class="mobile-floating-dock">
+                <a href="#" class="m-dock-btn"><span>🏠</span>Home</a>
+                <a href="#" class="m-dock-btn"><span>🎬</span>Movies</a>
+                <a href="#" class="m-dock-btn"><span>📺</span>Shows</a>
+                <a href="#" class="m-dock-btn"><span>📲</span>Reels</a>
+                <a href="#" class="m-dock-btn"><span>🔖</span>Saved</a>
+                <a href="#" class="m-dock-btn active"><span>👤</span>Profile</a>
+              </div>
             </div>
           </div>
 
         </div>
 
 
-        <!-- SECOND ROW OF MOBILE SCREENS (Screens 5-8) -->
+        <!-- SECOND ROW OF ACCURATE MOBILE SCREENS (Screens 5-8) -->
         <div class="mobile-phones-grid-4">
 
           <!-- SCREEN 5: VIP SUBSCRIPTION & PHONEPE CHECKOUT -->
           <div class="phone-chassis">
             <div class="phone-notch-island"><div class="phone-camera-lens"></div></div>
-            <div class="phone-screen-container">
+            <div class="phone-screen-container" style="padding-top: 36px;">
               
-              <div style="padding: 12px; display: flex; flex-direction: column; gap: 10px;">
-                <div style="text-align: center; margin-bottom: 4px;">
-                  <span style="font-size: 20px;">👑</span>
-                  <h4 style="font-size: 14px; font-weight: 900; margin-top: 4px;">Upgrade to LEMO VIP</h4>
-                  <p style="font-size: 9.5px; color: var(--text-secondary);">Unlimited 4K Ad-Free Streaming</p>
+              <div style="padding: 12px 14px; display: flex; flex-direction: column; gap: 10px;">
+                <div style="text-align: center; margin-bottom: 2px;">
+                  <span style="font-size: 22px;">👑</span>
+                  <h4 style="font-size: 14px; font-weight: 900; margin-top: 2px;">Upgrade to LEMO VIP</h4>
+                  <p style="font-size: 9px; color: var(--text-secondary);">Unlimited 4K Ad-Free Streaming</p>
                 </div>
 
-                <!-- Plan Option 1 -->
-                <div style="background: #11121a; border: 1.5px solid var(--accent-lime); border-radius: 10px; padding: 10px; display: flex; justify-content: space-between; align-items: center;">
+                <!-- Monthly Plan -->
+                <div style="background: #12131d; border: 1.5px solid var(--accent-lime); border-radius: 10px; padding: 10px; display: flex; justify-content: space-between; align-items: center;">
                   <div>
-                    <div style="font-size: 11px; font-weight: 800; color: var(--accent-lime);">Monthly Pass</div>
-                    <div style="font-size: 9px; color: #888;">Auto-renews monthly</div>
+                    <div style="font-size: 11px; font-weight: 900; color: var(--accent-lime);">Monthly VIP</div>
+                    <div style="font-size: 8.5px; color: #888;">Auto-renews monthly • Cancel anytime</div>
                   </div>
-                  <div style="font-size: 14px; font-weight: 900;">₹99</div>
+                  <div style="font-size: 15px; font-weight: 900;">₹99</div>
                 </div>
 
-                <!-- Plan Option 2 -->
-                <div style="background: #0d0e14; border: 1px solid #222; border-radius: 10px; padding: 10px; display: flex; justify-content: space-between; align-items: center;">
+                <!-- Annual Plan -->
+                <div style="background: #0e0f16; border: 1px solid #222; border-radius: 10px; padding: 10px; display: flex; justify-content: space-between; align-items: center;">
                   <div>
-                    <div style="font-size: 11px; font-weight: 800; color: var(--accent-gold);">Annual Pass Pro</div>
-                    <div style="font-size: 9px; color: #888;">Save 60% yearly</div>
+                    <div style="font-size: 11px; font-weight: 900; color: var(--accent-gold);">Annual VIP Pro</div>
+                    <div style="font-size: 8.5px; color: #888;">Save 60% yearly pass</div>
                   </div>
-                  <div style="font-size: 14px; font-weight: 900;">₹499</div>
+                  <div style="font-size: 15px; font-weight: 900;">₹499</div>
                 </div>
 
-                <div style="font-size: 10px; font-weight: 800; margin-top: 4px;">Payment Method</div>
-                <div style="background: #151620; border-radius: 8px; padding: 8px; display: flex; align-items: center; gap: 8px; font-size: 10.5px; font-weight: 800;">
-                  <span style="color: #6739b7; font-size: 14px;">🟣</span> PhonePe / UPI Direct
+                <!-- Features checklist -->
+                <div style="font-size: 9px; color: #ccc; display: flex; flex-direction: column; gap: 4px; margin: 4px 0;">
+                  <div><span style="color: var(--accent-lime); font-weight: 900;">✓</span> 4K Ultra HD + Dolby 5.1</div>
+                  <div><span style="color: var(--accent-lime); font-weight: 900;">✓</span> 100% Ad-Free Playback</div>
+                  <div><span style="color: var(--accent-lime); font-weight: 900;">✓</span> Offline Video Downloads</div>
                 </div>
 
-                <button class="btn-play-primary" style="width: 100%; justify-content: center; padding: 10px; font-size: 11px; border-radius: 8px; margin-top: 8px;">
-                  Pay ₹99 & Activate VIP
+                <!-- Payment Method -->
+                <div style="font-size: 9.5px; font-weight: 800;">Payment Gateway</div>
+                <div style="background: #151622; border-radius: 8px; padding: 8px 10px; display: flex; align-items: center; gap: 8px; font-size: 10px; font-weight: 800;">
+                  <span style="font-size: 14px;">🟣</span> PhonePe / UPI Direct
+                </div>
+
+                <button class="btn-play-primary" style="width: 100%; justify-content: center; padding: 10px; font-size: 11px; border-radius: 8px; margin-top: 4px;">
+                  ⚡ Pay ₹99 & Activate VIP
                 </button>
               </div>
 
             </div>
 
-            <!-- Bottom Tabs -->
-            <div class="mobile-tab-bar">
-              <a href="#" class="m-tab-item"><span>🏠</span><span>Home</span></a>
-              <a href="#" class="m-tab-item"><span>🎬</span><span>Reels</span></a>
-              <a href="#" class="m-tab-item"><span>📺</span><span>Live TV</span></a>
-              <a href="#" class="m-tab-item active"><span>👤</span><span>Profile</span></a>
+            <!-- Floating Glass Dock Tab Bar -->
+            <div class="mobile-floating-dock-wrapper">
+              <div class="mobile-floating-dock">
+                <a href="#" class="m-dock-btn"><span>🏠</span>Home</a>
+                <a href="#" class="m-dock-btn"><span>🎬</span>Movies</a>
+                <a href="#" class="m-dock-btn"><span>📺</span>Shows</a>
+                <a href="#" class="m-dock-btn"><span>📲</span>Reels</a>
+                <a href="#" class="m-dock-btn"><span>🔖</span>Saved</a>
+                <a href="#" class="m-dock-btn active"><span>👤</span>Profile</a>
+              </div>
             </div>
           </div>
 
@@ -1967,134 +2263,151 @@
           <!-- SCREEN 6: USER PROFILE & DOWNLOADS -->
           <div class="phone-chassis">
             <div class="phone-notch-island"><div class="phone-camera-lens"></div></div>
-            <div class="phone-screen-container">
+            <div class="phone-screen-container" style="padding-top: 36px;">
               
-              <div style="padding: 14px; display: flex; flex-direction: column; gap: 12px;">
+              <div style="padding: 12px 14px; display: flex; flex-direction: column; gap: 10px;">
                 <div style="display: flex; align-items: center; gap: 10px;">
                   <div class="user-avatar-badge" style="width: 44px; height: 44px; font-size: 16px;">GM</div>
                   <div>
                     <div style="font-size: 13px; font-weight: 900;">Geo Manu</div>
-                    <div style="font-size: 9.5px; color: var(--accent-lime); font-weight: 800;">★ VIP ACTIVE MEMBER</div>
+                    <div style="font-size: 9px; color: var(--accent-lime); font-weight: 800;">★ VIP ACTIVE SUBSCRIBER</div>
                   </div>
                 </div>
 
-                <div style="background: #111219; border-radius: 10px; padding: 8px 12px; display: flex; justify-content: space-between; font-size: 10.5px;">
+                <div style="background: #111219; border-radius: 8px; padding: 8px 10px; display: flex; justify-content: space-between; font-size: 10px;">
                   <span>🔖 My Watchlist</span>
-                  <span style="font-weight: 800; color: var(--accent-lime);">14 Films</span>
+                  <span style="font-weight: 800; color: var(--accent-lime);">14 Items</span>
                 </div>
 
-                <div style="background: #111219; border-radius: 10px; padding: 8px 12px; display: flex; justify-content: space-between; font-size: 10.5px;">
+                <div style="background: #111219; border-radius: 8px; padding: 8px 10px; display: flex; justify-content: space-between; font-size: 10px;">
                   <span>📥 Offline Downloads</span>
                   <span style="font-weight: 800; color: var(--accent-blue);">3 Ready (1.8 GB)</span>
                 </div>
 
-                <div style="background: #111219; border-radius: 10px; padding: 8px 12px; display: flex; justify-content: space-between; font-size: 10.5px;">
+                <div style="background: #111219; border-radius: 8px; padding: 8px 10px; display: flex; justify-content: space-between; font-size: 10px;">
                   <span>⚙️ Streaming Quality</span>
                   <span style="color: #aaa;">Auto (1080p)</span>
                 </div>
 
-                <div style="background: #111219; border-radius: 10px; padding: 8px 12px; display: flex; justify-content: space-between; font-size: 10.5px;">
+                <div style="background: #111219; border-radius: 8px; padding: 8px 10px; display: flex; justify-content: space-between; font-size: 10px;">
                   <span>🌙 App Theme</span>
-                  <span style="color: var(--accent-lime);">OLED Dark</span>
+                  <span style="color: var(--accent-lime); font-weight: 800;">OLED Dark</span>
+                </div>
+
+                <div style="background: rgba(229,9,20,0.1); border: 1px solid rgba(229,9,20,0.3); border-radius: 8px; padding: 8px 10px; text-align: center; color: var(--accent-red); font-size: 10px; font-weight: 800; margin-top: 6px;">
+                  Sign Out of Account
                 </div>
               </div>
 
             </div>
 
-            <!-- Bottom Tabs -->
-            <div class="mobile-tab-bar">
-              <a href="#" class="m-tab-item"><span>🏠</span><span>Home</span></a>
-              <a href="#" class="m-tab-item"><span>🎬</span><span>Reels</span></a>
-              <a href="#" class="m-tab-item"><span>📺</span><span>Live TV</span></a>
-              <a href="#" class="m-tab-item active"><span>👤</span><span>Profile</span></a>
+            <!-- Floating Glass Dock Tab Bar -->
+            <div class="mobile-floating-dock-wrapper">
+              <div class="mobile-floating-dock">
+                <a href="#" class="m-dock-btn"><span>🏠</span>Home</a>
+                <a href="#" class="m-dock-btn"><span>🎬</span>Movies</a>
+                <a href="#" class="m-dock-btn"><span>📺</span>Shows</a>
+                <a href="#" class="m-dock-btn"><span>📲</span>Reels</a>
+                <a href="#" class="m-dock-btn"><span>🔖</span>Saved</a>
+                <a href="#" class="m-dock-btn active"><span>👤</span>Profile</a>
+              </div>
             </div>
           </div>
 
 
-          <!-- SCREEN 7: SEARCH & DISCOVERY -->
+          <!-- SCREEN 7: SEARCH & EXPLORE DISCOVERY -->
           <div class="phone-chassis">
             <div class="phone-notch-island"><div class="phone-camera-lens"></div></div>
-            <div class="phone-screen-container">
+            <div class="phone-screen-container" style="padding-top: 36px;">
               
-              <div style="padding: 12px; display: flex; flex-direction: column; gap: 10px;">
+              <div style="padding: 12px 14px; display: flex; flex-direction: column; gap: 10px;">
                 <div class="nav-search-bar" style="width: 100%; border-radius: 8px; padding: 8px 12px;">
                   <span style="font-size: 12px; color: #888;">🔍</span>
-                  <input type="text" placeholder="Search by title, genre, cast..." value="Thriller Malayalam" readonly />
+                  <input type="text" placeholder="Search by title, genre, cast..." value="The Flame" readonly />
                 </div>
 
-                <div style="font-size: 10.5px; font-weight: 800;">Top Searches Today</div>
-                <div style="display: flex; flex-wrap: wrap; gap: 6px;">
-                  <span style="background: #161722; padding: 4px 8px; border-radius: 4px; font-size: 9px;">🔥 The Flame</span>
-                  <span style="background: #161722; padding: 4px 8px; border-radius: 4px; font-size: 9px;">🎬 Pocket Reels Ep 4</span>
-                  <span style="background: #161722; padding: 4px 8px; border-radius: 4px; font-size: 9px;">⚽ Kerala FC Live</span>
-                  <span style="background: #161722; padding: 4px 8px; border-radius: 4px; font-size: 9px;">📺 Lemo News</span>
+                <div style="font-size: 10px; font-weight: 800;">Top Searches Today</div>
+                <div style="display: flex; flex-wrap: wrap; gap: 5px;">
+                  <span style="background: #161722; padding: 4px 8px; border-radius: 4px; font-size: 8.5px;">🔥 The Flame</span>
+                  <span style="background: #161722; padding: 4px 8px; border-radius: 4px; font-size: 8.5px;">🎬 Pocket Reels</span>
+                  <span style="background: #161722; padding: 4px 8px; border-radius: 4px; font-size: 8.5px;">⚽ Kerala FC Live</span>
                 </div>
 
-                <div style="font-size: 10.5px; font-weight: 800; margin-top: 6px;">Browse Genres</div>
+                <div style="font-size: 10px; font-weight: 800; margin-top: 4px;">Browse Genres</div>
                 <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px;">
-                  <div style="height: 45px; background: #261517; border-radius: 6px; padding: 6px; font-size: 10px; font-weight: 800;">Crime / Mystery</div>
-                  <div style="height: 45px; background: #132433; border-radius: 6px; padding: 6px; font-size: 10px; font-weight: 800;">Action Thriller</div>
-                  <div style="height: 45px; background: #152b1e; border-radius: 6px; padding: 6px; font-size: 10px; font-weight: 800;">Romantic Drama</div>
-                  <div style="height: 45px; background: #2b1733; border-radius: 6px; padding: 6px; font-size: 10px; font-weight: 800;">Horror Nights</div>
+                  <div style="height: 48px; background: linear-gradient(135deg, #3d0c11 0%, #151620 100%); border-radius: 6px; padding: 6px; font-size: 9.5px; font-weight: 800;">Crime / Mystery</div>
+                  <div style="height: 48px; background: linear-gradient(135deg, #1b263b 0%, #151620 100%); border-radius: 6px; padding: 6px; font-size: 9.5px; font-weight: 800;">Action Thriller</div>
+                  <div style="height: 48px; background: linear-gradient(135deg, #064e3b 0%, #151620 100%); border-radius: 6px; padding: 6px; font-size: 9.5px; font-weight: 800;">Romantic Drama</div>
+                  <div style="height: 48px; background: linear-gradient(135deg, #1e1b4b 0%, #151620 100%); border-radius: 6px; padding: 6px; font-size: 9.5px; font-weight: 800;">Horror Nights</div>
                 </div>
               </div>
 
             </div>
 
-            <!-- Bottom Tabs -->
-            <div class="mobile-tab-bar">
-              <a href="#" class="m-tab-item active"><span>🏠</span><span>Home</span></a>
-              <a href="#" class="m-tab-item"><span>🎬</span><span>Reels</span></a>
-              <a href="#" class="m-tab-item"><span>📺</span><span>Live TV</span></a>
-              <a href="#" class="m-tab-item"><span>👤</span><span>Profile</span></a>
+            <!-- Floating Glass Dock Tab Bar -->
+            <div class="mobile-floating-dock-wrapper">
+              <div class="mobile-floating-dock">
+                <a href="#" class="m-dock-btn active"><span>🏠</span>Home</a>
+                <a href="#" class="m-dock-btn"><span>🎬</span>Movies</a>
+                <a href="#" class="m-dock-btn"><span>📺</span>Shows</a>
+                <a href="#" class="m-dock-btn"><span>📲</span>Reels</a>
+                <a href="#" class="m-dock-btn"><span>🔖</span>Saved</a>
+                <a href="#" class="m-dock-btn"><span>👤</span>Profile</a>
+              </div>
             </div>
           </div>
 
 
-          <!-- SCREEN 8: CREATOR SUBMISSION & S3 UPLOAD -->
+          <!-- SCREEN 8: CREATOR VIDEO SUBMISSION & S3 UPLOAD -->
           <div class="phone-chassis">
             <div class="phone-notch-island"><div class="phone-camera-lens"></div></div>
-            <div class="phone-screen-container">
+            <div class="phone-screen-container" style="padding-top: 36px;">
               
-              <div style="padding: 12px; display: flex; flex-direction: column; gap: 8px;">
-                <div style="font-size: 12px; font-weight: 900;">Submit Your Film / Reel</div>
-                <p style="font-size: 9px; color: var(--text-secondary);">Upload directly to LEMO OTT MediaConvert Pipeline</p>
+              <div style="padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;">
+                <div style="font-size: 12px; font-weight: 900;">Submit Video / Pocket Reel</div>
+                <p style="font-size: 8.5px; color: var(--text-secondary);">Direct S3 Upload & AWS MediaConvert Pipeline</p>
 
-                <div style="border: 1.5px dashed var(--accent-lime); border-radius: 8px; padding: 14px; text-align: center; background: rgba(179,211,50,0.05);">
-                  <span style="font-size: 18px;">📁</span>
-                  <div style="font-size: 9.5px; font-weight: 800; margin-top: 4px;">Direct S3 Upload</div>
-                  <div style="font-size: 8px; color: #888;">MP4, MOV up to 10GB</div>
+                <!-- Dropzone Box -->
+                <div style="border: 1.5px dashed var(--accent-lime); border-radius: 8px; padding: 12px; text-align: center; background: rgba(179,211,50,0.06);">
+                  <span style="font-size: 16px;">📁</span>
+                  <div style="font-size: 9.5px; font-weight: 800; margin-top: 2px;">Direct S3 PUT Upload</div>
+                  <div style="font-size: 7.5px; color: #888;">MP4, MOV up to 10GB</div>
                 </div>
 
-                <div style="background: #111219; border-radius: 6px; padding: 6px 8px; font-size: 9px;">
+                <div style="background: #111219; border-radius: 6px; padding: 6px 8px; font-size: 8.5px;">
                   <div style="color: #aaa; margin-bottom: 2px;">Title</div>
                   <div style="font-weight: 700;">The Midnight Road (Short Film)</div>
                 </div>
 
-                <div style="background: #111219; border-radius: 6px; padding: 6px 8px; font-size: 9px;">
-                  <div style="color: #aaa; margin-bottom: 2px;">Upload Progress (Presigned S3 PUT)</div>
-                  <div class="scrub-track" style="height: 6px; margin: 4px 0;">
+                <!-- Progress Bar -->
+                <div style="background: #111219; border-radius: 6px; padding: 6px 8px; font-size: 8.5px;">
+                  <div style="color: #aaa; margin-bottom: 2px;">Upload Progress (Pre-signed S3 PUT)</div>
+                  <div class="scrub-track" style="height: 5px; margin: 4px 0;">
                     <div class="scrub-progress" style="width: 82%;"></div>
                   </div>
-                  <div style="display: flex; justify-content: space-between; font-size: 8px; color: var(--accent-lime); font-weight: 800;">
+                  <div style="display: flex; justify-content: space-between; font-size: 7.5px; color: var(--accent-lime); font-weight: 800;">
                     <span>82% Uploaded (410MB / 500MB)</span>
                     <span>Transcoding Next...</span>
                   </div>
                 </div>
 
-                <button class="btn-play-primary" style="width: 100%; justify-content: center; padding: 8px; font-size: 10px; border-radius: 6px; margin-top: 4px;">
-                  Submit for Curation
+                <button class="btn-play-primary" style="width: 100%; justify-content: center; padding: 8px; font-size: 9.5px; border-radius: 6px; margin-top: 4px;">
+                  🚀 Submit for Curation
                 </button>
               </div>
 
             </div>
 
-            <!-- Bottom Tabs -->
-            <div class="mobile-tab-bar">
-              <a href="#" class="m-tab-item"><span>🏠</span><span>Home</span></a>
-              <a href="#" class="m-tab-item"><span>🎬</span><span>Reels</span></a>
-              <a href="#" class="m-tab-item"><span>📺</span><span>Live TV</span></a>
-              <a href="#" class="m-tab-item active"><span>👤</span><span>Profile</span></a>
+            <!-- Floating Glass Dock Tab Bar -->
+            <div class="mobile-floating-dock-wrapper">
+              <div class="mobile-floating-dock">
+                <a href="#" class="m-dock-btn"><span>🏠</span>Home</a>
+                <a href="#" class="m-dock-btn"><span>🎬</span>Movies</a>
+                <a href="#" class="m-dock-btn"><span>📺</span>Shows</a>
+                <a href="#" class="m-dock-btn"><span>📲</span>Reels</a>
+                <a href="#" class="m-dock-btn"><span>🔖</span>Saved</a>
+                <a href="#" class="m-dock-btn active"><span>👤</span>Profile</a>
+              </div>
             </div>
           </div>
 
