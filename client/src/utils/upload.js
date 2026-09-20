@@ -1,19 +1,23 @@
 /**
- * Utility to upload files (images & videos) directly to Cloudinary via the backend api/upload endpoint.
+ * Utility to upload files (images & videos).
+ * Uses Direct S3 Presigned PUT upload for videos (bypassing Nginx/server file size limits),
+ * and Cloudinary via /api/upload for images/assets.
  * Dynamically displays a glassmorphic upload progress indicator overlay on the screen during the upload.
  */
 export const uploadToCloudinary = (file) => {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     if (!file) {
       resolve(null);
       return;
     }
 
+    const isVideo = (file.type && file.type.startsWith('video/')) || 
+                    !!file.name.match(/\.(mp4|mkv|webm|avi|mov|ts|m3u8)$/i);
+
     // 1. Create a beautiful glassmorphic dark-theme progress overlay in the DOM
     const overlay = document.createElement('div');
     overlay.id = 'fe-upload-progress-overlay';
     
-    // Inline styling for professional, premium glassmorphism
     overlay.style.position = 'fixed';
     overlay.style.top = '0';
     overlay.style.left = '0';
@@ -41,7 +45,7 @@ export const uploadToCloudinary = (file) => {
     card.style.gap = '18px';
 
     const title = document.createElement('div');
-    title.innerText = 'UPLOADING ASSET';
+    title.innerText = isVideo ? 'UPLOADING HIGH DEFINITION VIDEO' : 'UPLOADING ASSET';
     title.style.fontSize = '0.72rem';
     title.style.fontWeight = '900';
     title.style.color = '#b3d332';
@@ -90,7 +94,7 @@ export const uploadToCloudinary = (file) => {
     progressContainer.appendChild(progressText);
 
     const statusText = document.createElement('div');
-    statusText.innerText = 'Initiating handshake...';
+    statusText.innerText = 'Preparing upload...';
     statusText.style.fontSize = '0.8rem';
     statusText.style.color = '#888992';
 
@@ -102,7 +106,101 @@ export const uploadToCloudinary = (file) => {
     
     document.body.appendChild(overlay);
 
-    // 2. Perform the upload via standard XMLHttpRequest
+    const updateProgressUI = (percent, status) => {
+      progressBarFill.style.width = `${percent}%`;
+      progressText.innerText = `${percent}%`;
+      if (status) statusText.innerText = status;
+    };
+
+    const cleanup = () => {
+      if (document.body.contains(overlay)) {
+        document.body.removeChild(overlay);
+      }
+    };
+
+    // 2. Direct S3 Upload Strategy for Videos
+    if (isVideo) {
+      try {
+        updateProgressUI(0, 'Securing direct S3 cloud tunnel...');
+        
+        const presignRes = await fetch('/api/upload/presigned-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fileName: file.name,
+            fileType: file.type || 'video/mp4'
+          })
+        });
+
+        if (presignRes.ok) {
+          const presignData = await presignRes.json();
+          const { uploadUrl, s3Uri } = presignData;
+
+          if (uploadUrl && s3Uri) {
+            // Direct PUT to Amazon S3
+            const s3Xhr = new XMLHttpRequest();
+            s3Xhr.open('PUT', uploadUrl, true);
+            s3Xhr.setRequestHeader('Content-Type', file.type || 'video/mp4');
+
+            s3Xhr.upload.onprogress = (event) => {
+              if (event.lengthComputable) {
+                const percent = Math.min(99, Math.round((event.loaded / event.total) * 100));
+                updateProgressUI(percent, `Uploading directly to S3 Cloud: ${percent}%`);
+              }
+            };
+
+            s3Xhr.onload = async () => {
+              if (s3Xhr.status >= 200 && s3Xhr.status < 300) {
+                updateProgressUI(100, 'Direct upload complete! Initializing AWS MediaConvert...');
+                try {
+                  const processRes = await fetch('/api/upload/process-video', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      s3Uri,
+                      originalName: file.name
+                    })
+                  });
+
+                  cleanup();
+
+                  if (processRes.ok) {
+                    const processData = await processRes.json();
+                    resolve(processData.url || null);
+                  } else {
+                    const errData = await processRes.json().catch(() => ({}));
+                    reject(new Error(errData.message || 'AWS MediaConvert processing failed'));
+                  }
+                } catch (procErr) {
+                  cleanup();
+                  reject(procErr);
+                }
+              } else {
+                cleanup();
+                reject(new Error(`S3 direct upload failed with status ${s3Xhr.status}`));
+              }
+            };
+
+            s3Xhr.onerror = () => {
+              cleanup();
+              reject(new Error('Network connectivity issue during direct S3 upload'));
+            };
+
+            s3Xhr.onabort = () => {
+              cleanup();
+              reject(new Error('S3 upload cancelled'));
+            };
+
+            s3Xhr.send(file);
+            return; // Successfully handled via Direct S3
+          }
+        }
+      } catch (directErr) {
+        console.warn('[Direct S3 Upload] Notice, falling back to server upload route:', directErr);
+      }
+    }
+
+    // 3. Fallback: Server FormData upload (for images or when S3 presign is bypassed)
     const xhr = new XMLHttpRequest();
     const formData = new FormData();
     formData.append('file', file);
@@ -112,25 +210,17 @@ export const uploadToCloudinary = (file) => {
     let displayedPercent = 0;
     let trickleInterval = null;
 
-    const updateProgressUI = (percent, status) => {
-      progressBarFill.style.width = `${percent}%`;
-      progressText.innerText = `${percent}%`;
-      statusText.innerText = status;
-    };
-
-    // Dynamic progress event listener with trickle simulation
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable) {
         const percent = Math.round((event.loaded / event.total) * 100);
         
         if (percent < 90) {
           displayedPercent = percent;
-          updateProgressUI(displayedPercent, `Uploading file to server: ${displayedPercent}%`);
+          updateProgressUI(displayedPercent, `Uploading file: ${displayedPercent}%`);
         } else if (percent >= 90 && !trickleInterval) {
           displayedPercent = 90;
           updateProgressUI(displayedPercent, 'Uploading to Cloud storage... Please wait.');
           
-          // Trickle progress while backend is uploading file to Cloud/S3
           trickleInterval = setInterval(() => {
             if (displayedPercent < 98) {
               displayedPercent += 1;
@@ -141,17 +231,13 @@ export const uploadToCloudinary = (file) => {
       }
     };
 
-    const cleanup = () => {
-      if (trickleInterval) {
-        clearInterval(trickleInterval);
-      }
-      if (document.body.contains(overlay)) {
-        document.body.removeChild(overlay);
-      }
+    const cleanupFallback = () => {
+      if (trickleInterval) clearInterval(trickleInterval);
+      cleanup();
     };
 
     xhr.onload = () => {
-      cleanup();
+      cleanupFallback();
 
       if (xhr.status >= 200 && xhr.status < 300) {
         try {
@@ -171,12 +257,12 @@ export const uploadToCloudinary = (file) => {
     };
 
     xhr.onerror = () => {
-      cleanup();
+      cleanupFallback();
       reject(new Error('Network connectivity issue during upload'));
     };
 
     xhr.onabort = () => {
-      cleanup();
+      cleanupFallback();
       reject(new Error('Upload task aborted'));
     };
 

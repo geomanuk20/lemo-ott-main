@@ -383,9 +383,8 @@ const menuSettingsSchema = new mongoose.Schema({
   pocketReelSeries: { type: String, default: 'ON' }
 });
 const MenuSettings = mongoose.model('MenuSettings', menuSettingsSchema);
-// jwt already declared at top
 const { cloudinary, upload } = require('./cloudinaryConfig');
-const { uploadFileToS3, uploadInputToS3, getPresignedUrlIfS3, uploadHlsToS3, getS3FileStream } = require('./s3Config');
+const { uploadFileToS3, uploadInputToS3, getPresignedUrlIfS3, getPresignedPutUrl, uploadHlsToS3, getS3FileStream } = require('./s3Config');
 const { transcodeToHls } = require('./hlsTranscoder');
 const { createMediaConvertHlsJob } = require('./mediaConvert');
 const { signCloudFrontUrl, getCloudFrontUrl } = require('./cloudFrontSigner');
@@ -650,6 +649,52 @@ app.get('/api/youtube/live-m3u8', async (req, res) => {
   } catch (error) {
     console.error('Error resolving YouTube HLS stream:', error.message);
     return res.status(500).json({ message: 'Failed to resolve YouTube HLS stream', error: error.message });
+  }
+});
+
+// Generate S3 Pre-signed URL for direct browser-to-S3 uploads (bypasses Nginx body limits & server memory on production)
+app.post('/api/upload/presigned-url', async (req, res) => {
+  try {
+    const { fileName, fileType } = req.body;
+    if (!fileName) {
+      return res.status(400).json({ message: 'fileName is required' });
+    }
+    const result = await getPresignedPutUrl(fileName, fileType);
+    res.json(result);
+  } catch (err) {
+    console.error('[PRESIGNED URL ERROR]:', err);
+    res.status(500).json({ message: err.message || 'Failed to generate S3 upload URL' });
+  }
+});
+
+// Process video after direct S3 upload finishes: triggers AWS MediaConvert to transcode to HLS
+app.post('/api/upload/process-video', async (req, res) => {
+  try {
+    const { s3Uri, originalName } = req.body;
+    if (!s3Uri) {
+      return res.status(400).json({ message: 's3Uri is required' });
+    }
+
+    if (!process.env.AWS_MEDIACONVERT_ENDPOINT || !process.env.AWS_MEDIACONVERT_ROLE_ARN) {
+      throw new Error('AWS MediaConvert settings (endpoint and/or role ARN) are not configured in environment variables.');
+    }
+
+    const timestamp = Date.now();
+    const bucketName = process.env.AWS_BUCKET_NAME;
+    const region = process.env.AWS_REGION || 'ap-south-1';
+    const outputS3Folder = `s3://${bucketName}/videos/hls_${timestamp}/index`;
+
+    console.log(`[PROCESS-VIDEO] Direct S3 upload complete for ${originalName || s3Uri}. Triggering MediaConvert job...`);
+    await createMediaConvertHlsJob(s3Uri, outputS3Folder);
+
+    const s3PlaylistUrl = `https://${bucketName}.s3.${region}.amazonaws.com/videos/hls_${timestamp}/index.m3u8`;
+    const fileUrl = getCloudFrontUrl(s3PlaylistUrl);
+
+    console.log(`[PROCESS-VIDEO] MediaConvert job created. Playback URL: ${fileUrl}`);
+    res.json({ url: fileUrl });
+  } catch (err) {
+    console.error('[PROCESS-VIDEO ERROR]:', err);
+    res.status(500).json({ message: err.message || 'Failed to trigger video processing' });
   }
 });
 

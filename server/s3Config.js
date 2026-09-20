@@ -209,4 +209,42 @@ const getS3FileStream = async (key) => {
   };
 };
 
-module.exports = { s3Client, uploadFileToS3, uploadInputToS3, getPresignedUrlIfS3, uploadHlsToS3, getS3FileStream };
+/**
+ * Generates an AWS S3 presigned PUT URL for direct browser uploads.
+ * @param {string} originalName - Original name of the uploaded file
+ * @param {string} mimeType - MIME type of the file
+ * @returns {Promise<{ uploadUrl: string, key: string, s3Uri: string }>}
+ */
+const getPresignedPutUrl = async (originalName, mimeType) => {
+  const bucketName = process.env.AWS_BUCKET_NAME;
+  if (!bucketName) {
+    throw new Error('AWS_BUCKET_NAME is not configured in environment variables');
+  }
+
+  const fileExtension = path.extname(originalName);
+  const baseName = path.basename(originalName, fileExtension).replace(/[^a-zA-Z0-9]/g, '_');
+  const uniqueKey = `inputs/${Date.now()}_${baseName}${fileExtension}`;
+
+  const command = new PutObjectCommand({
+    Bucket: bucketName,
+    Key: uniqueKey,
+    ContentType: mimeType || 'application/octet-stream',
+  });
+
+  const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+  return {
+    uploadUrl,
+    key: uniqueKey,
+    s3Uri: `s3://${bucketName}/${uniqueKey}`
+  };
+};
+
+module.exports = { 
+  s3Client, 
+  uploadFileToS3, 
+  uploadInputToS3, 
+  getPresignedUrlIfS3, 
+  getPresignedPutUrl, 
+  uploadHlsToS3, 
+  getS3FileStream 
+};

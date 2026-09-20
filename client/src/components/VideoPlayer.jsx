@@ -982,6 +982,10 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
   // Subtitles dropdown and active track states
   const [activeTrackIdx, setActiveTrackIdx] = useState(-1);
 
+  // Transcoding state for newly uploaded videos
+  const [isTranscoding, setIsTranscoding] = useState(false);
+  const [transcodingCheckCount, setTranscodingCheckCount] = useState(0);
+
   // Rating overlay states
   const [showRatingOverlay, setShowRatingOverlay] = useState(false);
   const [selectedRating, setSelectedRating] = useState(0);
@@ -2530,6 +2534,93 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
     );
   }
 
+  // Poll for manifest availability if stream is in transcoding state
+  useEffect(() => {
+    if (!isTranscoding) return;
+    const streamUrl = getStreamSrc();
+    if (!streamUrl || !streamUrl.includes('.m3u8')) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(streamUrl, { method: 'HEAD' });
+        if (res.ok) {
+          setIsTranscoding(false);
+        } else {
+          setTranscodingCheckCount(c => c + 1);
+        }
+      } catch (e) {
+        setTranscodingCheckCount(c => c + 1);
+      }
+    }, 6000);
+
+    return () => clearInterval(interval);
+  }, [isTranscoding, src]);
+
+  if (isTranscoding) {
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100%',
+        minHeight: '450px',
+        background: 'linear-gradient(180deg, #0f1015 0%, #000 100%)',
+        color: '#fff',
+        padding: '30px',
+        textAlign: 'center',
+        borderRadius: '12px',
+        position: 'relative',
+        boxShadow: '0 20px 40px rgba(0,0,0,0.5)'
+      }}>
+        <div style={{
+          width: '64px',
+          height: '64px',
+          borderRadius: '50%',
+          background: 'rgba(179, 211, 50, 0.1)',
+          border: '2px solid rgba(179, 211, 50, 0.3)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginBottom: '20px'
+        }}>
+          <div className="token-spinner" style={{ width: '32px', height: '32px', border: '3px solid rgba(255,255,255,0.1)', borderTopColor: '#b3d332', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+        </div>
+        <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>
+          Video Is Being Transcoded
+        </h3>
+        <p style={{ color: '#aaa', fontSize: '0.9rem', maxWidth: '420px', lineHeight: 1.5, marginBottom: '20px' }}>
+          This content was recently uploaded and AWS MediaConvert is currently encoding it into ultra-smooth HLS. It will start playing automatically once processing is complete.
+        </p>
+        <button
+          onClick={async () => {
+            const streamUrl = getStreamSrc();
+            try {
+              const res = await fetch(streamUrl);
+              if (res.ok) setIsTranscoding(false);
+              else alert('Still transcoding on AWS. Please allow another moment.');
+            } catch (err) {
+              alert('Still transcoding on AWS. Please allow another moment.');
+            }
+          }}
+          style={{
+            background: 'rgba(255,255,255,0.1)',
+            border: '1px solid rgba(255,255,255,0.2)',
+            color: '#fff',
+            padding: '8px 20px',
+            borderRadius: '20px',
+            fontSize: '0.85rem',
+            fontWeight: 600,
+            cursor: 'pointer',
+            transition: 'all 0.2s'
+          }}
+        >
+          Check Readiness Now
+        </button>
+      </div>
+    );
+  }
+
   if (loadingToken || resolvingYoutubeLive) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '450px', background: '#000', color: '#fff', gap: '15px' }}>
@@ -2570,6 +2661,16 @@ const VideoPlayer = ({ src, onEnded, onTimeUpdate, subtitles, subtitlesActive, v
             crossOrigin="anonymous"
             autoPlay={isAutoplayEnabled}
             onEnded={onEnded}
+            onError={() => {
+              const streamUrl = getStreamSrc();
+              if (streamUrl && streamUrl.includes('.m3u8')) {
+                fetch(streamUrl, { method: 'HEAD' })
+                  .then(res => {
+                    if (!res.ok) setIsTranscoding(true);
+                  })
+                  .catch(() => setIsTranscoding(true));
+              }
+            }}
             onTimeUpdate={(e) => {
               handlePlayerTimeUpdate(e.target.currentTime, e.target.duration);
             }}
